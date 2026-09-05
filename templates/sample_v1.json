@@ -1099,10 +1099,10 @@
      "field": "stability_detail",
      "type": "text",
      "rect": [
-      0.14996,
-      0.449455,
-      0.34369,
-      0.019191
+      0.154963,
+      0.450337,
+      0.338687,
+      0.01831
      ],
      "options": null,
      "transferred": true
@@ -1111,10 +1111,10 @@
      "field": "treatment_course",
      "type": "textarea",
      "rect": [
-      0.039526,
-      0.470047,
-      0.538129,
-      0.13952
+      0.042055,
+      0.475987,
+      0.5356,
+      0.13358
      ],
      "options": null,
      "transferred": true
@@ -2387,10 +2387,10 @@
      "field": "nutrition_note",
      "type": "text",
      "rect": [
-      0.265224,
-      0.378334,
-      0.293372,
-      0.021733
+      0.266821,
+      0.378997,
+      0.284554,
+      0.021012
      ],
      "options": null,
      "transferred": true
@@ -2411,10 +2411,10 @@
      "field": "risk_policy",
      "type": "text",
      "rect": [
-      0.144213,
-      0.435177,
-      0.526312,
-      0.014772
+      0.158628,
+      0.435385,
+      0.508696,
+      0.014717
      ],
      "options": null,
      "transferred": true

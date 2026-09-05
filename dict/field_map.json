@@ -1,0 +1,19 @@
+{
+ "diagnosis1_name": "diseases",
+ "diagnosis2_name": "diseases",
+ "diagnosis3_name": "diseases",
+ "other_dept_other_text": "departments",
+ "other_psych_symptom_name": "diseases",
+ "specialist_consult_detail": "departments",
+ "infection_detail": "infections",
+ "limb_defect_site": "body_sites",
+ "paralysis_other_site": "body_sites",
+ "muscle_weakness_site": "body_sites",
+ "joint_contracture_site": "body_sites",
+ "joint_pain_site": "body_sites",
+ "pressure_ulcer_site": "body_sites",
+ "other_skin_disease_site": "body_sites",
+ "clinic_name": "clinic_suffix",
+ "clinic_address": "prefectures",
+ "applicant_address": "prefectures"
+}

@@ -1,0 +1,910 @@
+{
+ "label": "傷病名（ICD-10）",
+ "entries": [
+  {
+   "name": "がん（医師が一般に認められている医学的知見に基づき回復の見込みがない状態に至ったと判断したものに限る）",
+   "icd10": "C80",
+   "tokutei": true
+  },
+  {
+   "name": "関節リウマチ",
+   "icd10": "M06.9",
+   "tokutei": true
+  },
+  {
+   "name": "筋萎縮性側索硬化症",
+   "icd10": "G12.2",
+   "tokutei": true
+  },
+  {
+   "name": "後縦靱帯骨化症",
+   "icd10": "M48.8",
+   "tokutei": true
+  },
+  {
+   "name": "骨折を伴う骨粗鬆症",
+   "icd10": "M80.9",
+   "tokutei": true
+  },
+  {
+   "name": "初老期における認知症",
+   "icd10": "F03",
+   "tokutei": true
+  },
+  {
+   "name": "進行性核上性麻痺",
+   "icd10": "G23.1",
+   "tokutei": true
+  },
+  {
+   "name": "大脳皮質基底核変性症",
+   "icd10": "G23.8",
+   "tokutei": true
+  },
+  {
+   "name": "パーキンソン病",
+   "icd10": "G20",
+   "tokutei": true
+  },
+  {
+   "name": "脊髄小脳変性症",
+   "icd10": "G11.9",
+   "tokutei": true
+  },
+  {
+   "name": "脊柱管狭窄症",
+   "icd10": "M48.0",
+   "tokutei": true
+  },
+  {
+   "name": "早老症",
+   "icd10": "E34.8",
+   "tokutei": true
+  },
+  {
+   "name": "多系統萎縮症",
+   "icd10": "G23.8",
+   "tokutei": true
+  },
+  {
+   "name": "糖尿病性神経障害",
+   "icd10": "E14.4",
+   "tokutei": true
+  },
+  {
+   "name": "糖尿病性腎症",
+   "icd10": "E14.2",
+   "tokutei": true
+  },
+  {
+   "name": "糖尿病性網膜症",
+   "icd10": "E14.3",
+   "tokutei": true
+  },
+  {
+   "name": "脳血管疾患",
+   "icd10": "I64",
+   "tokutei": true
+  },
+  {
+   "name": "閉塞性動脈硬化症",
+   "icd10": "I70.2",
+   "tokutei": true
+  },
+  {
+   "name": "慢性閉塞性肺疾患",
+   "icd10": "J44.9",
+   "tokutei": true
+  },
+  {
+   "name": "両側の膝関節又は股関節に著しい変形を伴う変形性関節症",
+   "icd10": "M17.0",
+   "tokutei": true
+  },
+  {
+   "name": "高血圧症",
+   "icd10": "I10",
+   "tokutei": false
+  },
+  {
+   "name": "本態性高血圧症",
+   "icd10": "I10",
+   "tokutei": false
+  },
+  {
+   "name": "心房細動",
+   "icd10": "I48",
+   "tokutei": false
+  },
+  {
+   "name": "うっ血性心不全",
+   "icd10": "I50.0",
+   "tokutei": false
+  },
+  {
+   "name": "慢性心不全",
+   "icd10": "I50.9",
+   "tokutei": false
+  },
+  {
+   "name": "狭心症",
+   "icd10": "I20.9",
+   "tokutei": false
+  },
+  {
+   "name": "陳旧性心筋梗塞",
+   "icd10": "I25.2",
+   "tokutei": false
+  },
+  {
+   "name": "急性心筋梗塞",
+   "icd10": "I21.9",
+   "tokutei": false
+  },
+  {
+   "name": "弁膜症",
+   "icd10": "I38",
+   "tokutei": false
+  },
+  {
+   "name": "大動脈弁狭窄症",
+   "icd10": "I35.0",
+   "tokutei": false
+  },
+  {
+   "name": "僧帽弁閉鎖不全症",
+   "icd10": "I34.0",
+   "tokutei": false
+  },
+  {
+   "name": "不整脈",
+   "icd10": "I49.9",
+   "tokutei": false
+  },
+  {
+   "name": "洞不全症候群",
+   "icd10": "I49.5",
+   "tokutei": false
+  },
+  {
+   "name": "完全房室ブロック",
+   "icd10": "I44.2",
+   "tokutei": false
+  },
+  {
+   "name": "心筋症",
+   "icd10": "I42.9",
+   "tokutei": false
+  },
+  {
+   "name": "肺高血圧症",
+   "icd10": "I27.0",
+   "tokutei": false
+  },
+  {
+   "name": "深部静脈血栓症",
+   "icd10": "I80.2",
+   "tokutei": false
+  },
+  {
+   "name": "下肢静脈瘤",
+   "icd10": "I83.9",
+   "tokutei": false
+  },
+  {
+   "name": "大動脈瘤",
+   "icd10": "I71.9",
+   "tokutei": false
+  },
+  {
+   "name": "脂質異常症",
+   "icd10": "E78.5",
+   "tokutei": false
+  },
+  {
+   "name": "脳梗塞",
+   "icd10": "I63.9",
+   "tokutei": false
+  },
+  {
+   "name": "脳梗塞後遺症",
+   "icd10": "I69.3",
+   "tokutei": false
+  },
+  {
+   "name": "脳出血",
+   "icd10": "I61.9",
+   "tokutei": false
+  },
+  {
+   "name": "脳出血後遺症",
+   "icd10": "I69.1",
+   "tokutei": false
+  },
+  {
+   "name": "くも膜下出血",
+   "icd10": "I60.9",
+   "tokutei": false
+  },
+  {
+   "name": "一過性脳虚血発作",
+   "icd10": "G45.9",
+   "tokutei": false
+  },
+  {
+   "name": "ラクナ梗塞",
+   "icd10": "I63.9",
+   "tokutei": false
+  },
+  {
+   "name": "脳動脈硬化症",
+   "icd10": "I67.2",
+   "tokutei": false
+  },
+  {
+   "name": "慢性硬膜下血腫",
+   "icd10": "I62.0",
+   "tokutei": false
+  },
+  {
+   "name": "てんかん",
+   "icd10": "G40.9",
+   "tokutei": false
+  },
+  {
+   "name": "正常圧水頭症",
+   "icd10": "G91.2",
+   "tokutei": false
+  },
+  {
+   "name": "アルツハイマー型認知症",
+   "icd10": "G30.9",
+   "tokutei": false
+  },
+  {
+   "name": "血管性認知症",
+   "icd10": "F01.9",
+   "tokutei": false
+  },
+  {
+   "name": "レビー小体型認知症",
+   "icd10": "G31.8",
+   "tokutei": false
+  },
+  {
+   "name": "前頭側頭型認知症",
+   "icd10": "G31.0",
+   "tokutei": false
+  },
+  {
+   "name": "認知症",
+   "icd10": "F03",
+   "tokutei": false
+  },
+  {
+   "name": "軽度認知障害",
+   "icd10": "F06.7",
+   "tokutei": false
+  },
+  {
+   "name": "うつ病",
+   "icd10": "F32.9",
+   "tokutei": false
+  },
+  {
+   "name": "統合失調症",
+   "icd10": "F20.9",
+   "tokutei": false
+  },
+  {
+   "name": "不眠症",
+   "icd10": "F51.0",
+   "tokutei": false
+  },
+  {
+   "name": "せん妄",
+   "icd10": "F05.9",
+   "tokutei": false
+  },
+  {
+   "name": "双極性障害",
+   "icd10": "F31.9",
+   "tokutei": false
+  },
+  {
+   "name": "不安障害",
+   "icd10": "F41.9",
+   "tokutei": false
+  },
+  {
+   "name": "アルコール依存症",
+   "icd10": "F10.2",
+   "tokutei": false
+  },
+  {
+   "name": "パーキンソン症候群",
+   "icd10": "G21.9",
+   "tokutei": false
+  },
+  {
+   "name": "重症筋無力症",
+   "icd10": "G70.0",
+   "tokutei": false
+  },
+  {
+   "name": "多発性硬化症",
+   "icd10": "G35",
+   "tokutei": false
+  },
+  {
+   "name": "末梢神経障害",
+   "icd10": "G62.9",
+   "tokutei": false
+  },
+  {
+   "name": "三叉神経痛",
+   "icd10": "G50.0",
+   "tokutei": false
+  },
+  {
+   "name": "筋ジストロフィー",
+   "icd10": "G71.0",
+   "tokutei": false
+  },
+  {
+   "name": "脊髄損傷",
+   "icd10": "T09.3",
+   "tokutei": false
+  },
+  {
+   "name": "廃用症候群",
+   "icd10": "M62.5",
+   "tokutei": false
+  },
+  {
+   "name": "サルコペニア",
+   "icd10": "M62.5",
+   "tokutei": false
+  },
+  {
+   "name": "フレイル",
+   "icd10": "R54",
+   "tokutei": false
+  },
+  {
+   "name": "肺炎",
+   "icd10": "J18.9",
+   "tokutei": false
+  },
+  {
+   "name": "誤嚥性肺炎",
+   "icd10": "J69.0",
+   "tokutei": false
+  },
+  {
+   "name": "気管支喘息",
+   "icd10": "J45.9",
+   "tokutei": false
+  },
+  {
+   "name": "慢性気管支炎",
+   "icd10": "J42",
+   "tokutei": false
+  },
+  {
+   "name": "肺気腫",
+   "icd10": "J43.9",
+   "tokutei": false
+  },
+  {
+   "name": "間質性肺炎",
+   "icd10": "J84.9",
+   "tokutei": false
+  },
+  {
+   "name": "肺結核後遺症",
+   "icd10": "B90.9",
+   "tokutei": false
+  },
+  {
+   "name": "睡眠時無呼吸症候群",
+   "icd10": "G47.3",
+   "tokutei": false
+  },
+  {
+   "name": "慢性呼吸不全",
+   "icd10": "J96.1",
+   "tokutei": false
+  },
+  {
+   "name": "胃潰瘍",
+   "icd10": "K25.9",
+   "tokutei": false
+  },
+  {
+   "name": "十二指腸潰瘍",
+   "icd10": "K26.9",
+   "tokutei": false
+  },
+  {
+   "name": "逆流性食道炎",
+   "icd10": "K21.0",
+   "tokutei": false
+  },
+  {
+   "name": "慢性胃炎",
+   "icd10": "K29.5",
+   "tokutei": false
+  },
+  {
+   "name": "肝硬変",
+   "icd10": "K74.6",
+   "tokutei": false
+  },
+  {
+   "name": "慢性肝炎",
+   "icd10": "K73.9",
+   "tokutei": false
+  },
+  {
+   "name": "脂肪肝",
+   "icd10": "K76.0",
+   "tokutei": false
+  },
+  {
+   "name": "胆石症",
+   "icd10": "K80.2",
+   "tokutei": false
+  },
+  {
+   "name": "慢性膵炎",
+   "icd10": "K86.1",
+   "tokutei": false
+  },
+  {
+   "name": "潰瘍性大腸炎",
+   "icd10": "K51.9",
+   "tokutei": false
+  },
+  {
+   "name": "クローン病",
+   "icd10": "K50.9",
+   "tokutei": false
+  },
+  {
+   "name": "便秘症",
+   "icd10": "K59.0",
+   "tokutei": false
+  },
+  {
+   "name": "イレウス",
+   "icd10": "K56.7",
+   "tokutei": false
+  },
+  {
+   "name": "鼠径ヘルニア",
+   "icd10": "K40.9",
+   "tokutei": false
+  },
+  {
+   "name": "慢性腎臓病",
+   "icd10": "N18.9",
+   "tokutei": false
+  },
+  {
+   "name": "慢性腎不全",
+   "icd10": "N18.5",
+   "tokutei": false
+  },
+  {
+   "name": "ネフローゼ症候群",
+   "icd10": "N04.9",
+   "tokutei": false
+  },
+  {
+   "name": "腎硬化症",
+   "icd10": "I12.9",
+   "tokutei": false
+  },
+  {
+   "name": "前立腺肥大症",
+   "icd10": "N40",
+   "tokutei": false
+  },
+  {
+   "name": "神経因性膀胱",
+   "icd10": "N31.9",
+   "tokutei": false
+  },
+  {
+   "name": "尿路感染症",
+   "icd10": "N39.0",
+   "tokutei": false
+  },
+  {
+   "name": "膀胱炎",
+   "icd10": "N30.9",
+   "tokutei": false
+  },
+  {
+   "name": "尿失禁",
+   "icd10": "R32",
+   "tokutei": false
+  },
+  {
+   "name": "腎盂腎炎",
+   "icd10": "N12",
+   "tokutei": false
+  },
+  {
+   "name": "人工透析",
+   "icd10": "Z99.2",
+   "tokutei": false
+  },
+  {
+   "name": "血液透析",
+   "icd10": "Z99.2",
+   "tokutei": false
+  },
+  {
+   "name": "2型糖尿病",
+   "icd10": "E11.9",
+   "tokutei": false
+  },
+  {
+   "name": "1型糖尿病",
+   "icd10": "E10.9",
+   "tokutei": false
+  },
+  {
+   "name": "糖尿病",
+   "icd10": "E14.9",
+   "tokutei": false
+  },
+  {
+   "name": "甲状腺機能低下症",
+   "icd10": "E03.9",
+   "tokutei": false
+  },
+  {
+   "name": "甲状腺機能亢進症",
+   "icd10": "E05.9",
+   "tokutei": false
+  },
+  {
+   "name": "高尿酸血症",
+   "icd10": "E79.0",
+   "tokutei": false
+  },
+  {
+   "name": "痛風",
+   "icd10": "M10.9",
+   "tokutei": false
+  },
+  {
+   "name": "低栄養",
+   "icd10": "E46",
+   "tokutei": false
+  },
+  {
+   "name": "脱水症",
+   "icd10": "E86",
+   "tokutei": false
+  },
+  {
+   "name": "肥満症",
+   "icd10": "E66.9",
+   "tokutei": false
+  },
+  {
+   "name": "電解質異常",
+   "icd10": "E87.8",
+   "tokutei": false
+  },
+  {
+   "name": "変形性膝関節症",
+   "icd10": "M17.9",
+   "tokutei": false
+  },
+  {
+   "name": "変形性股関節症",
+   "icd10": "M16.9",
+   "tokutei": false
+  },
+  {
+   "name": "変形性腰椎症",
+   "icd10": "M47.8",
+   "tokutei": false
+  },
+  {
+   "name": "変形性頸椎症",
+   "icd10": "M47.8",
+   "tokutei": false
+  },
+  {
+   "name": "腰部脊柱管狭窄症",
+   "icd10": "M48.0",
+   "tokutei": false
+  },
+  {
+   "name": "腰椎椎間板ヘルニア",
+   "icd10": "M51.2",
+   "tokutei": false
+  },
+  {
+   "name": "骨粗鬆症",
+   "icd10": "M81.9",
+   "tokutei": false
+  },
+  {
+   "name": "大腿骨頸部骨折",
+   "icd10": "S72.0",
+   "tokutei": false
+  },
+  {
+   "name": "大腿骨転子部骨折",
+   "icd10": "S72.1",
+   "tokutei": false
+  },
+  {
+   "name": "圧迫骨折",
+   "icd10": "M80.8",
+   "tokutei": false
+  },
+  {
+   "name": "腰椎圧迫骨折",
+   "icd10": "M80.8",
+   "tokutei": false
+  },
+  {
+   "name": "橈骨遠位端骨折",
+   "icd10": "S52.5",
+   "tokutei": false
+  },
+  {
+   "name": "上腕骨近位端骨折",
+   "icd10": "S42.2",
+   "tokutei": false
+  },
+  {
+   "name": "肩関節周囲炎",
+   "icd10": "M75.0",
+   "tokutei": false
+  },
+  {
+   "name": "頸椎症性脊髄症",
+   "icd10": "M47.1",
+   "tokutei": false
+  },
+  {
+   "name": "側弯症",
+   "icd10": "M41.9",
+   "tokutei": false
+  },
+  {
+   "name": "関節拘縮",
+   "icd10": "M24.5",
+   "tokutei": false
+  },
+  {
+   "name": "腰痛症",
+   "icd10": "M54.5",
+   "tokutei": false
+  },
+  {
+   "name": "坐骨神経痛",
+   "icd10": "M54.3",
+   "tokutei": false
+  },
+  {
+   "name": "人工股関節置換術後",
+   "icd10": "Z96.6",
+   "tokutei": false
+  },
+  {
+   "name": "人工膝関節置換術後",
+   "icd10": "Z96.6",
+   "tokutei": false
+  },
+  {
+   "name": "胃がん",
+   "icd10": "C16.9",
+   "tokutei": false
+  },
+  {
+   "name": "大腸がん",
+   "icd10": "C18.9",
+   "tokutei": false
+  },
+  {
+   "name": "肺がん",
+   "icd10": "C34.9",
+   "tokutei": false
+  },
+  {
+   "name": "肝細胞がん",
+   "icd10": "C22.0",
+   "tokutei": false
+  },
+  {
+   "name": "膵がん",
+   "icd10": "C25.9",
+   "tokutei": false
+  },
+  {
+   "name": "乳がん",
+   "icd10": "C50.9",
+   "tokutei": false
+  },
+  {
+   "name": "前立腺がん",
+   "icd10": "C61",
+   "tokutei": false
+  },
+  {
+   "name": "食道がん",
+   "icd10": "C15.9",
+   "tokutei": false
+  },
+  {
+   "name": "子宮がん",
+   "icd10": "C55",
+   "tokutei": false
+  },
+  {
+   "name": "膀胱がん",
+   "icd10": "C67.9",
+   "tokutei": false
+  },
+  {
+   "name": "悪性リンパ腫",
+   "icd10": "C85.9",
+   "tokutei": false
+  },
+  {
+   "name": "多発性骨髄腫",
+   "icd10": "C90.0",
+   "tokutei": false
+  },
+  {
+   "name": "白血病",
+   "icd10": "C95.9",
+   "tokutei": false
+  },
+  {
+   "name": "がん性疼痛",
+   "icd10": "R52.1",
+   "tokutei": false
+  },
+  {
+   "name": "白内障",
+   "icd10": "H26.9",
+   "tokutei": false
+  },
+  {
+   "name": "緑内障",
+   "icd10": "H40.9",
+   "tokutei": false
+  },
+  {
+   "name": "加齢黄斑変性",
+   "icd10": "H35.3",
+   "tokutei": false
+  },
+  {
+   "name": "糖尿病網膜症",
+   "icd10": "E14.3",
+   "tokutei": false
+  },
+  {
+   "name": "難聴",
+   "icd10": "H91.9",
+   "tokutei": false
+  },
+  {
+   "name": "めまい症",
+   "icd10": "H81.9",
+   "tokutei": false
+  },
+  {
+   "name": "褥瘡",
+   "icd10": "L89.9",
+   "tokutei": false
+  },
+  {
+   "name": "帯状疱疹",
+   "icd10": "B02.9",
+   "tokutei": false
+  },
+  {
+   "name": "蜂窩織炎",
+   "icd10": "L03.9",
+   "tokutei": false
+  },
+  {
+   "name": "皮膚掻痒症",
+   "icd10": "L29.9",
+   "tokutei": false
+  },
+  {
+   "name": "白癬",
+   "icd10": "B35.9",
+   "tokutei": false
+  },
+  {
+   "name": "湿疹",
+   "icd10": "L30.9",
+   "tokutei": false
+  },
+  {
+   "name": "鉄欠乏性貧血",
+   "icd10": "D50.9",
+   "tokutei": false
+  },
+  {
+   "name": "腎性貧血",
+   "icd10": "D63.8",
+   "tokutei": false
+  },
+  {
+   "name": "貧血",
+   "icd10": "D64.9",
+   "tokutei": false
+  },
+  {
+   "name": "血小板減少症",
+   "icd10": "D69.6",
+   "tokutei": false
+  },
+  {
+   "name": "抗凝固療法中",
+   "icd10": "Z92.1",
+   "tokutei": false
+  },
+  {
+   "name": "誤嚥",
+   "icd10": "W79",
+   "tokutei": false
+  },
+  {
+   "name": "嚥下障害",
+   "icd10": "R13",
+   "tokutei": false
+  },
+  {
+   "name": "転倒",
+   "icd10": "W19",
+   "tokutei": false
+  },
+  {
+   "name": "視力障害",
+   "icd10": "H54.7",
+   "tokutei": false
+  },
+  {
+   "name": "構音障害",
+   "icd10": "R47.1",
+   "tokutei": false
+  },
+  {
+   "name": "失語症",
+   "icd10": "R47.0",
+   "tokutei": false
+  },
+  {
+   "name": "片麻痺",
+   "icd10": "G81.9",
+   "tokutei": false
+  },
+  {
+   "name": "四肢麻痺",
+   "icd10": "G82.5",
+   "tokutei": false
+  },
+  {
+   "name": "対麻痺",
+   "icd10": "G82.2",
+   "tokutei": false
+  }
+ ]
+}

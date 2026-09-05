@@ -1,0 +1,208 @@
+# -*- coding: utf-8 -*-
+"""入力ファイル群から1件の主治医意見書レコードを組み立てる。"""
+import os
+from dataclasses import dataclass, field as dc_field
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+
+from . import align, checkbox, imaging, ocr as ocr_mod
+from .dictionaries import Dictionaries, DEFAULT_DICTIONARIES
+from .schema import Schema, load_schema
+from .templates import Template, load_templates
+
+# 確信度の区分（確認画面の色分けに使う）
+CONF_HIGH = 0.80
+CONF_MID = 0.50
+
+
+def confidence_level(conf: float) -> str:
+    if conf >= CONF_HIGH:
+        return "high"
+    if conf >= CONF_MID:
+        return "medium"
+    return "low"
+
+
+@dataclass
+class PageInfo:
+    source: str
+    source_page: int
+    template_id: Optional[str]
+    page_index: Optional[int]
+    score: float
+    inliers: int
+    dewarped: bool
+    matched: bool
+
+
+@dataclass
+class Record:
+    fields: Dict[str, dict] = dc_field(default_factory=dict)
+    pages: List[PageInfo] = dc_field(default_factory=list)
+    template_id: Optional[str] = None
+    warnings: List[str] = dc_field(default_factory=list)
+    ocr_engine: str = "none"
+
+    def to_dict(self) -> Dict[str, Any]:
+        return dict(
+            template_id=self.template_id,
+            ocr_engine=self.ocr_engine,
+            pages=[vars(p) for p in self.pages],
+            warnings=self.warnings,
+            fields=self.fields,
+        )
+
+
+def _text_fields_for_page(tpl_page, schema: Schema):
+    for t in tpl_page.texts:
+        f = schema.get(t["field"])
+        if f is not None:
+            yield t, f
+
+
+def _read_circle(warped: np.ndarray, rect: List[float], options: List[str]) -> dict:
+    """「男・女」「明・大・昭」など、印刷済みの選択肢を丸で囲む方式を読む。
+
+    欄を選択肢数に等分し、丸印（＝周囲より濃い領域）が最も強い区画を選ぶ。
+    """
+    import cv2
+    H, W = warped.shape
+    x, y, w, h = rect
+    x0, y0 = max(0, int(x * W)), max(0, int(y * H))
+    x1, y1 = min(W, int((x + w) * W)), min(H, int((y + h) * H))
+    if x1 - x0 < 6 or y1 - y0 < 6 or not options:
+        return dict(value=None, confidence=0.0, detail=[])
+    roi = warped[y0:y1, x0:x1]
+    bw = cv2.adaptiveThreshold(roi, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+                               cv2.THRESH_BINARY_INV, 31, 12) > 0
+    n = len(options)
+    vertical = (y1 - y0) > (x1 - x0) * 1.4      # 「男・女」は縦並び
+    scores = []
+    for i in range(n):
+        if vertical:
+            a, b = int(bw.shape[0] * i / n), int(bw.shape[0] * (i + 1) / n)
+            seg = bw[a:b, :]
+        else:
+            a, b = int(bw.shape[1] * i / n), int(bw.shape[1] * (i + 1) / n)
+            seg = bw[:, a:b]
+        scores.append(float(seg.mean()) if seg.size else 0.0)
+    base = float(np.median(scores))
+    excess = [s - base for s in scores]
+    top = int(np.argmax(excess))
+    ranked = sorted(excess, reverse=True)
+    margin = ranked[0] - (ranked[1] if len(ranked) > 1 else 0.0)
+    if ranked[0] <= 0.012:
+        return dict(value=None, confidence=0.2,
+                    detail=[dict(opt=i, score=round(s, 4)) for i, s in enumerate(scores)])
+    conf = round(min(1.0, 0.30 + margin / 0.05 * 0.70), 3)
+    return dict(value=options[top], confidence=conf,
+                detail=[dict(opt=i, score=round(s, 4)) for i, s in enumerate(scores)])
+
+
+def extract_record(paths: List[str],
+                   schema: Optional[Schema] = None,
+                   templates: Optional[Dict[str, Template]] = None,
+                   engine: str = "auto",
+                   dictionaries: Optional[Dictionaries] = None,
+                   dpi: int = imaging.DEFAULT_DPI,
+                   keep_pages: bool = False) -> Record:
+    """複数の入力ファイルから1件のレコードを読み取る。
+
+    PDF は複数ページ、画像・カメラ撮影は1ページずつ渡されることを想定し、
+    どのページが様式の何ページ目かは自動判定する。
+    """
+    schema = schema or load_schema()
+    templates = templates or load_templates()
+    dicts = dictionaries if dictionaries is not None else DEFAULT_DICTIONARIES()
+    ocr_engine = ocr_mod.get_engine(engine)
+
+    src_pages: List[imaging.SourcePage] = []
+    rec = Record(ocr_engine=ocr_engine.name)
+    for p in paths:
+        try:
+            src_pages.extend(imaging.load_any(p, dpi))
+        except Exception as exc:
+            rec.warnings.append(f"{os.path.basename(p)}: 読み込み失敗 ({exc})")
+
+    if not src_pages:
+        rec.warnings.append("読み取れるページがありません")
+        return rec
+
+    matches = align.assign_pages([align.match_page(sp.image, templates) for sp in src_pages])
+
+    seen_pages: Dict[int, float] = {}
+    readings: List[checkbox.BoxReading] = []
+    text_results: Dict[str, dict] = {}
+    warped_pages: Dict[int, np.ndarray] = {}
+
+    for sp, m in zip(src_pages, matches):
+        info = PageInfo(source=sp.source, source_page=sp.source_page,
+                        template_id=m.template_id if m else None,
+                        page_index=m.page_index if m else None,
+                        score=m.score if m else 0.0,
+                        inliers=m.inliers if m else 0,
+                        dewarped=sp.dewarped, matched=m is not None)
+        rec.pages.append(info)
+        if m is None:
+            rec.warnings.append(
+                f"{sp.source} p{sp.source_page}: 様式を判別できませんでした")
+            continue
+        rec.template_id = m.template_id
+        # 同じページが複数入っている場合はスコアの高い方を採用する
+        if m.page_index in seen_pages and seen_pages[m.page_index] >= m.score:
+            rec.warnings.append(
+                f"{sp.source} p{sp.source_page}: {m.page_index}ページ目が重複しているため無視しました")
+            continue
+        seen_pages[m.page_index] = m.score
+        warped_pages[m.page_index] = m.warped
+
+    for page_index, warped in sorted(warped_pages.items()):
+        tpl = templates[rec.template_id]
+        tp = tpl.page(page_index)
+        if tp is None:
+            continue
+        readings.extend(checkbox.read_boxes(warped, tp.boxes))
+
+        for t, f in _text_fields_for_page(tp, schema):
+            if f.type == "circle":
+                text_results[f.id] = _read_circle(warped, t["rect"], t.get("options") or f.options or [])
+                continue
+            if not ocr_mod.has_ink(warped, t["rect"]):
+                text_results[f.id] = dict(value="", confidence=0.95, raw="", empty=True)
+                continue
+            roi = ocr_mod.prepare_roi(warped, t["rect"], pad=0.02)
+            res = ocr_engine.read(roi, multiline=(f.type == "textarea"))
+            corrected, conf, cands = dicts.correct(f, res.text, res.confidence)
+            text_results[f.id] = dict(value=corrected, confidence=round(conf, 3),
+                                      raw=res.text, candidates=cands, empty=False)
+
+    missing = [i for i in (1, 2) if i not in warped_pages]
+    if missing:
+        rec.warnings.append(
+            "未取得のページ: " + "、".join(f"{i}ページ目" for i in missing))
+
+    box_values = checkbox.resolve_groups(readings, schema)
+
+    for f in schema:
+        entry: Dict[str, Any]
+        if f.id in box_values:
+            entry = dict(box_values[f.id])
+        elif f.id in text_results:
+            entry = dict(text_results[f.id])
+        else:
+            entry = dict(value=None, confidence=0.0)
+        entry.setdefault("value", None)
+        entry.setdefault("confidence", 0.0)
+        entry["level"] = confidence_level(entry["confidence"])
+        entry["label"] = f.label
+        entry["type"] = f.type
+        entry["section"] = f.section_title
+        entry["page"] = f.page
+        if f.options:
+            entry["options"] = f.options
+        rec.fields[f.id] = entry
+
+    if keep_pages:
+        rec.warped_pages = warped_pages    # type: ignore[attr-defined]
+    return rec
