@@ -3,7 +3,8 @@
 __pycache__/
 *.pyc
 node_modules/
-dist/*.html
+# ビルド成果物（tools/build_web.py, tools/build_standalone.py で生成）
+dist/
 *.egg-info/
 
 # 個人情報を含みうるデータは絶対にコミットしない
@@ -19,3 +20,6 @@ out/
 .vscode/
 .idea/
 .DS_Store
+
+# 検証用の一時出力
+docs/screenshots/*.png
