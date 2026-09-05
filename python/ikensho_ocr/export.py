@@ -29,7 +29,9 @@ def record_to_json(rec, schema: Schema) -> Dict[str, Any]:
         meta[f.id] = dict(label=e.get("label"), type=e.get("type"),
                           section=e.get("section"), page=e.get("page"),
                           confidence=e.get("confidence"), level=e.get("level"),
-                          edited=bool(e.get("edited")), raw=e.get("raw"))
+                          edited=bool(e.get("edited")), raw=e.get("raw"),
+                          engine=e.get("engine"), llm_candidate=e.get("llm_candidate"),
+                          anonymized=bool(e.get("anonymized")))
     return dict(
         schema_version=schema.version,
         form_name=schema.form_name,

@@ -56,6 +56,52 @@
     return set;
   }
 
+  /** 編集距離。OCR の誤りは1文字置換が多いため、この指標がよく効く。 */
+  function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    let prev = new Array(b.length + 1);
+    for (let j = 0; j <= b.length; j++) prev[j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      for (let j = 1; j <= b.length; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1,
+                          prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      }
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+
+  /**
+   * 辞書語が読み取り結果のどこかに現れているとみなして照合する。
+   * OCR 結果には「（保存期）」のような余分な文字が付くことが多いので、
+   * 全体一致ではなく、辞書語と同じ長さの窓を滑らせて最も近い位置で評価する。
+   */
+  function partialSimilarity(query, term) {
+    if (!query || !term) return 0;
+    let q = query, t = term;
+    if (t.length > q.length) { const tmp = q; q = t; t = tmp; }
+    const m = t.length;
+    if (!m) return 0;
+    let best = 0;
+    for (let start = 0; start + m <= q.length; start++) {
+      for (const width of new Set([m, Math.min(m + 2, q.length - start)])) {
+        const win = q.substr(start, width);
+        const d = levenshtein(win, t);
+        best = Math.max(best, 1 - d / Math.max(win.length, m));
+        if (best >= 1) return 1;
+      }
+    }
+    return Math.max(0, best);
+  }
+
+  /**
+   * OCR 結果と辞書語の類似度 0..1。
+   * 2-gram の Dice 係数と、編集距離による部分一致の大きい方を採る。
+   * Dice だけでは「骨粗葵症」と「骨粗鬆症」のような1文字違いを取り逃す。
+   */
   function similarity(a, b) {
     const na = normalize(a), nb = normalize(b);
     if (!na || !nb) return 0;
@@ -67,7 +113,10 @@
     if (na.includes(nb) || nb.includes(na)) {
       dice = Math.max(dice, 0.55 + 0.35 * Math.min(na.length, nb.length) / Math.max(na.length, nb.length));
     }
-    return dice;
+    let partial = partialSimilarity(na, nb);
+    const ratio = Math.min(na.length, nb.length) / Math.max(na.length, nb.length);
+    if (ratio < 0.5) partial *= 0.5 + ratio;
+    return Math.max(dice, partial);
   }
 
   /** 罫線や括弧だけの読み取りは無意味なので落とす。 */
@@ -173,5 +222,6 @@
     }
   }
 
-  global.IkenshoDicts = { Dictionaries, similarity, normalize, cleanOcr, normalizeVariants };
+  global.IkenshoDicts = { Dictionaries, similarity, normalize, cleanOcr,
+                          normalizeVariants, levenshtein };
 })(window);

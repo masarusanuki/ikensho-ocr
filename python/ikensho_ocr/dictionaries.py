@@ -43,8 +43,55 @@ def _bigrams(s: str) -> set:
     return {s[i:i + 2] for i in range(len(s) - 1)}
 
 
+def _levenshtein(a: str, b: str) -> int:
+    """編集距離。OCR の誤りは1文字置換が多いため、この指標がよく効く。"""
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def _partial_similarity(query: str, term: str) -> float:
+    """辞書語が読み取り結果のどこかに現れているとみなして照合する。
+
+    OCR 結果には「（保存期）」のような余分な文字が付くことが多いので、
+    全体一致ではなく、辞書語と同じ長さの窓を滑らせて最も近い位置で評価する。
+    """
+    if not query or not term:
+        return 0.0
+    n, m = len(query), len(term)
+    if m > n:
+        query, term = term, query
+        n, m = m, n
+    if m == 0:
+        return 0.0
+    best = 0.0
+    # 窓は辞書語の長さ ±2 文字ぶん動かす
+    for start in range(0, n - m + 1):
+        for width in {m, min(m + 2, n - start)}:
+            window = query[start:start + width]
+            d = _levenshtein(window, term)
+            best = max(best, 1.0 - d / max(len(window), m))
+            if best >= 1.0:
+                return 1.0
+    return max(0.0, best)
+
+
 def similarity(a: str, b: str) -> float:
-    """Dice 係数（2-gram）と部分一致を組み合わせた類似度 0..1。"""
+    """OCR 結果と辞書語の類似度 0..1。
+
+    2-gram の Dice 係数と、編集距離による部分一致の大きい方を採る。
+    Dice だけでは「骨粗葵症」と「骨粗鬆症」のような1文字違いを取り逃す。
+    """
     na, nb = normalize(a), normalize(b)
     if not na or not nb:
         return 0.0
@@ -55,7 +102,13 @@ def similarity(a: str, b: str) -> float:
     # OCR は文字が欠けやすいので、包含関係には加点する
     if na in nb or nb in na:
         dice = max(dice, 0.55 + 0.35 * min(len(na), len(nb)) / max(len(na), len(nb)))
-    return round(dice, 4)
+    # 1文字違いを拾うための編集距離ベースの部分一致
+    partial = _partial_similarity(na, nb)
+    # 長さが違いすぎる場合は部分一致を割り引く（短い語が長文に埋もれる誤検出を防ぐ）
+    ratio = min(len(na), len(nb)) / max(len(na), len(nb))
+    if ratio < 0.5:
+        partial *= 0.5 + ratio
+    return round(max(dice, partial), 4)
 
 
 @dataclass

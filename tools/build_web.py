@@ -42,6 +42,11 @@ def main():
     os.makedirs(data, exist_ok=True)
     shutil.copy2(os.path.join(ROOT, "schema", "ikensho.schema.json"),
                  os.path.join(data, "ikensho.schema.json"))
+    # 管理画面から開発メモを読めるようにする
+    for doc in ("DEVNOTES.md", "README.md"):
+        src = os.path.join(ROOT, doc)
+        if os.path.exists(src):
+            shutil.copy2(src, os.path.join(data, doc))
 
     tpl_out = os.path.join(data, "templates")
     os.makedirs(os.path.join(tpl_out, "refs"), exist_ok=True)

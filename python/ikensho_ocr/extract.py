@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from . import align, anonymize, checkbox, imaging, ocr as ocr_mod
+from . import align, anonymize, checkbox, imaging, llm as llm_mod, ocr as ocr_mod
 from .dictionaries import Dictionaries, DEFAULT_DICTIONARIES
 from .schema import Schema, load_schema
 from .templates import Template, load_templates
@@ -109,7 +109,9 @@ def extract_record(paths: List[str],
                    dictionaries: Optional[Dictionaries] = None,
                    dpi: int = imaging.DEFAULT_DPI,
                    keep_pages: bool = False,
-                   anonymized: bool = False) -> Record:
+                   anonymized: bool = False,
+                   use_llm: bool = False,
+                   llm_model: Optional[str] = None) -> Record:
     """複数の入力ファイルから1件のレコードを読み取る。
 
     PDF は複数ページ、画像・カメラ撮影は1ページずつ渡されることを想定し、
@@ -119,9 +121,14 @@ def extract_record(paths: List[str],
     templates = templates or load_templates()
     dicts = dictionaries if dictionaries is not None else DEFAULT_DICTIONARIES()
     ocr_engine = ocr_mod.get_engine(engine)
+    # LLM は「候補を出すだけ」。値の自動確定には使わない（llm.py の説明を参照）
+    assist = llm_mod.get_assist(use_llm, llm_model)
 
     src_pages: List[imaging.SourcePage] = []
     rec = Record(ocr_engine=ocr_engine.name)
+    if use_llm and assist is None:
+        rec.warnings.append(
+            "LLM候補は使えません（llama-cpp-python とGGUFモデルを用意してください）")
     for p in paths:
         try:
             src_pages.extend(imaging.load_any(p, dpi))
@@ -177,11 +184,34 @@ def extract_record(paths: List[str],
                                           candidates=[])
                 continue
             roi = ocr_mod.prepare_roi(warped, t["rect"], pad=0.02)
-            res = ocr_engine.read(roi, multiline=(f.type == "textarea"),
-                                  charset=t.get("charset") or getattr(f, "charset", ""))
-            corrected, conf, cands = dicts.correct(f, res.text, res.confidence)
-            entry = dict(value=corrected, confidence=round(conf, 3),
-                         raw=res.text, candidates=cands, empty=False)
+            charset = t.get("charset") or getattr(f, "charset", "")
+            multiline = f.type == "textarea"
+            if isinstance(ocr_engine, ocr_mod.EnsembleOcr):
+                # 複数エンジンの結果を辞書照合まで通し、最も確からしいものを採る
+                best = None
+                for res in ocr_engine.read_all(roi, multiline, charset):
+                    cv, cc, cands = dicts.correct(f, res.text, res.confidence)
+                    if best is None or cc > best[1]:
+                        best = (cv, cc, cands, res.text, res.engine)
+                corrected, conf, cands, raw_text, used = best
+                entry = dict(value=corrected, confidence=round(conf, 3),
+                             raw=raw_text, candidates=cands, empty=False,
+                             engine=used)
+            else:
+                res = ocr_engine.read(roi, multiline=multiline, charset=charset)
+                corrected, conf, cands = dicts.correct(f, res.text, res.confidence)
+                entry = dict(value=corrected, confidence=round(conf, 3),
+                             raw=res.text, candidates=cands, empty=False,
+                             engine=res.engine)
+            # 読み取りが怪しい欄だけ、小型LLMに候補を選ばせる（自動採用はしない）
+            if assist and entry["confidence"] < CONF_HIGH and entry.get("raw"):
+                names = [c["value"] for c in (entry.get("candidates") or [])]
+                sug = assist.suggest(f.label, entry["raw"], names)
+                if sug and sug.value != entry["value"]:
+                    entry.setdefault("candidates", []).insert(
+                        0, dict(value=sug.value, score=None, source="llm",
+                                note=sug.note))
+                    entry["llm_candidate"] = sug.value
             if t.get("transferred"):
                 # 別様式から機械的に写した暫定位置。枠がずれている可能性がある
                 entry["confidence"] = round(entry["confidence"] * 0.5, 3)

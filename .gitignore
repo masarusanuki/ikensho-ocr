@@ -7,6 +7,10 @@ node_modules/
 dist/
 *.egg-info/
 
+# LLMモデル（大容量。tools/fetch_llm_model.py で取得する）
+models/
+*.gguf
+
 # 個人情報を含みうるデータは絶対にコミットしない
 master/
 sample/

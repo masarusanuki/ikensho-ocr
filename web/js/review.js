@@ -289,7 +289,9 @@
           value: x.name, icd10: x.icd10 || '', tokutei: !!x.tokutei
         }));
       } else if (e.candidates && e.candidates.length) {
-        items = e.candidates.slice(0, 8);
+        items = e.candidates.slice(0, 8).map(c => ({
+          value: c.value, icd10: c.icd10 || '', tokutei: !!c.tokutei, source: c.source || ''
+        }));
       } else {
         items = dicts.suggest(f.id, '', 8).map(x => ({
           value: x.name, icd10: x.icd10 || '', tokutei: !!x.tokutei
@@ -305,8 +307,13 @@
         b.type = 'button';
         b.className = 'cand';
         b.innerHTML = esc(it.value) +
+          (it.source === 'llm' ? '<span class="llm">LLM候補</span>' : '') +
           (it.tokutei ? '<span class="tok">特定疾病</span>' : '') +
           (it.icd10 ? `<span class="icd">${esc(it.icd10)}</span>` : '');
+        if (it.source === 'llm') {
+          b.classList.add('llmcand');
+          b.title = 'LLMが提示した候補です。内容を確認してから採用してください。';
+        }
         b.addEventListener('click', () => {
           input.value = it.value;
           input.dispatchEvent(new Event('input'));

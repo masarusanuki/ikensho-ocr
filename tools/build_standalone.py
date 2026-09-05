@@ -13,7 +13,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "web")
 DIST = os.path.join(ROOT, "dist", "web")
 
-MIME = {".json": "application/json", ".png": "image/png", ".js": "text/javascript",
+MIME = {".json": "application/json", ".md": "text/markdown; charset=utf-8", ".png": "image/png", ".js": "text/javascript",
         ".mjs": "text/javascript", ".gz": "application/gzip",
         ".traineddata": "application/octet-stream"}
 
@@ -60,7 +60,7 @@ def main():
     css = read(os.path.join(WEB, "style.css"))
     app_js = "\n".join(read(os.path.join(WEB, "js", n)) for n in
                        ("engine.js", "dicts.js", "anonymize.js", "pipeline.js",
-                        "exporters.js", "review.js", "admin.js", "app.js"))
+                        "exporters.js", "review.js", "devnotes.js", "admin.js", "app.js"))
     opencv = read(os.path.join(WEB, "vendor", "opencv.js"))
     tesseract = read(os.path.join(WEB, "vendor", "tesseract.min.js"))
     pdfjs = read(os.path.join(WEB, "vendor", "pdf.min.mjs"))

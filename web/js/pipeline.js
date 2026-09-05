@@ -17,6 +17,25 @@
     kana:    KATAKANA + 'ー・ 　',
   };
 
+  // 日本語の文字（tesseract は文字ごとに空白を入れるので、その除去に使う）
+  const CJK_RE = /[\u3000-\u30ff\u3400-\u9fff\uf900-\ufaff\uff66-\uff9f]/;
+
+  /**
+   * 日本語の文字と文字の間に入った空白を詰める。
+   * tesseract の日本語モデルは「石 井 と め」のように1文字ずつ切って返すため、
+   * そのままでは辞書照合にかからない。英数字の間の空白は意味があるので残す。
+   */
+  function joinJapanese(text) {
+    if (!text) return text;
+    let out = '';
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === ' ' && i > 0 && i < text.length - 1 &&
+          CJK_RE.test(text[i - 1]) && CJK_RE.test(text[i + 1])) continue;
+      out += text[i];
+    }
+    return out;
+  }
+
   function filterCharset(text, name) {
     const allowed = CHARSETS[name];
     if (!allowed || !text) return text;
@@ -89,8 +108,21 @@
       }
     }
 
+    /**
+     * ブラウザの制約で OCR を使えない状況かを判定する。
+     * file:// で直接開いた場合、ページの生成元が null になるため
+     * OCR ワーカーが必要なスクリプトを読み込めない。
+     */
+    static ocrBlocked() {
+      return location.protocol === 'file:';
+    }
+
     async initOcr(onStatus = () => {}) {
       if (!this.ocrEnabled || this.ocrReady) return;
+      if (Pipeline.ocrBlocked()) {
+        this.ocrEnabled = false;
+        return;
+      }
       onStatus('日本語OCRを準備しています（初回のみ時間がかかります）…');
       const T = global.Tesseract;
       this.ocrWorker = await T.createWorker('jpn', 1, {
@@ -277,6 +309,12 @@
         }
       }
       if (this.ocrEnabled) await this.initOcr(m => onProgress({ phase: 'ocr', message: m }));
+      if (!this.ocrEnabled && textJobs.length) {
+        warnings.push(Pipeline.ocrBlocked()
+          ? 'テキスト欄のOCRは使っていません（ファイルを直接開いた場合、'
+            + 'ブラウザの制約でOCRを起動できません）。チェックボックスはすべて読み取っています。'
+          : 'テキスト欄のOCRは使っていません。チェックボックスはすべて読み取っています。');
+      }
       for (let i = 0; i < textJobs.length; i++) {
         const { t, f, w } = textJobs[i];
         onProgress({ phase: 'ocr', current: i + 1, total: textJobs.length,
@@ -331,21 +369,28 @@
       }
       const canvas = this.cropForOcr(warped, rect);
       const charset = t.charset || f.charset || '';
+      // 欄の形によって適した解析モードが違うので両方試し、確信度の高い方を採る
+      const psms = f.type === 'textarea' ? [6, 4] : [7, 6];
       let text = '', conf = 0;
-      try {
-        const psm = f.type === 'textarea' ? 6 : 7;
-        await this.ocrWorker.setParameters({
-          tessedit_pageseg_mode: String(psm),
-          tessedit_char_whitelist: CHARSETS[charset] || '',
-        });
-        const { data } = await this.ocrWorker.recognize(canvas);
-        text = (data.text || '').trim();
-        conf = (data.confidence || 0) / 100;
-      } catch (e) {
-        return { value: '', confidence: 0, raw: '', empty: false, candidates: [],
-                 note: 'OCR失敗: ' + e.message };
+      for (const psm of psms) {
+        try {
+          // 文字種の制限は LSTM では悪影響が出るため、後段のフィルタで行う
+          await this.ocrWorker.setParameters({
+            tessedit_pageseg_mode: String(psm),
+            tessedit_char_whitelist: '',
+          });
+          const { data } = await this.ocrWorker.recognize(canvas);
+          const got = joinJapanese((data.text || '').trim());
+          const c = (data.confidence || 0) / 100;
+          if (got && (c > conf || !text)) { text = got; conf = c; }
+        } catch (e) {
+          if (!text) {
+            return { value: '', confidence: 0, raw: '', empty: false, candidates: [],
+                     note: 'OCR失敗: ' + e.message };
+          }
+        }
       }
-      if (f.type !== 'textarea') text = text.replace(/\s*\n\s*/g, ' ').trim();
+      if (f.type !== 'textarea') text = text.split(/\s+/).filter(Boolean).join(' ');
       text = filterCharset(text, charset);
       const c = this.dicts.correct(f.id, text, conf);
       const entry = { value: c.value, confidence: c.confidence, raw: text,

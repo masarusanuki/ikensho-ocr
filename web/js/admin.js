@@ -64,6 +64,8 @@
     // -------------------------------------------------------------- 初期化
     render() {
       this.renderSysInfo();
+      if (!this.notes) this.notes = new global.IkenshoDevNotes(this.app);
+      this.notes.load();
       const tplSel = document.getElementById('tpl-select');
       const ids = Object.keys(this.app.pipeline.templates);
       tplSel.innerHTML = ids.map(id =>

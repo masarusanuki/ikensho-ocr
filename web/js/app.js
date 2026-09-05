@@ -33,6 +33,7 @@
       }
       global.IkenshoEngine.setThresholds(this.settings);
       this.schema = this.pipeline.schema;
+      this.applyOcrAvailability();
       this.review = new global.IkenshoReview(this);
       this.admin = new global.IkenshoAdmin(this);
       this.restore();
@@ -81,6 +82,28 @@
       document.getElementById('btn-import').addEventListener('click',
         () => document.getElementById('import-input').click());
       document.getElementById('import-input').addEventListener('change', e => this.importJson(e));
+    }
+
+    /** file:// で開いた場合は OCR を使えないので、その旨を画面に出す。 */
+    applyOcrAvailability() {
+      if (!global.IkenshoPipeline.ocrBlocked()) return;
+      const box = document.getElementById('opt-ocr');
+      box.checked = false;
+      box.disabled = true;
+      const label = box.closest('label');
+      label.style.opacity = '.6';
+      label.title = 'ファイルを直接開いた場合、ブラウザの制約でOCRを起動できません';
+      const note = document.createElement('div');
+      note.className = 'warnbox';
+      note.style.marginTop = '12px';
+      note.innerHTML =
+        '<strong>テキスト欄のOCRは使えません</strong>' +
+        '<p style="margin:6px 0 0">このファイルを直接開いた場合、ブラウザの制約でOCRを起動できません。' +
+        '<strong>チェックボックス186項目の読み取りはすべて動作します。</strong>' +
+        'テキスト欄は確認画面で入力してください。</p>' +
+        '<p style="margin:6px 0 0">OCRも使いたい場合は、Web版（サーバに置く）または' +
+        'Windows版インストーラをご利用ください。</p>';
+      document.getElementById('drop').after(note);
     }
 
     showView(name) {

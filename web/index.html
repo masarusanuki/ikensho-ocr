@@ -212,6 +212,22 @@
   </div>
 
   <div class="panel">
+    <h2>開発メモ</h2>
+    <p class="hint">
+      設計上の判断・試して駄目だった方法・既知の限界を記録したものです（<code class="inline">DEVNOTES.md</code>）。
+      読み取り結果が想定と違うときは、まずここの「既知の課題」を確認してください。
+    </p>
+    <div class="row" style="margin-bottom:10px">
+      <input type="text" id="notes-filter" placeholder="本文を検索"
+             style="flex:1;min-width:200px;border:1px solid var(--border);border-radius:7px;padding:6px 9px">
+      <select id="notes-toc" class="btn" style="max-width:320px"></select>
+      <span class="spacer"></span>
+      <button class="btn" id="btn-notes-reload">再読み込み</button>
+    </div>
+    <div id="devnotes" class="devnotes">読み込み中…</div>
+  </div>
+
+  <div class="panel">
     <h2>判定のしきい値</h2>
     <p class="hint">読み取り結果が実態に合わない場合に調整します。既定値で多くの様式に対応できます。</p>
     <div class="admin-grid" id="thresholds"></div>
@@ -237,6 +253,7 @@
 <script src="js/pipeline.js"></script>
 <script src="js/exporters.js"></script>
 <script src="js/review.js"></script>
+<script src="js/devnotes.js"></script>
 <script src="js/admin.js"></script>
 <script src="js/app.js"></script>
 </body>

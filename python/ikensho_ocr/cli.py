@@ -66,7 +66,8 @@ def cmd_extract(args):
         print(f"  [{i}/{len(groups)}] {names}", file=sys.stderr)
         rec = extract_record(g, schema=schema, templates=templates,
                              engine=args.engine, dpi=args.dpi,
-                             anonymized=args.anonymized)
+                             anonymized=args.anonymized,
+                             use_llm=args.llm, llm_model=args.llm_model)
         for w in rec.warnings:
             print(f"      ! {w}", file=sys.stderr)
         records.append(rec)
@@ -108,6 +109,14 @@ def cmd_info(args):
         print(f"  - {t.id}: {t.name} / {t.page_count}ページ / "
               f"チェックボックス{boxes}個 / テキスト欄{texts}個")
     print(f"利用可能なOCRエンジン: {', '.join(available_engines())}")
+    from .llm import LlmAssist
+    model = LlmAssist._find_model()
+    try:
+        import llama_cpp  # noqa: F401
+        runtime = "あり"
+    except Exception:
+        runtime = "なし"
+    print(f"LLM候補提示: 実行環境={runtime} / モデル={model or '未配置'}")
 
 
 def build_parser():
@@ -120,8 +129,12 @@ def build_parser():
     e.add_argument("--json", help="JSON の出力先")
     e.add_argument("--csv", help="CSV の出力先")
     e.add_argument("--engine", default="auto",
-                   help="OCRエンジン (auto/tesseract/rapidocr/none)")
+                   help="OCRエンジン (auto/ensemble/tesseract/rapidocr/none)。"
+                        "ensemble は複数エンジンを併用し精度を上げるが時間は倍かかる")
     e.add_argument("--dpi", type=int, default=200)
+    e.add_argument("--llm", action="store_true",
+                   help="小型LLMで読み取り候補を提示する（候補のみ。値は自動確定しない）")
+    e.add_argument("--llm-model", help="GGUFモデルのパス（既定: models/ 内の .gguf）")
     e.add_argument("--anonymized", action="store_true",
                    help="匿名化加工済みデータとして扱う（住所・連絡先をマスク済みにする）")
     e.add_argument("--group", choices=["pair", "file", "all"], default="pair",
