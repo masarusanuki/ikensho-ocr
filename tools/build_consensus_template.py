@@ -221,7 +221,8 @@ def transfer_texts(page_index, dst_boxes, dst_shape):
                           rect=[round(float(nx0 / dW), 6), round(float(ny0 / dH), 6),
                                 round(float((nx1 - nx0) / dW), 6),
                                 round(float((ny1 - ny0) / dH), 6)],
-                          options=t.get("options"), transferred=True))
+                          options=t.get("options"),
+                          charset=t.get("charset", ""), transferred=True))
     return texts
 
 
@@ -284,8 +285,11 @@ def main():
         ref_name = f"{args.id}_p{pi}.png"
         cv2.imwrite(os.path.join(ref_dir, ref_name),
                     cv2.resize(blank, (W // 2, H // 2), interpolation=cv2.INTER_AREA))
+        blank_dir = os.path.join(ROOT, "templates", "blanks")
+        os.makedirs(blank_dir, exist_ok=True)
+        cv2.imwrite(os.path.join(blank_dir, ref_name), blank)
         pages_out.append(dict(index=pi, width=W, height=H, ref=ref_name,
-                              boxes=page_boxes, texts=texts))
+                              blank=ref_name, boxes=page_boxes, texts=texts))
 
     out = os.path.join(ROOT, "templates", f"{args.id}.json")
     json.dump(dict(id=args.id, name=args.name, schema_version="1.0.0",

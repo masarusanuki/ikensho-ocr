@@ -11,13 +11,15 @@
      "label": "記入日",
      "type": "text",
      "page": 1,
+     "charset": "wareki",
      "hint": "令和○年○月○日"
     },
     {
      "id": "applicant_furigana",
      "label": "申請者ふりがな",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "charset": "kana"
     },
     {
      "id": "applicant_name",
@@ -51,19 +53,22 @@
      "label": "生年月日",
      "type": "text",
      "page": 1,
+     "charset": "wareki",
      "hint": "○年○月○日"
     },
     {
      "id": "age",
      "label": "年齢",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "charset": "digits"
     },
     {
      "id": "postal_code",
      "label": "郵便番号",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "charset": "postal"
     },
     {
      "id": "applicant_address",
@@ -75,7 +80,8 @@
      "id": "applicant_phone",
      "label": "連絡先",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "charset": "phone"
     },
     {
      "id": "consent",
@@ -109,19 +115,22 @@
      "id": "clinic_phone",
      "label": "電話",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "charset": "phone"
     },
     {
      "id": "clinic_fax",
      "label": "FAX",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "charset": "phone"
     },
     {
      "id": "last_exam_date",
      "label": "(1) 最終診察日",
      "type": "text",
      "page": 1,
+     "charset": "wareki",
      "hint": "令和○年○月○日"
     },
     {
@@ -199,6 +208,7 @@
      "label": "(1) 診断名1 発症年月日",
      "type": "text",
      "page": 1,
+     "charset": "wareki",
      "hint": "○年○月○日頃"
     },
     {
@@ -223,6 +233,7 @@
      "label": "(1) 診断名2 発症年月日",
      "type": "text",
      "page": 1,
+     "charset": "wareki",
      "hint": "○年○月○日頃"
     },
     {
@@ -247,6 +258,7 @@
      "label": "(1) 診断名3 発症年月日",
      "type": "text",
      "page": 1,
+     "charset": "wareki",
      "hint": "○年○月○日頃"
     },
     {
@@ -469,13 +481,15 @@
      "id": "height_cm",
      "label": "(5) 身長(cm)",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "charset": "decimal"
     },
     {
      "id": "weight_kg",
      "label": "(5) 体重(kg)",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "charset": "decimal"
     },
     {
      "id": "weight_change",

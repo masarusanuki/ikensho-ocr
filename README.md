@@ -1,0 +1,199 @@
+# 主治医意見書 読み取り（kaigo_nintei）
+
+介護保険の要介護認定に用いる**主治医意見書**を、PDF・スキャン画像・スマートフォン／タブレットのカメラ撮影から読み取り、
+**確認・編集したうえで JSON / CSV に保存する**ツールです。
+
+- **LLM を使いません。** 画像処理と辞書照合だけで動きます。
+- **チェックボックスは OCR を使わずに判定します。** 意見書の項目の大半（186個）はチェックボックスなので、
+  手書き・印刷・スキャンのいずれでも安定して読み取れます。
+- **読み取れない前提で作っています。** 項目ごとに確信度を出し、確認・編集画面で色分け表示します。
+- **患者情報は端末から出ません。** ブラウザ版はすべて端末内で処理します。
+
+---
+
+## 2つの動かし方
+
+| | ブラウザ版 | Python 版 |
+|---|---|---|
+| 導入 | 不要（HTMLを開くだけ） | `pip install` |
+| 動作 | 端末内で完結・オフライン可 | ローカル / サーバ |
+| カメラ撮影 | 対応（スマホ・タブレット） | ブラウザ経由で対応 |
+| 一括処理 | 画面から複数件 | コマンドラインで大量に |
+| OCR | tesseract.js（日本語） | tesseract / RapidOCR / なし |
+
+どちらも同じ様式テンプレート・同じ項目定義・同じ判定ロジックを使うため、結果は一致します。
+
+---
+
+## 使い方（ブラウザ版）
+
+### すぐ試す
+
+```bash
+python3 tools/build_web.py          # dist/web/ に組み立てる
+python3 -m http.server 8000 -d dist/web
+# ブラウザで http://localhost:8000 を開く
+```
+
+`dist/web/` をそのまま Web サーバに置けば、それが Web 版になります。サーバ側の処理は必要ありません。
+
+### 画面の流れ
+
+1. **読み取り** — PDF・画像をドラッグ＆ドロップ、またはカメラで撮影します。
+   1ページずつ撮影しても、何ページ目かは自動で判定されます。複数件をまとめて入れると自動的に件ごとに分かれます。
+2. **確認・編集** — 読み取り値を元画像と並べて確認します。項目を選ぶと、元画像の該当箇所が拡大表示されます。
+   - <span title="confidence high">確信度 高</span>（緑）… ほぼ確実
+   - 中（黄）… 目視確認を推奨
+   - 低（赤）… 入力が必要
+   - 修正（紫）… 手動で直した項目
+   「次の要確認 ▶」で、確認が要る項目だけを順に送れます。
+3. **保存・出力** — JSON / CSV で保存します。保存した JSON は読み戻して続きから編集できます。
+4. **管理** — 様式テンプレートの調整、医療辞書の編集、判定しきい値の調整ができます。
+
+---
+
+## 使い方（Python 版）
+
+```bash
+pip install -e python                     # 本体
+pip install "ikensho-ocr[ocr] @ ./python" # OCR も使う場合
+```
+
+```bash
+ikensho info                                     # 動作環境と様式の確認
+ikensho extract sample/*.pdf --json out.json --csv out.csv
+ikensho serve                                    # 確認・編集画面をローカルで開く
+```
+
+`extract` の `--group` で1件のまとめ方を指定します。
+
+| 値 | 意味 |
+|---|---|
+| `pair`（既定） | PDF は1ファイル1件、画像は2枚で1件 |
+| `file` | 1ファイル1件 |
+| `all` | 渡した全ファイルで1件 |
+
+OCR エンジンは `--engine` で選べます（`auto` / `tesseract` / `rapidocr` / `none`）。
+`none` でもチェックボックスはすべて読めるため、テキスト欄だけ手入力する運用ができます。
+
+**日本語 OCR の精度を上げるには tesseract の導入を推奨します。**
+
+```bash
+sudo dnf install tesseract tesseract-langpack-jpn   # RHEL 系
+sudo apt install tesseract-ocr tesseract-ocr-jpn    # Debian 系
+```
+
+---
+
+## 読み取りの仕組み
+
+```
+入力（PDF / 画像 / カメラ）
+   ↓ 用紙の四隅を検出して台形補正（カメラ撮影のみ）、照明ムラの平坦化
+   ↓ ORB 特徴点 + RANSAC で様式テンプレートに位置合わせ
+   ↓ どの様式の何ページ目かを自動判定
+   ├→ チェックボックス186個: 白紙様式との差分でマークを抽出（OCR不要）
+   │     枠内に収まったチェック・枠からはみ出したレ点・枠を囲む丸印に対応
+   └→ テキスト欄52個: 該当箇所だけを切り出して OCR → 医療辞書で補正
+   ↓ 項目ごとに確信度を算出
+確認・編集画面 → JSON / CSV
+```
+
+チェックボックス判定に白紙様式との差分を使うのが要点です。印刷された枠線・ラベル・説明文が消えるため、
+記入されたマークだけを素直に測れます。
+
+---
+
+## 医療辞書
+
+テキスト欄の OCR 結果を補正し、確認画面で入力候補を出すために使います（`dict/`）。
+
+| 辞書 | 内容 |
+|---|---|
+| `diseases.json` | 傷病名。ICD-10 コードと介護保険の**特定疾病**フラグ付き |
+| `departments.json` | 診療科 |
+| `body_sites.json` | 部位（麻痺・拘縮・褥瘡などの記入欄用） |
+| `infections.json` | 感染症名 |
+| `clinic_suffix.json` / `prefectures.json` | 医療機関名・住所の補完 |
+| `boilerplate.json` | 様式に印刷されている定型文（OCR結果から除去するため） |
+
+`dict/field_map.json` が「どの項目にどの辞書を使うか」を定義します。
+診断名の欄には傷病名辞書、他科受診の欄には診療科辞書、というように項目ごとに切り替わります。
+
+辞書は管理画面から編集・書き出し・読み込みができます。
+MEDIS 標準病名マスターなど手持ちの大規模マスターがある場合は、同じ形式に変換して差し替えてください。
+
+---
+
+## 様式テンプレート
+
+`templates/` に、様式ごとの座標定義が入っています。
+
+| ID | 様式 | 出典 |
+|---|---|---|
+| `official_v1` | 厚生労働省 標準様式 | マスターPDFのテキストレイヤから自動生成 |
+| `sample_v1` | サンプル様式 | 複数サンプルの合成から自動生成 |
+
+### 別の様式を追加する
+
+**元の様式PDFにテキストレイヤがある場合**（Word などから作った PDF）:
+
+```bash
+python3 tools/build_master_template.py     # □ の位置とラベルを自動抽出
+```
+
+**記入済みのスキャンしか無い場合**（同一様式が20枚以上あると安定します）:
+
+```bash
+python3 tools/build_consensus_template.py \
+    --glob 'scans/*.pdf' --id myform_v1 --name '自治体様式'
+```
+
+位置合わせ済みの画素を高パーセンタイル合成して「白紙の様式」を復元し、
+そこから四角形を検出します。記入マークは一部の用紙にしか無いため合成で消えます。
+チェックボックスの個数と行構成を公式様式と照合して検証するので、ずれていれば警告が出ます。
+
+細かい位置は**管理画面のテンプレート編集**で調整し、書き出した JSON を `templates/` に置けば反映されます。
+
+---
+
+## 項目定義
+
+`tools/form_definition.py` が唯一の項目マスタです。ここから
+`schema/ikensho.schema.json`（Python 版・ブラウザ版で共有）と `templates/official_v1.json` を生成します。
+
+```bash
+python3 tools/build_master_template.py
+python3 tools/build_dictionaries.py
+python3 tools/build_boilerplate.py
+python3 tools/build_web.py
+```
+
+全 107 項目（チェックボックス186個 / テキスト欄52個）。内訳は `ikensho info` で確認できます。
+
+---
+
+## 出力形式
+
+**JSON** は値・確信度・OCR 生読み・元ファイル情報を持ちます。
+
+```json
+{
+  "records": [{
+    "template_id": "official_v1",
+    "values": { "applicant_name": "石井 とめ", "adl_disabled": "A2",
+                "other_dept": ["歯科"], "paralysis": false },
+    "meta": { "adl_disabled": { "label": "(1) 障害高齢者の日常生活自立度",
+                                "confidence": 0.86, "level": "high", "edited": false } }
+  }]
+}
+```
+
+**CSV** は1行1件で、各項目の値と確信度を2列ずつ並べます。Excel で開けるよう BOM 付き UTF-8 です。
+
+---
+
+## ライセンス
+
+MIT License. Copyright (c) 2026 Masaru Sanuki, University of Tsukuba &
+Department of Biomedical Informatics, University of Tsukuba Hospital.

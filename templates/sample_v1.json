@@ -11,6 +11,7 @@
    "width": 1654,
    "height": 2339,
    "ref": "sample_v1_p1.png",
+   "blank": "sample_v1_p1.png",
    "boxes": [
     {
      "field": "consent",
@@ -774,6 +775,7 @@
       0.023015
      ],
      "options": null,
+     "charset": "wareki",
      "transferred": true
     },
     {
@@ -786,6 +788,7 @@
       0.028668
      ],
      "options": null,
+     "charset": "kana",
      "transferred": true
     },
     {
@@ -798,6 +801,7 @@
       0.040575
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -813,6 +817,7 @@
       "男",
       "女"
      ],
+     "charset": "",
      "transferred": true
     },
     {
@@ -829,6 +834,7 @@
       "大",
       "昭"
      ],
+     "charset": "",
      "transferred": true
     },
     {
@@ -841,6 +847,7 @@
       0.022923
      ],
      "options": null,
+     "charset": "wareki",
      "transferred": true
     },
     {
@@ -853,6 +860,7 @@
       0.022238
      ],
      "options": null,
+     "charset": "digits",
      "transferred": true
     },
     {
@@ -865,6 +873,7 @@
       0.020486
      ],
      "options": null,
+     "charset": "postal",
      "transferred": true
     },
     {
@@ -877,6 +886,7 @@
       0.032537
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -889,6 +899,7 @@
       0.024349
      ],
      "options": null,
+     "charset": "phone",
      "transferred": true
     },
     {
@@ -901,6 +912,7 @@
       0.02473
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -913,6 +925,7 @@
       0.023468
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -925,6 +938,7 @@
       0.022648
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -937,6 +951,7 @@
       0.021341
      ],
      "options": null,
+     "charset": "phone",
      "transferred": true
     },
     {
@@ -949,6 +964,7 @@
       0.021953
      ],
      "options": null,
+     "charset": "phone",
      "transferred": true
     },
     {
@@ -961,6 +977,7 @@
       0.025847
      ],
      "options": null,
+     "charset": "wareki",
      "transferred": true
     },
     {
@@ -973,6 +990,7 @@
       0.02338
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -985,6 +1003,7 @@
       0.037109
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -1001,6 +1020,7 @@
       "平成",
       "令和"
      ],
+     "charset": "",
      "transferred": true
     },
     {
@@ -1013,6 +1033,7 @@
       0.028464
      ],
      "options": null,
+     "charset": "wareki",
      "transferred": true
     },
     {
@@ -1025,6 +1046,7 @@
       0.039682
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -1041,6 +1063,7 @@
       "平成",
       "令和"
      ],
+     "charset": "",
      "transferred": true
     },
     {
@@ -1053,6 +1076,7 @@
       0.029798
      ],
      "options": null,
+     "charset": "wareki",
      "transferred": true
     },
     {
@@ -1065,6 +1089,7 @@
       0.041276
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -1081,6 +1106,7 @@
       "平成",
       "令和"
      ],
+     "charset": "",
      "transferred": true
     },
     {
@@ -1093,6 +1119,7 @@
       0.030245
      ],
      "options": null,
+     "charset": "wareki",
      "transferred": true
     },
     {
@@ -1105,18 +1132,20 @@
       0.01831
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
      "field": "treatment_course",
      "type": "textarea",
      "rect": [
-      0.042055,
-      0.475987,
-      0.5356,
-      0.13358
+      0.045169,
+      0.482926,
+      0.532485,
+      0.126641
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -1129,6 +1158,7 @@
       0.022086
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     }
    ]
@@ -1138,6 +1168,7 @@
    "width": 1654,
    "height": 2339,
    "ref": "sample_v1_p2.png",
+   "blank": "sample_v1_p2.png",
    "boxes": [
     {
      "field": "other_psych_presence",
@@ -2261,6 +2292,7 @@
       0.017142
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2273,6 +2305,7 @@
       0.014269
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2285,6 +2318,7 @@
       0.01759
      ],
      "options": null,
+     "charset": "decimal",
      "transferred": true
     },
     {
@@ -2297,6 +2331,7 @@
       0.01749
      ],
      "options": null,
+     "charset": "decimal",
      "transferred": true
     },
     {
@@ -2309,6 +2344,7 @@
       0.018462
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2321,6 +2357,7 @@
       0.017368
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2333,6 +2370,7 @@
       0.017606
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2345,6 +2383,7 @@
       0.01752
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2357,6 +2396,7 @@
       0.017569
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2369,6 +2409,7 @@
       0.017009
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2381,6 +2422,7 @@
       0.016616
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2393,6 +2435,7 @@
       0.021012
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2405,6 +2448,7 @@
       0.014716
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2417,6 +2461,7 @@
       0.014717
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2429,6 +2474,7 @@
       0.016526
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2441,6 +2487,7 @@
       0.02196
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2453,6 +2500,7 @@
       0.017445
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2465,6 +2513,7 @@
       0.017708
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2477,6 +2526,7 @@
       0.021976
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2489,6 +2539,7 @@
       0.016742
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2501,6 +2552,7 @@
       0.018044
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2513,6 +2565,7 @@
       0.017279
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     },
     {
@@ -2525,6 +2578,7 @@
       0.109592
      ],
      "options": null,
+     "charset": "",
      "transferred": true
     }
    ]

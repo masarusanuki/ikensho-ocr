@@ -19,6 +19,7 @@ class Field:
     options: Optional[List[str]] = None
     hint: str = ""
     dictionary: str = ""
+    charset: str = ""
     section_id: str = ""
     section_title: str = ""
 
@@ -56,6 +57,7 @@ def load_schema(path: str = DEFAULT_SCHEMA) -> Schema:
             fl = Field(id=f["id"], label=f["label"], type=f["type"], page=f.get("page", 1),
                        options=f.get("options"), hint=f.get("hint", ""),
                        dictionary=f.get("dictionary", ""),
+                       charset=f.get("charset", ""),
                        section_id=sec["id"], section_title=sec["title"])
             sc.fields[fl.id] = fl
             sc.order.append(fl.id)

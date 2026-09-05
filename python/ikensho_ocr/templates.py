@@ -22,7 +22,9 @@ class TemplatePage:
     ref: str
     boxes: List[dict]
     texts: List[dict]
+    blank: str = ""
     _ref_image: Optional[np.ndarray] = None
+    _blank_image: Optional[np.ndarray] = None
 
     def ref_image(self, base_dir: str) -> Optional[np.ndarray]:
         if self._ref_image is None:
@@ -30,6 +32,20 @@ class TemplatePage:
             if os.path.exists(path):
                 self._ref_image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
         return self._ref_image
+
+    def blank_image(self, base_dir: str) -> Optional[np.ndarray]:
+        """記入前の様式画像。読み取り時に差分をとってマークだけを抽出する。"""
+        if self._blank_image is None:
+            name = self.blank or self.ref
+            path = os.path.join(base_dir, "blanks", name)
+            if not os.path.exists(path):
+                path = os.path.join(base_dir, "refs", name)
+            if os.path.exists(path):
+                img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+                if img is not None and (img.shape[1] != self.width or img.shape[0] != self.height):
+                    img = cv2.resize(img, (self.width, self.height), interpolation=cv2.INTER_CUBIC)
+                self._blank_image = img
+        return self._blank_image
 
 
 @dataclass
@@ -55,7 +71,8 @@ def load_templates(directory: str = TEMPLATE_DIR) -> Dict[str, Template]:
         if "pages" not in raw:
             continue
         pages = [TemplatePage(index=p["index"], width=p["width"], height=p["height"],
-                              ref=p["ref"], boxes=p["boxes"], texts=p["texts"])
+                              ref=p["ref"], boxes=p["boxes"], texts=p["texts"],
+                              blank=p.get("blank", ""))
                  for p in raw["pages"]]
         out[raw["id"]] = Template(id=raw["id"], name=raw["name"],
                                   page_count=raw.get("page_count", len(pages)),

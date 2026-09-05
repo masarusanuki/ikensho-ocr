@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>主治医意見書 読み取り</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+<header class="bar">
+  <h1>主治医意見書 読み取り</h1>
+  <span class="sub" id="envnote">端末内で処理します（データは外部に送信されません）</span>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="upload" aria-selected="true">1. 読み取り</button>
+    <button role="tab" data-view="review" aria-selected="false">2. 確認・編集</button>
+    <button role="tab" data-view="records" aria-selected="false">3. 保存・出力</button>
+    <button role="tab" data-view="admin" aria-selected="false">管理</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ============================================================ 読み取り -->
+<section class="view" id="view-upload">
+  <div class="panel">
+    <h2>ファイルを読み込む</h2>
+    <p class="hint">
+      2ページのPDF、スキャン画像、スマートフォン・タブレットのカメラ撮影に対応しています。
+      1ページずつ撮影しても、何ページ目かは自動で判定します。複数件をまとめて読み込むこともできます。
+    </p>
+
+    <div class="drop" id="drop">
+      <strong>ここにファイルをドラッグ＆ドロップ</strong>
+      PDF / JPEG / PNG（複数選択可）
+      <div class="row" style="justify-content:center;margin-top:14px">
+        <button class="btn primary" id="btn-pick">ファイルを選ぶ</button>
+        <button class="btn" id="btn-camera">カメラで撮影</button>
+      </div>
+    </div>
+    <input type="file" id="file-input" accept="application/pdf,image/*" multiple hidden>
+    <input type="file" id="camera-input" accept="image/*" capture="environment" multiple hidden>
+
+    <ul class="filelist" id="filelist"></ul>
+
+    <div class="row" style="margin-top:16px">
+      <label class="row" style="gap:6px">
+        <input type="checkbox" id="opt-ocr" checked>
+        テキスト欄をOCRで読み取る
+      </label>
+      <label class="row" style="gap:6px">
+        <input type="checkbox" id="opt-split" checked>
+        1ページ目が現れるたびに新しい1件として区切る
+      </label>
+      <span class="spacer"></span>
+      <button class="btn" id="btn-clear">クリア</button>
+      <button class="btn primary" id="btn-run" disabled>読み取りを開始</button>
+    </div>
+
+    <progress id="prog" value="0" max="100" hidden></progress>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="panel">
+    <h2>読み取りの仕組み</h2>
+    <p class="hint" style="margin:0">
+      チェックボックスは画像解析で直接判定するため、手書き・印刷・スキャンのいずれでも安定して読めます（OCR不要）。
+      氏名・病名などのテキスト欄のみOCRを使い、医療辞書で候補を補正します。
+      読み取り結果には項目ごとに<strong>確信度</strong>を付け、次の画面で色分け表示します。
+    </p>
+  </div>
+</section>
+
+<!-- ========================================================= 確認・編集 -->
+<section class="view" id="view-review" hidden>
+  <div class="panel" style="padding:12px 18px">
+    <div class="row">
+      <select id="record-select" class="btn" style="font-weight:600"></select>
+      <span class="legend">
+        <span class="conf high"><span class="dot"></span>確信度 高</span>
+        <span class="conf medium"><span class="dot"></span>中（要確認）</span>
+        <span class="conf low"><span class="dot"></span>低（要入力）</span>
+        <span class="conf edited"><span class="dot"></span>手動修正済み</span>
+      </span>
+      <span class="spacer"></span>
+      <label class="row" style="gap:6px;font-size:12.5px">
+        <input type="checkbox" id="only-low"> 要確認のみ表示
+      </label>
+      <button class="btn sm" id="btn-prev-low">前の要確認</button>
+      <button class="btn sm" id="btn-next-low">次の要確認 ▶</button>
+    </div>
+  </div>
+
+  <div id="review-empty" class="panel"><p class="muted" style="margin:0">まだ読み取り結果がありません。「1. 読み取り」から始めてください。</p></div>
+
+  <div class="review" id="review-body" hidden>
+    <div class="imagepane">
+      <div class="panel" style="padding:12px">
+        <div class="row" style="margin-bottom:8px">
+          <strong style="font-size:13px" id="page-title">元画像</strong>
+          <span class="spacer"></span>
+          <button class="btn sm" data-page="1">1ページ目</button>
+          <button class="btn sm" data-page="2">2ページ目</button>
+        </div>
+        <div class="frame" id="frame">
+          <img id="page-img" alt="読み取り元のページ画像">
+          <div class="marker" id="marker" hidden></div>
+        </div>
+        <div class="zoomcap" id="zoomcap">項目を選ぶと、その部分を拡大表示します</div>
+        <div class="zoom" id="zoom"></div>
+      </div>
+    </div>
+
+    <div>
+      <div id="warnings"></div>
+      <div id="fields"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================= 保存・出力 -->
+<section class="view" id="view-records" hidden>
+  <div class="panel">
+    <h2>読み取り済みの一覧</h2>
+    <p class="hint">確認・編集が済んだものから出力してください。JSON と CSV に対応しています。</p>
+    <table class="records" id="records-table">
+      <thead><tr>
+        <th>#</th><th>申請者氏名</th><th>様式</th><th>元ファイル</th>
+        <th>要確認</th><th>手動修正</th><th></th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" id="btn-export-json">JSONで保存</button>
+      <button class="btn primary" id="btn-export-csv">CSVで保存</button>
+      <button class="btn" id="btn-export-json-one">選択中の1件をJSONで保存</button>
+      <span class="spacer"></span>
+      <button class="btn" id="btn-import">保存したJSONを読み込む</button>
+      <input type="file" id="import-input" accept="application/json" hidden>
+    </div>
+    <div class="status" id="export-status"></div>
+  </div>
+</section>
+
+<!-- ================================================================ 管理 -->
+<section class="view" id="view-admin" hidden>
+  <div class="panel">
+    <h2>システム情報</h2>
+    <div class="admin-grid">
+      <dl class="kv" id="sysinfo"></dl>
+      <dl class="kv" id="libinfo"></dl>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>様式テンプレート</h2>
+    <p class="hint">
+      チェックボックスとテキスト欄の位置を定義したものです。別の様式を使う場合は、
+      ここで座標を調整するか、新しいテンプレートを読み込んでください。
+    </p>
+    <div class="row" style="margin-bottom:12px">
+      <select id="tpl-select" class="btn" style="font-weight:600"></select>
+      <select id="tpl-page" class="btn"></select>
+      <span class="spacer"></span>
+      <button class="btn" id="btn-tpl-import">テンプレートを読み込む</button>
+      <button class="btn" id="btn-tpl-export">編集内容を書き出す</button>
+      <input type="file" id="tpl-import-input" accept="application/json" hidden>
+    </div>
+    <div class="editor">
+      <div>
+        <canvas id="tpl-canvas"></canvas>
+        <p class="hint" style="margin-top:8px">
+          右の一覧から項目を選び、画像上をドラッグすると位置を修正できます。
+          修正内容は「編集内容を書き出す」でJSONとして保存し、
+          <code class="inline">templates/</code> に置き換えると反映されます。
+        </p>
+      </div>
+      <div>
+        <div class="row" style="margin-bottom:8px">
+          <input type="text" id="tpl-filter" placeholder="項目名で絞り込み"
+                 style="flex:1;border:1px solid var(--border);border-radius:7px;padding:6px 9px">
+        </div>
+        <div class="tplfields"><table id="tpl-fields"><tbody></tbody></table></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>医療辞書</h2>
+    <p class="hint">
+      テキスト欄のOCR結果を補正し、確認画面で入力候補を出すために使います。
+      傷病名はICD-10コードと介護保険の特定疾病フラグを持ちます。
+    </p>
+    <div class="row" style="margin-bottom:12px">
+      <select id="dict-select" class="btn" style="font-weight:600"></select>
+      <input type="text" id="dict-filter" placeholder="検索"
+             style="flex:1;min-width:180px;border:1px solid var(--border);border-radius:7px;padding:6px 9px">
+      <span class="spacer"></span>
+      <button class="btn" id="btn-dict-add">語句を追加</button>
+      <button class="btn" id="btn-dict-export">辞書を書き出す</button>
+      <button class="btn" id="btn-dict-import">辞書を読み込む</button>
+      <input type="file" id="dict-import-input" accept="application/json" hidden>
+    </div>
+    <div class="tplfields" style="max-height:380px"><table id="dict-table"><tbody></tbody></table></div>
+  </div>
+
+  <div class="panel">
+    <h2>判定のしきい値</h2>
+    <p class="hint">読み取り結果が実態に合わない場合に調整します。既定値で多くの様式に対応できます。</p>
+    <div class="admin-grid" id="thresholds"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="btn-thresh-reset">既定値に戻す</button>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script src="vendor/opencv.js" async></script>
+<script src="vendor/tesseract.min.js"></script>
+<script type="module">
+  import * as pdfjsLib from './vendor/pdf.min.mjs';
+  window.pdfjsLib = pdfjsLib;
+  window.dispatchEvent(new Event('pdfjs-ready'));
+</script>
+<script src="js/engine.js"></script>
+<script src="js/dicts.js"></script>
+<script src="js/pipeline.js"></script>
+<script src="js/exporters.js"></script>
+<script src="js/review.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

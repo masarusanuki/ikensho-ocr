@@ -15,6 +15,8 @@ from typing import List, Optional
 import cv2
 import numpy as np
 
+from .charsets import filter_text, whitelist
+
 
 @dataclass
 class OcrResult:
@@ -27,7 +29,8 @@ class OcrEngine:
     name = "none"
     available = False
 
-    def read(self, image: np.ndarray, multiline: bool = False) -> OcrResult:
+    def read(self, image: np.ndarray, multiline: bool = False,
+             charset: str = "") -> OcrResult:
         return OcrResult("", 0.0, self.name)
 
 
@@ -53,7 +56,8 @@ class TesseractOcr(OcrEngine):
             except Exception:
                 self.available = False
 
-    def read(self, image: np.ndarray, multiline: bool = False) -> OcrResult:
+    def read(self, image: np.ndarray, multiline: bool = False,
+             charset: str = "") -> OcrResult:
         if not self.available:
             return OcrResult("", 0.0, self.name)
         psm = "6" if multiline else "7"
@@ -61,7 +65,11 @@ class TesseractOcr(OcrEngine):
             src = os.path.join(td, "in.png")
             cv2.imwrite(src, image)
             cmd = [self.bin, src, os.path.join(td, "out"), "-l", self.lang,
-                   "--psm", psm, "-c", "preserve_interword_spaces=1", "tsv"]
+                   "--psm", psm, "-c", "preserve_interword_spaces=1"]
+            allow = whitelist(charset)
+            if allow:
+                cmd += ["-c", "tessedit_char_whitelist=" + allow]
+            cmd.append("tsv")
             try:
                 subprocess.run(cmd, capture_output=True, timeout=60, check=True)
             except Exception:
@@ -88,7 +96,7 @@ class TesseractOcr(OcrEngine):
                         pass
         text = ("\n" if multiline else " ").join(words).strip()
         conf = round(sum(confs) / len(confs), 3) if confs else 0.0
-        return OcrResult(text, conf, self.name)
+        return OcrResult(filter_text(text, charset), conf, self.name)
 
 
 class RapidOcr(OcrEngine):
@@ -104,7 +112,8 @@ class RapidOcr(OcrEngine):
         except Exception:
             self.available = False
 
-    def read(self, image: np.ndarray, multiline: bool = False) -> OcrResult:
+    def read(self, image: np.ndarray, multiline: bool = False,
+             charset: str = "") -> OcrResult:
         if not self.available:
             return OcrResult("", 0.0, self.name)
         try:
@@ -117,7 +126,7 @@ class RapidOcr(OcrEngine):
         confs = [float(r[2]) for r in res if len(r) > 2]
         text = ("\n" if multiline else " ").join(lines).strip()
         conf = round(sum(confs) / len(confs), 3) if confs else 0.5
-        return OcrResult(text, conf, self.name)
+        return OcrResult(filter_text(text, charset), conf, self.name)
 
 
 _ENGINES = {"tesseract": TesseractOcr, "rapidocr": RapidOcr, "none": NullOcr}

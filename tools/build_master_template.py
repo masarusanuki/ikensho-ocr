@@ -22,6 +22,7 @@ MASTER = os.path.join(ROOT, "master", "主医師意見書.pdf")
 OUT_TEMPLATE = os.path.join(ROOT, "templates", "official_v1.json")
 OUT_SCHEMA = os.path.join(ROOT, "schema", "ikensho.schema.json")
 REF_DIR = os.path.join(ROOT, "templates", "refs")
+BLANK_DIR = os.path.join(ROOT, "templates", "blanks")
 DPI = 200
 
 
@@ -157,13 +158,17 @@ def main():
                           round((x1 - x0) / meta["width"], 6),
                           round((y1 - y0) / meta["height"], 6)],
                     options=f.get("options"),
+                    charset=f.get("charset", ""),
                 ))
 
         ref_name = f"official_v1_p{pi}.png"
         cv2.imwrite(os.path.join(REF_DIR, ref_name),
                     cv2.resize(gray, (int(W * 0.5), int(H * 0.5)), interpolation=cv2.INTER_AREA))
+        # 差分によるマーク抽出に使う白紙様式（テンプレート座標系と同じ解像度）
+        os.makedirs(BLANK_DIR, exist_ok=True)
+        cv2.imwrite(os.path.join(BLANK_DIR, ref_name), gray)
         pages_out.append(dict(index=pi, width=W, height=H, ref=ref_name,
-                              boxes=page_boxes, texts=page_texts))
+                              blank=ref_name, boxes=page_boxes, texts=page_texts))
 
     template = dict(
         id="official_v1",

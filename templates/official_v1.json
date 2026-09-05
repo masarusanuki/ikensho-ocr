@@ -10,6 +10,7 @@
    "width": 1654,
    "height": 2339,
    "ref": "official_v1_p1.png",
+   "blank": "official_v1_p1.png",
    "boxes": [
     {
      "field": "consent",
@@ -772,7 +773,8 @@
       0.191494,
       0.019004
      ],
-     "options": null
+     "options": null,
+     "charset": "wareki"
     },
     {
      "field": "applicant_furigana",
@@ -783,7 +785,8 @@
       0.282201,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": "kana"
     },
     {
      "field": "applicant_name",
@@ -794,7 +797,8 @@
       0.382987,
       0.028506
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "applicant_sex",
@@ -808,7 +812,8 @@
      "options": [
       "男",
       "女"
-     ]
+     ],
+     "charset": ""
     },
     {
      "field": "birth_era",
@@ -823,7 +828,8 @@
       "明",
       "大",
       "昭"
-     ]
+     ],
+     "charset": ""
     },
     {
      "field": "birth_date",
@@ -834,7 +840,8 @@
       0.166297,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": "wareki"
     },
     {
      "field": "age",
@@ -845,7 +852,8 @@
       0.052073,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": "digits"
     },
     {
      "field": "postal_code",
@@ -856,7 +864,8 @@
       0.166297,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": "postal"
     },
     {
      "field": "applicant_address",
@@ -867,7 +876,8 @@
       0.349392,
       0.028506
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "applicant_phone",
@@ -878,7 +888,8 @@
       0.268763,
       0.019004
      ],
-     "options": null
+     "options": null,
+     "charset": "phone"
     },
     {
      "field": "doctor_name",
@@ -889,7 +900,8 @@
       0.453538,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "clinic_name",
@@ -900,7 +912,8 @@
       0.43674,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "clinic_address",
@@ -911,7 +924,8 @@
       0.403145,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "clinic_phone",
@@ -922,7 +936,8 @@
       0.317476,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": "phone"
     },
     {
      "field": "clinic_fax",
@@ -933,7 +948,8 @@
       0.325875,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": "phone"
     },
     {
      "field": "last_exam_date",
@@ -944,7 +960,8 @@
       0.648391,
       0.019004
      ],
-     "options": null
+     "options": null,
+     "charset": "wareki"
     },
     {
      "field": "other_dept_other_text",
@@ -955,7 +972,8 @@
       0.154539,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "diagnosis1_name",
@@ -966,7 +984,8 @@
       0.332594,
       0.020192
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "diagnosis1_era",
@@ -981,7 +1000,8 @@
       "昭和",
       "平成",
       "令和"
-     ]
+     ],
+     "charset": ""
     },
     {
      "field": "diagnosis1_date",
@@ -992,7 +1012,8 @@
       0.243566,
       0.020192
      ],
-     "options": null
+     "options": null,
+     "charset": "wareki"
     },
     {
      "field": "diagnosis2_name",
@@ -1003,7 +1024,8 @@
       0.332594,
       0.020192
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "diagnosis2_era",
@@ -1018,7 +1040,8 @@
       "昭和",
       "平成",
       "令和"
-     ]
+     ],
+     "charset": ""
     },
     {
      "field": "diagnosis2_date",
@@ -1029,7 +1052,8 @@
       0.243566,
       0.020192
      ],
-     "options": null
+     "options": null,
+     "charset": "wareki"
     },
     {
      "field": "diagnosis3_name",
@@ -1040,7 +1064,8 @@
       0.332594,
       0.020192
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "diagnosis3_era",
@@ -1055,7 +1080,8 @@
       "昭和",
       "平成",
       "令和"
-     ]
+     ],
+     "charset": ""
     },
     {
      "field": "diagnosis3_date",
@@ -1066,7 +1092,8 @@
       0.243566,
       0.020192
      ],
-     "options": null
+     "options": null,
+     "charset": "wareki"
     },
     {
      "field": "stability_detail",
@@ -1077,7 +1104,8 @@
       0.5812,
       0.019004
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "treatment_course",
@@ -1088,7 +1116,8 @@
       0.87348,
       0.13778
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "bpsd_other_text",
@@ -1099,7 +1128,8 @@
       0.178055,
       0.019004
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     }
    ]
   },
@@ -1108,6 +1138,7 @@
    "width": 1654,
    "height": 2339,
    "ref": "official_v1_p2.png",
+   "blank": "official_v1_p2.png",
    "boxes": [
     {
      "field": "other_psych_presence",
@@ -2230,7 +2261,8 @@
       0.302358,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "specialist_consult_detail",
@@ -2241,7 +2273,8 @@
       0.124303,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "height_cm",
@@ -2252,7 +2285,8 @@
       0.082309,
       0.019004
      ],
-     "options": null
+     "options": null,
+     "charset": "decimal"
     },
     {
      "field": "weight_kg",
@@ -2263,7 +2297,8 @@
       0.062151,
       0.019004
      ],
-     "options": null
+     "options": null,
+     "charset": "decimal"
     },
     {
      "field": "limb_defect_site",
@@ -2274,7 +2309,8 @@
       0.404824,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "paralysis_other_site",
@@ -2285,7 +2321,8 @@
       0.080629,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "muscle_weakness_site",
@@ -2296,7 +2333,8 @@
       0.298999,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "joint_contracture_site",
@@ -2307,7 +2345,8 @@
       0.297319,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "joint_pain_site",
@@ -2318,7 +2357,8 @@
       0.298999,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "pressure_ulcer_site",
@@ -2329,7 +2369,8 @@
       0.297319,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "other_skin_disease_site",
@@ -2340,7 +2381,8 @@
       0.298999,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "nutrition_note",
@@ -2351,7 +2393,8 @@
       0.482094,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "risk_other_text",
@@ -2362,7 +2405,8 @@
       0.169657,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "risk_policy",
@@ -2373,7 +2417,8 @@
       0.752536,
       0.019004
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "medical_management_other_text",
@@ -2384,7 +2429,8 @@
       0.136061,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "caution_bp_text",
@@ -2395,7 +2441,8 @@
       0.21837,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "caution_eating_text",
@@ -2406,7 +2453,8 @@
       0.201572,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "caution_swallow_text",
@@ -2417,7 +2465,8 @@
       0.251965,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "caution_move_text",
@@ -2428,7 +2477,8 @@
       0.21837,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "caution_exercise_text",
@@ -2439,7 +2489,8 @@
       0.201572,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "caution_other_text",
@@ -2450,7 +2501,8 @@
       0.235168,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "infection_detail",
@@ -2461,7 +2513,8 @@
       0.478734,
       0.017816
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     },
     {
      "field": "special_notes",
@@ -2472,7 +2525,8 @@
       0.87348,
       0.122339
      ],
-     "options": null
+     "options": null,
+     "charset": ""
     }
    ]
   }

@@ -1,0 +1,82 @@
+# -*- coding: utf-8 -*-
+"""読み取り結果の JSON / CSV 出力。ブラウザ版と同じ形式にそろえている。"""
+import csv
+import datetime
+import io
+import json
+from typing import Any, Dict, List
+
+from .schema import Schema
+
+
+def _flat(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "該当" if value else ""
+    if isinstance(value, (list, tuple)):
+        return "；".join(str(v) for v in value)
+    return str(value)
+
+
+def record_to_json(rec, schema: Schema) -> Dict[str, Any]:
+    values, meta = {}, {}
+    for f in schema:
+        e = rec.fields.get(f.id)
+        if e is None:
+            continue
+        values[f.id] = e.get("value")
+        meta[f.id] = dict(label=e.get("label"), type=e.get("type"),
+                          section=e.get("section"), page=e.get("page"),
+                          confidence=e.get("confidence"), level=e.get("level"),
+                          edited=bool(e.get("edited")), raw=e.get("raw"))
+    return dict(
+        schema_version=schema.version,
+        form_name=schema.form_name,
+        template_id=rec.template_id,
+        ocr_engine=rec.ocr_engine,
+        read_at=datetime.datetime.now().astimezone().isoformat(),
+        sources=[dict(source=p.source, source_page=p.source_page,
+                      page_index=p.page_index, matched=p.matched,
+                      score=p.score, dewarped=p.dewarped) for p in rec.pages],
+        warnings=rec.warnings,
+        values=values, meta=meta,
+    )
+
+
+def write_json(records: List[Any], schema: Schema, path: str) -> None:
+    payload = dict(
+        exported_at=datetime.datetime.now().astimezone().isoformat(),
+        schema_version=schema.version,
+        count=len(records),
+        records=[record_to_json(r, schema) for r in records],
+    )
+    with open(path, "w", encoding="utf-8") as fp:
+        json.dump(payload, fp, ensure_ascii=False, indent=2)
+
+
+def csv_text(records: List[Any], schema: Schema) -> str:
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\r\n")
+    head = ["record_no", "template_id", "read_at", "sources", "warnings"]
+    labels = ["#", "様式", "読取日時", "元ファイル", "警告"]
+    for f in schema:
+        head += [f.id, f"{f.id}__confidence"]
+        labels += [f.label, "確信度"]
+    w.writerow(head)
+    w.writerow(labels)
+    now = datetime.datetime.now().astimezone().isoformat()
+    for i, rec in enumerate(records, 1):
+        srcs = "；".join(dict.fromkeys(p.source for p in rec.pages))
+        row = [i, rec.template_id or "", now, srcs, "；".join(rec.warnings)]
+        for f in schema:
+            e = rec.fields.get(f.id) or {}
+            row += [_flat(e.get("value")), e.get("confidence", "")]
+        w.writerow(row)
+    return buf.getvalue()
+
+
+def write_csv(records: List[Any], schema: Schema, path: str) -> None:
+    # Excel で開けるよう BOM 付き UTF-8 にする
+    with open(path, "w", encoding="utf-8-sig", newline="") as fp:
+        fp.write(csv_text(records, schema))

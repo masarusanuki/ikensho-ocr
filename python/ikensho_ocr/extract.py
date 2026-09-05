@@ -162,7 +162,8 @@ def extract_record(paths: List[str],
         tp = tpl.page(page_index)
         if tp is None:
             continue
-        readings.extend(checkbox.read_boxes(warped, tp.boxes))
+        blank = tp.blank_image(tpl.base_dir)
+        readings.extend(checkbox.read_boxes(warped, tp.boxes, blank))
 
         for t, f in _text_fields_for_page(tp, schema):
             if f.type == "circle":
@@ -172,7 +173,8 @@ def extract_record(paths: List[str],
                 text_results[f.id] = dict(value="", confidence=0.95, raw="", empty=True)
                 continue
             roi = ocr_mod.prepare_roi(warped, t["rect"], pad=0.02)
-            res = ocr_engine.read(roi, multiline=(f.type == "textarea"))
+            res = ocr_engine.read(roi, multiline=(f.type == "textarea"),
+                                  charset=t.get("charset") or getattr(f, "charset", ""))
             corrected, conf, cands = dicts.correct(f, res.text, res.confidence)
             text_results[f.id] = dict(value=corrected, confidence=round(conf, 3),
                                       raw=res.text, candidates=cands, empty=False)
