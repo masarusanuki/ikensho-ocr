@@ -1,0 +1,2480 @@
+{
+ "id": "official_v1",
+ "name": "主治医意見書（厚生労働省 標準様式）",
+ "schema_version": "1.0.0",
+ "page_count": 2,
+ "aspect": 0.70714,
+ "pages": [
+  {
+   "index": 1,
+   "width": 1654,
+   "height": 2339,
+   "ref": "official_v1_p1.png",
+   "boxes": [
+    {
+     "field": "consent",
+     "opt": 0,
+     "rect": [
+      0.64208,
+      0.168021,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "consent",
+     "opt": 1,
+     "rect": [
+      0.767836,
+      0.167165,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "report_count",
+     "opt": 0,
+     "rect": [
+      0.261185,
+      0.258658,
+      0.012696,
+      0.008978
+     ]
+    },
+    {
+     "field": "report_count",
+     "opt": 1,
+     "rect": [
+      0.328295,
+      0.258658,
+      0.012696,
+      0.008978
+     ]
+    },
+    {
+     "field": "other_dept_visit",
+     "opt": 0,
+     "rect": [
+      0.261185,
+      0.276614,
+      0.012696,
+      0.008978
+     ]
+    },
+    {
+     "field": "other_dept_visit",
+     "opt": 1,
+     "rect": [
+      0.3289,
+      0.276614,
+      0.012092,
+      0.008551
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 0,
+     "rect": [
+      0.362152,
+      0.292433,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 1,
+     "rect": [
+      0.420798,
+      0.291578,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 2,
+     "rect": [
+      0.496372,
+      0.291578,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 3,
+     "rect": [
+      0.555018,
+      0.291578,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 4,
+     "rect": [
+      0.655985,
+      0.291578,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 5,
+     "rect": [
+      0.765417,
+      0.292433,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 6,
+     "rect": [
+      0.840992,
+      0.292433,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 7,
+     "rect": [
+      0.277509,
+      0.307396,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 8,
+     "rect": [
+      0.361548,
+      0.307396,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 9,
+     "rect": [
+      0.420798,
+      0.307396,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 10,
+     "rect": [
+      0.529625,
+      0.307396,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 11,
+     "rect": [
+      0.662636,
+      0.307396,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 12,
+     "rect": [
+      0.721282,
+      0.307396,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "symptom_stability",
+     "opt": 0,
+     "rect": [
+      0.515115,
+      0.449337,
+      0.012696,
+      0.008978
+     ]
+    },
+    {
+     "field": "symptom_stability",
+     "opt": 1,
+     "rect": [
+      0.633011,
+      0.449337,
+      0.012696,
+      0.008978
+     ]
+    },
+    {
+     "field": "symptom_stability",
+     "opt": 2,
+     "rect": [
+      0.759371,
+      0.449765,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 0,
+     "rect": [
+      0.197098,
+      0.687046,
+      0.012092,
+      0.008551
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 1,
+     "rect": [
+      0.365175,
+      0.687046,
+      0.012092,
+      0.008551
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 2,
+     "rect": [
+      0.558041,
+      0.687046,
+      0.012696,
+      0.008978
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 3,
+     "rect": [
+      0.667473,
+      0.687046,
+      0.012092,
+      0.008551
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 4,
+     "rect": [
+      0.818622,
+      0.687046,
+      0.012092,
+      0.008551
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 5,
+     "rect": [
+      0.196493,
+      0.701582,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 6,
+     "rect": [
+      0.364571,
+      0.701582,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 7,
+     "rect": [
+      0.558041,
+      0.701582,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 8,
+     "rect": [
+      0.666868,
+      0.701582,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "special_med_response",
+     "opt": 0,
+     "rect": [
+      0.197098,
+      0.716546,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "special_med_response",
+     "opt": 1,
+     "rect": [
+      0.558041,
+      0.716546,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "special_med_incontinence",
+     "opt": 0,
+     "rect": [
+      0.196493,
+      0.730654,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 0,
+     "rect": [
+      0.435913,
+      0.789226,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 1,
+     "rect": [
+      0.503023,
+      0.789226,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 2,
+     "rect": [
+      0.553809,
+      0.789226,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 3,
+     "rect": [
+      0.60399,
+      0.789226,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 4,
+     "rect": [
+      0.662636,
+      0.789226,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 5,
+     "rect": [
+      0.721886,
+      0.789226,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 6,
+     "rect": [
+      0.780532,
+      0.789226,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 7,
+     "rect": [
+      0.830713,
+      0.789226,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 8,
+     "rect": [
+      0.881499,
+      0.789226,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 0,
+     "rect": [
+      0.435913,
+      0.804617,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 1,
+     "rect": [
+      0.503023,
+      0.804617,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 2,
+     "rect": [
+      0.553204,
+      0.804617,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 3,
+     "rect": [
+      0.607618,
+      0.804617,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 4,
+     "rect": [
+      0.661427,
+      0.804617,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 5,
+     "rect": [
+      0.724909,
+      0.804617,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 6,
+     "rect": [
+      0.778718,
+      0.804617,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 7,
+     "rect": [
+      0.829504,
+      0.804617,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "short_term_memory",
+     "opt": 0,
+     "rect": [
+      0.389964,
+      0.836682,
+      0.012092,
+      0.008551
+     ]
+    },
+    {
+     "field": "short_term_memory",
+     "opt": 1,
+     "rect": [
+      0.499395,
+      0.836682,
+      0.012092,
+      0.008551
+     ]
+    },
+    {
+     "field": "decision_ability",
+     "opt": 0,
+     "rect": [
+      0.389359,
+      0.852074,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "decision_ability",
+     "opt": 1,
+     "rect": [
+      0.498791,
+      0.852074,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "decision_ability",
+     "opt": 2,
+     "rect": [
+      0.624547,
+      0.852074,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "decision_ability",
+     "opt": 3,
+     "rect": [
+      0.818017,
+      0.852074,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "communication_ability",
+     "opt": 0,
+     "rect": [
+      0.389359,
+      0.867465,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "communication_ability",
+     "opt": 1,
+     "rect": [
+      0.498791,
+      0.867465,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "communication_ability",
+     "opt": 2,
+     "rect": [
+      0.624547,
+      0.867465,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "communication_ability",
+     "opt": 3,
+     "rect": [
+      0.818017,
+      0.867465,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_presence",
+     "opt": 0,
+     "rect": [
+      0.079202,
+      0.899102,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_presence",
+     "opt": 1,
+     "rect": [
+      0.138452,
+      0.899957,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 0,
+     "rect": [
+      0.230351,
+      0.899102,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 1,
+     "rect": [
+      0.347642,
+      0.899102,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 2,
+     "rect": [
+      0.440145,
+      0.899102,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 3,
+     "rect": [
+      0.540508,
+      0.899102,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 4,
+     "rect": [
+      0.616687,
+      0.899102,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 5,
+     "rect": [
+      0.683797,
+      0.899102,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 6,
+     "rect": [
+      0.826481,
+      0.899102,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 7,
+     "rect": [
+      0.230351,
+      0.914493,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 8,
+     "rect": [
+      0.347642,
+      0.914493,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 9,
+     "rect": [
+      0.440145,
+      0.914493,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 10,
+     "rect": [
+      0.540508,
+      0.914493,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 11,
+     "rect": [
+      0.666868,
+      0.914493,
+      0.012696,
+      0.009406
+     ]
+    }
+   ],
+   "texts": [
+    {
+     "field": "entry_date",
+     "type": "text",
+     "rect": [
+      0.759256,
+      0.052261,
+      0.191494,
+      0.019004
+     ],
+     "options": null
+    },
+    {
+     "field": "applicant_furigana",
+     "type": "text",
+     "rect": [
+      0.282201,
+      0.07958,
+      0.282201,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "applicant_name",
+     "type": "text",
+     "rect": [
+      0.181415,
+      0.098584,
+      0.382987,
+      0.028506
+     ],
+     "options": null
+    },
+    {
+     "field": "applicant_sex",
+     "type": "circle",
+     "rect": [
+      0.557683,
+      0.087894,
+      0.036955,
+      0.051074
+     ],
+     "options": [
+      "男",
+      "女"
+     ]
+    },
+    {
+     "field": "birth_era",
+     "type": "circle",
+     "rect": [
+      0.178055,
+      0.128278,
+      0.089028,
+      0.017816
+     ],
+     "options": [
+      "明",
+      "大",
+      "昭"
+     ]
+    },
+    {
+     "field": "birth_date",
+     "type": "text",
+     "rect": [
+      0.267083,
+      0.128278,
+      0.166297,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "age",
+     "type": "text",
+     "rect": [
+      0.472015,
+      0.128278,
+      0.052073,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "postal_code",
+     "type": "text",
+     "rect": [
+      0.623194,
+      0.07958,
+      0.166297,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "applicant_address",
+     "type": "text",
+     "rect": [
+      0.601357,
+      0.097396,
+      0.349392,
+      0.028506
+     ],
+     "options": null
+    },
+    {
+     "field": "applicant_phone",
+     "type": "text",
+     "rect": [
+      0.681986,
+      0.12709,
+      0.268763,
+      0.019004
+     ],
+     "options": null
+    },
+    {
+     "field": "doctor_name",
+     "type": "text",
+     "rect": [
+      0.137741,
+      0.179352,
+      0.453538,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "clinic_name",
+     "type": "text",
+     "rect": [
+      0.154539,
+      0.194793,
+      0.43674,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "clinic_address",
+     "type": "text",
+     "rect": [
+      0.188134,
+      0.210234,
+      0.403145,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "clinic_phone",
+     "type": "text",
+     "rect": [
+      0.633273,
+      0.194793,
+      0.317476,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "clinic_fax",
+     "type": "text",
+     "rect": [
+      0.624874,
+      0.210234,
+      0.325875,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "last_exam_date",
+     "type": "text",
+     "rect": [
+      0.295639,
+      0.235177,
+      0.648391,
+      0.019004
+     ],
+     "options": null
+    },
+    {
+     "field": "other_dept_other_text",
+     "type": "text",
+     "rect": [
+      0.789491,
+      0.302879,
+      0.154539,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "diagnosis1_name",
+     "type": "text",
+     "rect": [
+      0.124303,
+      0.371769,
+      0.332594,
+      0.020192
+     ],
+     "options": null
+    },
+    {
+     "field": "diagnosis1_era",
+     "type": "circle",
+     "rect": [
+      0.556003,
+      0.371769,
+      0.14446,
+      0.020192
+     ],
+     "options": [
+      "昭和",
+      "平成",
+      "令和"
+     ]
+    },
+    {
+     "field": "diagnosis1_date",
+     "type": "text",
+     "rect": [
+      0.700464,
+      0.371769,
+      0.243566,
+      0.020192
+     ],
+     "options": null
+    },
+    {
+     "field": "diagnosis2_name",
+     "type": "text",
+     "rect": [
+      0.124303,
+      0.395525,
+      0.332594,
+      0.020192
+     ],
+     "options": null
+    },
+    {
+     "field": "diagnosis2_era",
+     "type": "circle",
+     "rect": [
+      0.556003,
+      0.395525,
+      0.14446,
+      0.020192
+     ],
+     "options": [
+      "昭和",
+      "平成",
+      "令和"
+     ]
+    },
+    {
+     "field": "diagnosis2_date",
+     "type": "text",
+     "rect": [
+      0.700464,
+      0.395525,
+      0.243566,
+      0.020192
+     ],
+     "options": null
+    },
+    {
+     "field": "diagnosis3_name",
+     "type": "text",
+     "rect": [
+      0.124303,
+      0.41928,
+      0.332594,
+      0.020192
+     ],
+     "options": null
+    },
+    {
+     "field": "diagnosis3_era",
+     "type": "circle",
+     "rect": [
+      0.556003,
+      0.41928,
+      0.14446,
+      0.020192
+     ],
+     "options": [
+      "昭和",
+      "平成",
+      "令和"
+     ]
+    },
+    {
+     "field": "diagnosis3_date",
+     "type": "text",
+     "rect": [
+      0.700464,
+      0.41928,
+      0.243566,
+      0.020192
+     ],
+     "options": null
+    },
+    {
+     "field": "stability_detail",
+     "type": "text",
+     "rect": [
+      0.352751,
+      0.458476,
+      0.591279,
+      0.019004
+     ],
+     "options": null
+    },
+    {
+     "field": "treatment_course",
+     "type": "textarea",
+     "rect": [
+      0.068871,
+      0.503611,
+      0.87348,
+      0.153221
+     ],
+     "options": null
+    },
+    {
+     "field": "bpsd_other_text",
+     "type": "text",
+     "rect": [
+      0.749177,
+      0.909825,
+      0.178055,
+      0.019004
+     ],
+     "options": null
+    }
+   ]
+  },
+  {
+   "index": 2,
+   "width": 1654,
+   "height": 2339,
+   "ref": "official_v1_p2.png",
+   "boxes": [
+    {
+     "field": "other_psych_presence",
+     "opt": 0,
+     "rect": [
+      0.079202,
+      0.061992,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_psych_presence",
+     "opt": 1,
+     "rect": [
+      0.138452,
+      0.062847,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "specialist_consult",
+     "opt": 0,
+     "rect": [
+      0.717654,
+      0.062847,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "specialist_consult",
+     "opt": 1,
+     "rect": [
+      0.877267,
+      0.062847,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "dominant_hand",
+     "opt": 0,
+     "rect": [
+      0.166868,
+      0.093202,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "dominant_hand",
+     "opt": 1,
+     "rect": [
+      0.20919,
+      0.093202,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "weight_change",
+     "opt": 0,
+     "rect": [
+      0.733374,
+      0.093202,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "weight_change",
+     "opt": 1,
+     "rect": [
+      0.800484,
+      0.092347,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "weight_change",
+     "opt": 2,
+     "rect": [
+      0.876058,
+      0.092347,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "limb_defect",
+     "opt": 0,
+     "rect": [
+      0.104595,
+      0.109876,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "paralysis",
+     "opt": 0,
+     "rect": [
+      0.10399,
+      0.126977,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_right_upper",
+     "opt": 0,
+     "rect": [
+      0.263603,
+      0.126977,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_right_upper_degree",
+     "opt": 0,
+     "rect": [
+      0.397823,
+      0.126977,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_right_upper_degree",
+     "opt": 1,
+     "rect": [
+      0.440145,
+      0.126977,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_right_upper_degree",
+     "opt": 2,
+     "rect": [
+      0.481862,
+      0.126977,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_left_upper",
+     "opt": 0,
+     "rect": [
+      0.548972,
+      0.126977,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_left_upper_degree",
+     "opt": 0,
+     "rect": [
+      0.683192,
+      0.126977,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_left_upper_degree",
+     "opt": 1,
+     "rect": [
+      0.725514,
+      0.126977,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_left_upper_degree",
+     "opt": 2,
+     "rect": [
+      0.767836,
+      0.126977,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_right_lower",
+     "opt": 0,
+     "rect": [
+      0.264208,
+      0.145361,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "paralysis_right_lower_degree",
+     "opt": 0,
+     "rect": [
+      0.398428,
+      0.145361,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "paralysis_right_lower_degree",
+     "opt": 1,
+     "rect": [
+      0.440145,
+      0.144506,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_right_lower_degree",
+     "opt": 2,
+     "rect": [
+      0.482467,
+      0.145361,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "paralysis_left_lower",
+     "opt": 0,
+     "rect": [
+      0.549577,
+      0.145361,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "paralysis_left_lower_degree",
+     "opt": 0,
+     "rect": [
+      0.683797,
+      0.145361,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "paralysis_left_lower_degree",
+     "opt": 1,
+     "rect": [
+      0.725514,
+      0.144506,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_left_lower_degree",
+     "opt": 2,
+     "rect": [
+      0.767836,
+      0.144506,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_other",
+     "opt": 0,
+     "rect": [
+      0.264208,
+      0.163318,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "paralysis_other_degree",
+     "opt": 0,
+     "rect": [
+      0.532648,
+      0.163318,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "paralysis_other_degree",
+     "opt": 1,
+     "rect": [
+      0.574365,
+      0.162463,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "paralysis_other_degree",
+     "opt": 2,
+     "rect": [
+      0.616687,
+      0.163318,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "muscle_weakness",
+     "opt": 0,
+     "rect": [
+      0.104595,
+      0.180419,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "muscle_weakness_degree",
+     "opt": 0,
+     "rect": [
+      0.675333,
+      0.180419,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "muscle_weakness_degree",
+     "opt": 1,
+     "rect": [
+      0.725514,
+      0.180419,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "muscle_weakness_degree",
+     "opt": 2,
+     "rect": [
+      0.7763,
+      0.180419,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "joint_contracture",
+     "opt": 0,
+     "rect": [
+      0.1052,
+      0.198803,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "joint_contracture_degree",
+     "opt": 0,
+     "rect": [
+      0.677146,
+      0.198803,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "joint_contracture_degree",
+     "opt": 1,
+     "rect": [
+      0.727328,
+      0.198803,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "joint_contracture_degree",
+     "opt": 2,
+     "rect": [
+      0.777509,
+      0.197948,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "joint_pain",
+     "opt": 0,
+     "rect": [
+      0.104595,
+      0.216759,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "joint_pain_degree",
+     "opt": 0,
+     "rect": [
+      0.675333,
+      0.215904,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "joint_pain_degree",
+     "opt": 1,
+     "rect": [
+      0.726119,
+      0.215904,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "joint_pain_degree",
+     "opt": 2,
+     "rect": [
+      0.7763,
+      0.215904,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "ataxia",
+     "opt": 0,
+     "rect": [
+      0.104595,
+      0.234716,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "ataxia_upper",
+     "opt": 0,
+     "rect": [
+      0.322854,
+      0.233861,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "ataxia_upper",
+     "opt": 1,
+     "rect": [
+      0.373035,
+      0.233861,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "ataxia_lower",
+     "opt": 0,
+     "rect": [
+      0.515719,
+      0.233861,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "ataxia_lower",
+     "opt": 1,
+     "rect": [
+      0.565901,
+      0.233861,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "ataxia_trunk",
+     "opt": 0,
+     "rect": [
+      0.725514,
+      0.233861,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "ataxia_trunk",
+     "opt": 1,
+     "rect": [
+      0.7763,
+      0.233861,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "pressure_ulcer",
+     "opt": 0,
+     "rect": [
+      0.1052,
+      0.252245,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "pressure_ulcer_degree",
+     "opt": 0,
+     "rect": [
+      0.677146,
+      0.252245,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "pressure_ulcer_degree",
+     "opt": 1,
+     "rect": [
+      0.727328,
+      0.252245,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "pressure_ulcer_degree",
+     "opt": 2,
+     "rect": [
+      0.777509,
+      0.251389,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_skin_disease",
+     "opt": 0,
+     "rect": [
+      0.104595,
+      0.270201,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "other_skin_disease_degree",
+     "opt": 0,
+     "rect": [
+      0.675333,
+      0.269346,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_skin_disease_degree",
+     "opt": 1,
+     "rect": [
+      0.726119,
+      0.269346,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "other_skin_disease_degree",
+     "opt": 2,
+     "rect": [
+      0.7763,
+      0.269346,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "outdoor_walking",
+     "opt": 0,
+     "rect": [
+      0.356711,
+      0.329628,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "outdoor_walking",
+     "opt": 1,
+     "rect": [
+      0.482467,
+      0.329628,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "outdoor_walking",
+     "opt": 2,
+     "rect": [
+      0.717654,
+      0.329628,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "wheelchair",
+     "opt": 0,
+     "rect": [
+      0.356711,
+      0.345019,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "wheelchair",
+     "opt": 1,
+     "rect": [
+      0.482467,
+      0.345019,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "wheelchair",
+     "opt": 2,
+     "rect": [
+      0.717654,
+      0.345019,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "walking_aid",
+     "opt": 0,
+     "rect": [
+      0.356711,
+      0.36041,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "walking_aid",
+     "opt": 1,
+     "rect": [
+      0.482467,
+      0.36041,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "walking_aid",
+     "opt": 2,
+     "rect": [
+      0.717654,
+      0.36041,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "eating",
+     "opt": 0,
+     "rect": [
+      0.277509,
+      0.392903,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "eating",
+     "opt": 1,
+     "rect": [
+      0.663241,
+      0.392048,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "nutrition_status",
+     "opt": 0,
+     "rect": [
+      0.276904,
+      0.407867,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "nutrition_status",
+     "opt": 1,
+     "rect": [
+      0.663845,
+      0.407867,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 0,
+     "rect": [
+      0.087666,
+      0.45575,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 1,
+     "rect": [
+      0.162636,
+      0.454895,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 2,
+     "rect": [
+      0.288996,
+      0.454895,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 3,
+     "rect": [
+      0.431681,
+      0.454895,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 4,
+     "rect": [
+      0.490326,
+      0.454895,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 5,
+     "rect": [
+      0.641475,
+      0.454895,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 6,
+     "rect": [
+      0.759371,
+      0.454895,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 7,
+     "rect": [
+      0.877267,
+      0.454895,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 8,
+     "rect": [
+      0.087666,
+      0.471142,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 9,
+     "rect": [
+      0.162636,
+      0.470286,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 10,
+     "rect": [
+      0.355502,
+      0.470286,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 11,
+     "rect": [
+      0.414148,
+      0.470286,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 12,
+     "rect": [
+      0.515115,
+      0.470286,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 13,
+     "rect": [
+      0.683192,
+      0.470286,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "service_outlook",
+     "opt": 0,
+     "rect": [
+      0.180169,
+      0.54254,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "service_outlook",
+     "opt": 1,
+     "rect": [
+      0.389964,
+      0.541684,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "service_outlook",
+     "opt": 2,
+     "rect": [
+      0.633615,
+      0.541684,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 0,
+     "rect": [
+      0.070738,
+      0.573322,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 1,
+     "rect": [
+      0.288996,
+      0.573322,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 2,
+     "rect": [
+      0.457074,
+      0.573322,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 3,
+     "rect": [
+      0.625151,
+      0.574177,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 4,
+     "rect": [
+      0.070738,
+      0.588713,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 5,
+     "rect": [
+      0.288996,
+      0.588713,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 6,
+     "rect": [
+      0.457074,
+      0.588713,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 7,
+     "rect": [
+      0.625151,
+      0.589568,
+      0.012092,
+      0.008123
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 8,
+     "rect": [
+      0.070738,
+      0.604532,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 9,
+     "rect": [
+      0.288996,
+      0.604532,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 10,
+     "rect": [
+      0.457074,
+      0.604532,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 11,
+     "rect": [
+      0.624547,
+      0.604532,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 12,
+     "rect": [
+      0.070738,
+      0.619923,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 0,
+     "rect": [
+      0.070738,
+      0.65156,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 1,
+     "rect": [
+      0.356106,
+      0.65156,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 2,
+     "rect": [
+      0.625151,
+      0.651988,
+      0.012092,
+      0.008551
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 3,
+     "rect": [
+      0.070738,
+      0.666952,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 4,
+     "rect": [
+      0.356106,
+      0.666952,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 5,
+     "rect": [
+      0.624547,
+      0.666952,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 6,
+     "rect": [
+      0.070738,
+      0.682343,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "infection",
+     "opt": 0,
+     "rect": [
+      0.120919,
+      0.714408,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "infection",
+     "opt": 1,
+     "rect": [
+      0.196493,
+      0.714408,
+      0.012696,
+      0.009406
+     ]
+    },
+    {
+     "field": "infection",
+     "opt": 2,
+     "rect": [
+      0.751511,
+      0.714408,
+      0.012696,
+      0.009406
+     ]
+    }
+   ],
+   "texts": [
+    {
+     "field": "other_psych_symptom_name",
+     "type": "text",
+     "rect": [
+      0.270443,
+      0.0582,
+      0.302358,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "specialist_consult_detail",
+     "type": "text",
+     "rect": [
+      0.745817,
+      0.0582,
+      0.124303,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "height_cm",
+     "type": "text",
+     "rect": [
+      0.310757,
+      0.087894,
+      0.082309,
+      0.019004
+     ],
+     "options": null
+    },
+    {
+     "field": "weight_kg",
+     "type": "text",
+     "rect": [
+      0.440099,
+      0.087894,
+      0.062151,
+      0.019004
+     ],
+     "options": null
+    },
+    {
+     "field": "limb_defect_site",
+     "type": "text",
+     "rect": [
+      0.320836,
+      0.104523,
+      0.404824,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "paralysis_other_site",
+     "type": "text",
+     "rect": [
+      0.396425,
+      0.157972,
+      0.080629,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "muscle_weakness_site",
+     "type": "text",
+     "rect": [
+      0.320836,
+      0.175789,
+      0.298999,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "joint_contracture_site",
+     "type": "text",
+     "rect": [
+      0.322516,
+      0.193605,
+      0.297319,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "joint_pain_site",
+     "type": "text",
+     "rect": [
+      0.320836,
+      0.211422,
+      0.298999,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "pressure_ulcer_site",
+     "type": "text",
+     "rect": [
+      0.322516,
+      0.247054,
+      0.297319,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "other_skin_disease_site",
+     "type": "text",
+     "rect": [
+      0.320836,
+      0.264871,
+      0.298999,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "nutrition_note",
+     "type": "text",
+     "rect": [
+      0.295639,
+      0.41928,
+      0.500571,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "risk_other_text",
+     "type": "text",
+     "rect": [
+      0.764295,
+      0.465602,
+      0.169657,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "risk_policy",
+     "type": "text",
+     "rect": [
+      0.174696,
+      0.482231,
+      0.769334,
+      0.019004
+     ],
+     "options": null
+    },
+    {
+     "field": "medical_management_other_text",
+     "type": "text",
+     "rect": [
+      0.79789,
+      0.599819,
+      0.136061,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "caution_bp_text",
+     "type": "text",
+     "rect": [
+      0.127662,
+      0.64733,
+      0.21837,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "caution_eating_text",
+     "type": "text",
+     "rect": [
+      0.413223,
+      0.64733,
+      0.201572,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "caution_swallow_text",
+     "type": "text",
+     "rect": [
+      0.681986,
+      0.64733,
+      0.251965,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "caution_move_text",
+     "type": "text",
+     "rect": [
+      0.127662,
+      0.662771,
+      0.21837,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "caution_exercise_text",
+     "type": "text",
+     "rect": [
+      0.413223,
+      0.662771,
+      0.201572,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "caution_other_text",
+     "type": "text",
+     "rect": [
+      0.698784,
+      0.662771,
+      0.235168,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "infection_detail",
+     "type": "text",
+     "rect": [
+      0.260364,
+      0.710281,
+      0.478734,
+      0.017816
+     ],
+     "options": null
+    },
+    {
+     "field": "special_notes",
+     "type": "textarea",
+     "rect": [
+      0.068871,
+      0.810053,
+      0.87348,
+      0.122339
+     ],
+     "options": null
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,21 @@
+# 依存・ビルド成果物
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+dist/*.html
+*.egg-info/
+
+# 個人情報を含みうるデータは絶対にコミットしない
+master/
+sample/
+data/
+uploads/
+out/
+*.pdf
+!docs/**/*.pdf
+
+# エディタ
+.vscode/
+.idea/
+.DS_Store
