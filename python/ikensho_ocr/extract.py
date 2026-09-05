@@ -173,14 +173,20 @@ def extract_record(paths: List[str],
                 text_results[f.id] = _read_circle(warped, t["rect"], t.get("options") or f.options or [])
                 continue
             if not ocr_mod.has_ink(warped, t["rect"]):
-                text_results[f.id] = dict(value="", confidence=0.95, raw="", empty=True)
+                text_results[f.id] = dict(value="", confidence=0.95, raw="", empty=True,
+                                          candidates=[])
                 continue
             roi = ocr_mod.prepare_roi(warped, t["rect"], pad=0.02)
             res = ocr_engine.read(roi, multiline=(f.type == "textarea"),
                                   charset=t.get("charset") or getattr(f, "charset", ""))
             corrected, conf, cands = dicts.correct(f, res.text, res.confidence)
-            text_results[f.id] = dict(value=corrected, confidence=round(conf, 3),
-                                      raw=res.text, candidates=cands, empty=False)
+            entry = dict(value=corrected, confidence=round(conf, 3),
+                         raw=res.text, candidates=cands, empty=False)
+            if t.get("transferred"):
+                # 別様式から機械的に写した暫定位置。枠がずれている可能性がある
+                entry["confidence"] = round(entry["confidence"] * 0.5, 3)
+                entry["note"] = "欄の位置が暫定です（管理画面のテンプレート編集で調整できます）"
+            text_results[f.id] = entry
 
     missing = [i for i in (1, 2) if i not in warped_pages]
     if missing:

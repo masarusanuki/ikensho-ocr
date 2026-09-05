@@ -348,8 +348,14 @@
       if (f.type !== 'textarea') text = text.replace(/\s*\n\s*/g, ' ').trim();
       text = filterCharset(text, charset);
       const c = this.dicts.correct(f.id, text, conf);
-      return { value: c.value, confidence: c.confidence, raw: text,
-               empty: false, candidates: c.candidates };
+      const entry = { value: c.value, confidence: c.confidence, raw: text,
+                      empty: false, candidates: c.candidates };
+      if (t.transferred) {
+        // 別様式から機械的に写した暫定位置。枠がずれている可能性がある
+        entry.confidence *= 0.5;
+        entry.note = '欄の位置が暫定です（管理画面のテンプレート編集で調整できます）';
+      }
+      return entry;
     }
 
     hasInk(warped, rect, threshold = 0.008) {

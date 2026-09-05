@@ -165,6 +165,12 @@
 
       el.appendChild(this.control(f, e, el));
 
+      if (e.note) {
+        const n = document.createElement('div');
+        n.className = 'raw';
+        n.textContent = '※ ' + e.note;
+        el.appendChild(n);
+      }
       if (e.raw && String(e.raw) !== String(e.value || '')) {
         const raw = document.createElement('div');
         raw.className = 'raw';

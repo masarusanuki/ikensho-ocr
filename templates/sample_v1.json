@@ -769,10 +769,10 @@
      "field": "entry_date",
      "type": "text",
      "rect": [
-      0.692531,
-      0.020573,
-      0.148162,
-      0.023015
+      0.599878,
+      0.125801,
+      0.400122,
+      0.061194
      ],
      "options": null,
      "charset": "wareki",
@@ -783,10 +783,10 @@
      "field": "applicant_furigana",
      "type": "text",
      "rect": [
-      0.356818,
-      0.053607,
-      0.179589,
-      0.028668
+      0.351242,
+      0.212622,
+      0.14708,
+      0.053894
      ],
      "options": null,
      "charset": "kana",
@@ -797,10 +797,10 @@
      "field": "applicant_name",
      "type": "text",
      "rect": [
-      0.284198,
-      0.074531,
-      0.222471,
-      0.040575
+      0.26172,
+      0.270109,
+      0.236602,
+      0.086232
      ],
      "options": null,
      "charset": "",
@@ -811,10 +811,10 @@
      "field": "applicant_sex",
      "type": "circle",
      "rect": [
-      0.429723,
-      0.061599,
-      0.120715,
-      0.05836
+      0.491705,
+      0.237772,
+      0.022588,
+      0.154501
      ],
      "options": [
       "男",
@@ -828,10 +828,10 @@
      "field": "birth_era",
      "type": "circle",
      "rect": [
-      0.264099,
-      0.116343,
-      0.055028,
-      0.019532
+      0.259667,
+      0.359935,
+      0.054416,
+      0.040393
      ],
      "options": [
       "明",
@@ -846,10 +846,10 @@
      "field": "birth_date",
      "type": "text",
      "rect": [
-      0.302483,
-      0.112952,
-      0.062424,
-      0.022923
+      0.314083,
+      0.359935,
+      0.101645,
+      0.040393
      ],
      "options": null,
      "charset": "wareki",
@@ -860,10 +860,10 @@
      "field": "age",
      "type": "text",
      "rect": [
-      0.350221,
-      0.109418,
-      0.068906,
-      0.022238
+      0.439342,
+      0.359935,
+      0.031828,
+      0.040393
      ],
      "options": null,
      "charset": "digits",
@@ -874,10 +874,10 @@
      "field": "postal_code",
      "type": "text",
      "rect": [
-      0.561836,
-      0.050595,
-      0.137592,
-      0.020486
+      0.528964,
+      0.212622,
+      0.086672,
+      0.053894
      ],
      "options": null,
      "charset": "postal",
@@ -888,10 +888,10 @@
      "field": "applicant_address",
      "type": "text",
      "rect": [
-      0.497764,
-      0.071794,
-      0.285919,
-      0.032537
+      0.517582,
+      0.266516,
+      0.214374,
+      0.086232
      ],
      "options": null,
      "charset": "",
@@ -902,108 +902,24 @@
      "field": "applicant_phone",
      "type": "text",
      "rect": [
-      0.535397,
-      0.102655,
-      0.210974,
-      0.024349
+      0.567682,
+      0.356341,
+      0.164275,
+      0.043986
      ],
      "options": null,
      "charset": "phone",
      "pii": "mask",
-     "transferred": true
-    },
-    {
-     "field": "doctor_name",
-     "type": "text",
-     "rect": [
-      0.196405,
-      0.16478,
-      0.18682,
-      0.02473
-     ],
-     "options": null,
-     "charset": "",
-     "pii": "name",
-     "transferred": true
-    },
-    {
-     "field": "clinic_name",
-     "type": "text",
-     "rect": [
-      0.1902,
-      0.182906,
-      0.158356,
-      0.023468
-     ],
-     "options": null,
-     "charset": "",
-     "pii": "mask",
-     "transferred": true
-    },
-    {
-     "field": "clinic_address",
-     "type": "text",
-     "rect": [
-      0.194303,
-      0.201144,
-      0.120939,
-      0.022648
-     ],
-     "options": null,
-     "charset": "",
-     "pii": "mask",
-     "transferred": true
-    },
-    {
-     "field": "clinic_phone",
-     "type": "text",
-     "rect": [
-      0.350326,
-      0.181448,
-      0.317617,
-      0.021341
-     ],
-     "options": null,
-     "charset": "phone",
-     "pii": "mask",
-     "transferred": true
-    },
-    {
-     "field": "clinic_fax",
-     "type": "text",
-     "rect": [
-      0.310927,
-      0.199475,
-      0.341795,
-      0.021953
-     ],
-     "options": null,
-     "charset": "phone",
-     "pii": "mask",
-     "transferred": true
-    },
-    {
-     "field": "last_exam_date",
-     "type": "text",
-     "rect": [
-      0.265024,
-      0.22774,
-      0.359714,
-      0.025847
-     ],
-     "options": null,
-     "charset": "wareki",
-     "pii": "",
      "transferred": true
     },
     {
      "field": "other_dept_other_text",
      "type": "text",
      "rect": [
-      0.460362,
-      0.302334,
-      0.123403,
-      0.02338
+      0.479924,
+      0.400328,
+      0.128865,
+      0.003686
      ],
      "options": null,
      "charset": "",
@@ -1014,10 +930,10 @@
      "field": "diagnosis1_name",
      "type": "text",
      "rect": [
-      0.0372,
-      0.3609,
-      0.275561,
-      0.037109
+      0.012371,
+      0.425912,
+      0.242828,
+      0.008657
      ],
      "options": null,
      "charset": "",
@@ -1028,10 +944,10 @@
      "field": "diagnosis1_era",
      "type": "circle",
      "rect": [
-      0.357181,
-      0.379832,
-      0.147658,
-      0.021889
+      0.300471,
+      0.425912,
+      0.096407,
+      0.008657
      ],
      "options": [
       "昭和",
@@ -1046,10 +962,10 @@
      "field": "diagnosis1_date",
      "type": "text",
      "rect": [
-      0.458296,
-      0.373257,
-      0.087044,
-      0.028464
+      0.393295,
+      0.425912,
+      0.16613,
+      0.008657
      ],
      "options": null,
      "charset": "wareki",
@@ -1060,10 +976,10 @@
      "field": "diagnosis2_name",
      "type": "text",
      "rect": [
-      0.035462,
-      0.381742,
-      0.254729,
-      0.039682
+      0.047492,
+      0.436097,
+      0.219294,
+      0.008657
      ],
      "options": null,
      "charset": "",
@@ -1074,10 +990,10 @@
      "field": "diagnosis2_era",
      "type": "circle",
      "rect": [
-      0.314358,
-      0.405256,
-      0.134891,
-      0.020806
+      0.30942,
+      0.436097,
+      0.087649,
+      0.008657
      ],
      "options": [
       "昭和",
@@ -1092,10 +1008,10 @@
      "field": "diagnosis2_date",
      "type": "text",
      "rect": [
-      0.396192,
-      0.396248,
-      0.133793,
-      0.029798
+      0.391469,
+      0.436097,
+      0.153383,
+      0.008657
      ],
      "options": null,
      "charset": "wareki",
@@ -1106,10 +1022,10 @@
      "field": "diagnosis3_name",
      "type": "text",
      "rect": [
-      0.035556,
-      0.402056,
-      0.222756,
-      0.041276
+      0.066628,
+      0.446282,
+      0.200158,
+      0.008657
      ],
      "options": null,
      "charset": "",
@@ -1120,10 +1036,10 @@
      "field": "diagnosis3_era",
      "type": "circle",
      "rect": [
-      0.2671,
-      0.429557,
-      0.11972,
-      0.019409
+      0.31139,
+      0.446282,
+      0.081905,
+      0.008657
      ],
      "options": [
       "昭和",
@@ -1138,10 +1054,10 @@
      "field": "diagnosis3_date",
      "type": "text",
      "rect": [
-      0.336394,
-      0.41837,
-      0.178275,
-      0.030245
+      0.391469,
+      0.446282,
+      0.139922,
+      0.008657
      ],
      "options": null,
      "charset": "wareki",
@@ -1152,10 +1068,10 @@
      "field": "stability_detail",
      "type": "text",
      "rect": [
-      0.154963,
-      0.450337,
-      0.338687,
-      0.01831
+      0.171555,
+      0.464459,
+      0.38787,
+      0.013753
      ],
      "options": null,
      "charset": "",
@@ -1166,10 +1082,10 @@
      "field": "treatment_course",
      "type": "textarea",
      "rect": [
-      0.045169,
-      0.482926,
-      0.532485,
-      0.126641
+      0.117243,
+      0.508296,
+      0.474113,
+      0.099708
      ],
      "options": null,
      "charset": "",
@@ -1180,10 +1096,10 @@
      "field": "bpsd_other_text",
      "type": "text",
      "rect": [
-      0.394049,
-      0.866526,
-      0.112232,
-      0.022086
+      0.443959,
+      0.866347,
+      0.112394,
+      0.020089
      ],
      "options": null,
      "charset": "",
@@ -2312,41 +2228,13 @@
    ],
    "texts": [
     {
-     "field": "other_psych_symptom_name",
-     "type": "text",
-     "rect": [
-      0.274493,
-      0.036769,
-      0.150942,
-      0.017142
-     ],
-     "options": null,
-     "charset": "",
-     "pii": "",
-     "transferred": true
-    },
-    {
-     "field": "specialist_consult_detail",
-     "type": "text",
-     "rect": [
-      0.746881,
-      0.039346,
-      0.112234,
-      0.014269
-     ],
-     "options": null,
-     "charset": "",
-     "pii": "",
-     "transferred": true
-    },
-    {
      "field": "height_cm",
      "type": "text",
      "rect": [
-      0.171698,
-      0.063437,
-      0.075689,
-      0.01759
+      0.220166,
+      0.069873,
+      0.191196,
+      0.009603
      ],
      "options": null,
      "charset": "decimal",
@@ -2357,10 +2245,10 @@
      "field": "weight_kg",
      "type": "text",
      "rect": [
-      0.252426,
-      0.063434,
-      0.064762,
-      0.01749
+      0.320644,
+      0.069873,
+      0.181713,
+      0.009603
      ],
      "options": null,
      "charset": "decimal",
@@ -2371,10 +2259,10 @@
      "field": "limb_defect_site",
      "type": "text",
      "rect": [
-      0.146818,
-      0.077182,
-      0.470974,
-      0.018462
+      0.203988,
+      0.077116,
+      0.338492,
+      0.017705
      ],
      "options": null,
      "charset": "",
@@ -2385,10 +2273,10 @@
      "field": "paralysis_other_site",
      "type": "text",
      "rect": [
-      0.200668,
-      0.129523,
-      0.080855,
-      0.017368
+      0.21852,
+      0.129348,
+      0.05646,
+      0.017469
      ],
      "options": null,
      "charset": "",
@@ -2399,10 +2287,10 @@
      "field": "muscle_weakness_site",
      "type": "text",
      "rect": [
-      0.120927,
-      0.146568,
-      0.29884,
-      0.017606
+      0.17189,
+      0.146818,
+      0.203142,
+      0.018032
      ],
      "options": null,
      "charset": "",
@@ -2413,10 +2301,10 @@
      "field": "joint_contracture_site",
      "type": "text",
      "rect": [
-      0.136661,
-      0.164168,
-      0.269297,
-      0.01752
+      0.216911,
+      0.16485,
+      0.158121,
+      0.017188
      ],
      "options": null,
      "charset": "",
@@ -2427,10 +2315,10 @@
      "field": "joint_pain_site",
      "type": "text",
      "rect": [
-      0.160121,
-      0.181456,
-      0.228229,
-      0.017569
+      0.214945,
+      0.182039,
+      0.157299,
+      0.017074
      ],
      "options": null,
      "charset": "",
@@ -2441,10 +2329,10 @@
      "field": "pressure_ulcer_site",
      "type": "text",
      "rect": [
-      0.225614,
-      0.215689,
-      0.164661,
-      0.017009
+      0.193642,
+      0.216144,
+      0.174388,
+      0.0171
      ],
      "options": null,
      "charset": "",
@@ -2455,10 +2343,10 @@
      "field": "other_skin_disease_site",
      "type": "text",
      "rect": [
-      0.252242,
-      0.232299,
-      0.17364,
-      0.016616
+      0.185134,
+      0.233245,
+      0.182896,
+      0.017171
      ],
      "options": null,
      "charset": "",
@@ -2469,10 +2357,10 @@
      "field": "nutrition_note",
      "type": "text",
      "rect": [
-      0.266821,
-      0.378997,
-      0.284554,
-      0.021012
+      0.227706,
+      0.376617,
+      0.312023,
+      0.018626
      ],
      "options": null,
      "charset": "",
@@ -2483,10 +2371,10 @@
      "field": "risk_other_text",
      "type": "text",
      "rect": [
-      0.553562,
-      0.422216,
-      0.102424,
-      0.014716
+      0.542726,
+      0.424106,
+      0.121069,
+      0.01223
      ],
      "options": null,
      "charset": "",
@@ -2497,10 +2385,10 @@
      "field": "risk_policy",
      "type": "text",
      "rect": [
-      0.158628,
-      0.435385,
-      0.508696,
-      0.014717
+      0.129176,
+      0.435789,
+      0.550635,
+      0.008762
      ],
      "options": null,
      "charset": "",
@@ -2511,10 +2399,10 @@
      "field": "medical_management_other_text",
      "type": "text",
      "rect": [
-      0.699375,
-      0.519969,
-      0.027979,
-      0.016526
+      0.841227,
+      0.519274,
+      0.150628,
+      0.01571
      ],
      "options": null,
      "charset": "",
@@ -2525,10 +2413,10 @@
      "field": "caution_bp_text",
      "type": "text",
      "rect": [
-      0.222999,
-      0.557751,
-      0.125104,
-      0.02196
+      0.111217,
+      0.562706,
+      0.239357,
+      0.017328
      ],
      "options": null,
      "charset": "",
@@ -2539,10 +2427,10 @@
      "field": "caution_eating_text",
      "type": "text",
      "rect": [
-      0.414288,
-      0.563347,
-      0.235922,
-      0.017445
+      0.423143,
+      0.562706,
+      0.220305,
+      0.017328
      ],
      "options": null,
      "charset": "",
@@ -2553,10 +2441,10 @@
      "field": "caution_swallow_text",
      "type": "text",
      "rect": [
-      0.689288,
-      0.558844,
-      0.052343,
-      0.017708
+      0.713418,
+      0.562706,
+      0.278734,
+      0.017328
      ],
      "options": null,
      "charset": "",
@@ -2567,10 +2455,10 @@
      "field": "caution_move_text",
      "type": "text",
      "rect": [
-      0.237254,
-      0.571853,
-      0.122272,
-      0.021976
+      0.111394,
+      0.577725,
+      0.282299,
+      0.014189
      ],
      "options": null,
      "charset": "",
@@ -2581,10 +2469,10 @@
      "field": "caution_exercise_text",
      "type": "text",
      "rect": [
-      0.414108,
-      0.578319,
-      0.234439,
-      0.016742
+      0.421449,
+      0.577725,
+      0.218861,
+      0.014189
      ],
      "options": null,
      "charset": "",
@@ -2595,10 +2483,10 @@
      "field": "caution_other_text",
      "type": "text",
      "rect": [
-      0.690872,
-      0.570611,
-      0.054351,
-      0.018044
+      0.695672,
+      0.577725,
+      0.29117,
+      0.014189
      ],
      "options": null,
      "charset": "",
@@ -2609,10 +2497,10 @@
      "field": "infection_detail",
      "type": "text",
      "rect": [
-      0.41614,
-      0.609935,
-      0.276656,
-      0.017279
+      0.309459,
+      0.610372,
+      0.426491,
+      0.011075
      ],
      "options": null,
      "charset": "",
@@ -2623,10 +2511,10 @@
      "field": "special_notes",
      "type": "textarea",
      "rect": [
-      0.338226,
-      0.688182,
-      0.479083,
-      0.109592
+      0.138863,
+      0.672391,
+      0.77816,
+      0.076047
      ],
      "options": null,
      "charset": "",

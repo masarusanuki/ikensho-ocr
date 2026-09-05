@@ -148,48 +148,143 @@ def master_row_shape(page_index):
     return [len(r) for r in rows]
 
 
-class ThinPlateSpline:
-    """薄板スプライン変換（対応点から滑らかな座標写像を作る）。
+class RowLocalMap:
+    """様式間で座標を写す変換。
 
-    OpenCV の shape モジュールに依存しないよう自前で実装している。
+    意見書のような表組みでは、別様式でも「行の順序」「行内の列の順序」が保たれる一方、
+    列の位置は行ごとに違う。そこで
+      - y 方向: 全体を単調増加の折れ線で写す（行の順序が崩れない）
+      - x 方向: 近い行の対応点だけを使って局所的に直線で写す
+    という二段構えにする。薄板スプラインのような自由変形は対応点が疎な
+    ヘッダ部で破綻するため使わない。
     """
 
-    def __init__(self, src, dst, smooth=0.0):
-        src = np.asarray(src, dtype=float)
-        dst = np.asarray(dst, dtype=float)
-        n = len(src)
-        K = self._kernel(self._dist(src, src))
-        if smooth:
-            K = K + np.eye(n) * smooth
-        P = np.hstack([np.ones((n, 1)), src])
-        L = np.zeros((n + 3, n + 3))
-        L[:n, :n] = K
-        L[:n, n:] = P
-        L[n:, :n] = P.T
-        Y = np.vstack([dst, np.zeros((3, 2))])
-        self.W = np.linalg.solve(L, Y)
-        self.src = src
+    def __init__(self, src, dst, y_window=70.0, min_pts=8):
+        self.src = np.asarray(src, dtype=float)
+        self.dst = np.asarray(dst, dtype=float)
+        self.y_window = y_window
+        self.min_pts = min_pts
+        self.knots_y, self.vals_y = self._fit_monotone(self.src[:, 1], self.dst[:, 1])
 
     @staticmethod
-    def _dist(a, b):
-        return np.sqrt(((a[:, None, :] - b[None, :, :]) ** 2).sum(-1))
+    def _fit_monotone(sv, dv, nbins=28):
+        order = np.argsort(sv)
+        sv, dv = sv[order], dv[order]
+        edges = np.linspace(sv[0], sv[-1], min(nbins, max(2, len(sv) // 2)) + 1)
+        xs, ys = [], []
+        for i in range(len(edges) - 1):
+            last = (i == len(edges) - 2)
+            m = (sv >= edges[i]) & ((sv <= edges[i + 1]) if last else (sv < edges[i + 1]))
+            if not m.any():
+                continue
+            xs.append(float(np.median(sv[m])))
+            ys.append(float(np.median(dv[m])))
+        if len(xs) < 2:
+            xs, ys = list(sv[:2]), list(dv[:2])
+        for i in range(1, len(ys)):
+            ys[i] = max(ys[i], ys[i - 1] + 1e-6)
+        return np.array(xs), np.array(ys)
 
-    @staticmethod
-    def _kernel(r):
-        with np.errstate(divide="ignore", invalid="ignore"):
-            k = (r ** 2) * np.log(r ** 2)
-        return np.nan_to_num(k)
+    def _map_y(self, y):
+        k, v = self.knots_y, self.vals_y
+        out = np.interp(y, k, v)
+        lo = (v[1] - v[0]) / max(k[1] - k[0], 1e-6)
+        hi = (v[-1] - v[-2]) / max(k[-1] - k[-2], 1e-6)
+        out = np.where(y < k[0], v[0] + (y - k[0]) * lo, out)
+        out = np.where(y > k[-1], v[-1] + (y - k[-1]) * hi, out)
+        return out
+
+    def _map_x(self, x, y):
+        """y の近くにある対応点だけで x の直線写像を作る。"""
+        out = np.empty_like(x)
+        for i in range(len(x)):
+            win = self.y_window
+            for _ in range(6):
+                m = np.abs(self.src[:, 1] - y[i]) <= win
+                if m.sum() >= self.min_pts and len(np.unique(self.src[m, 0])) >= 3:
+                    break
+                win *= 1.8
+            else:
+                m = np.ones(len(self.src), dtype=bool)
+            sx, dx = self.src[m, 0], self.dst[m, 0]
+            if len(np.unique(sx)) < 2:
+                out[i] = x[i]
+                continue
+            a, b = np.polyfit(sx, dx, 1)
+            out[i] = a * x[i] + b
+        return out
 
     def __call__(self, pts):
         pts = np.asarray(pts, dtype=float)
-        K = self._kernel(self._dist(pts, self.src))
-        P = np.hstack([np.ones((len(pts), 1)), pts])
-        return np.hstack([K, P]) @ self.W
+        y = self._map_y(pts[:, 1])
+        x = self._map_x(pts[:, 0], pts[:, 1])
+        return np.stack([x, y], axis=1)
 
 
-def transfer_texts(page_index, dst_boxes, dst_shape):
-    """マスターのテキスト欄を、チェックボックスの対応点による
-    薄板スプライン変換で別様式へ転写する。"""
+def _normalize_label(t):
+    import unicodedata
+    return "".join(unicodedata.normalize("NFKC", t or "").split())
+
+
+def master_labels(page_index):
+    """マスターPDFから、印刷されているラベルの語と位置を取り出す（正確）。"""
+    import pdfplumber
+    out = {}
+    with pdfplumber.open(os.path.join(ROOT, "master", "主医師意見書.pdf")) as pdf:
+        page = pdf.pages[page_index - 1]
+        sx = page.width, page.height
+        for w in page.extract_words(x_tolerance=1.5, y_tolerance=2):
+            key = _normalize_label(w["text"]).replace("□", "")
+            if len(key) < 2:
+                continue
+            out.setdefault(key, []).append(
+                ((w["x0"] + w["x1"]) / 2, (w["top"] + w["bottom"]) / 2))
+    # 同じ語が複数ある場合は対応が定まらないので使わない
+    return {k: v[0] for k, v in out.items() if len(v) == 1}, sx
+
+
+def blank_labels(blank):
+    """白紙様式をOCRして、印刷されているラベルの語と位置を取り出す。"""
+    try:
+        from rapidocr_onnxruntime import RapidOCR
+    except Exception:
+        return {}
+    try:
+        res, _ = RapidOCR()(cv2.cvtColor(blank, cv2.COLOR_GRAY2BGR))
+    except Exception:
+        return {}
+    out = {}
+    for box, text, conf in (res or []):
+        if conf < 0.6:
+            continue
+        key = _normalize_label(text).replace("□", "")
+        if len(key) < 2:
+            continue
+        xs = [p[0] for p in box]
+        ys = [p[1] for p in box]
+        out.setdefault(key, []).append((sum(xs) / 4, sum(ys) / 4))
+    return {k: v[0] for k, v in out.items() if len(v) == 1}
+
+
+def label_anchors(page_index, blank):
+    """マスターと新様式で同じラベルの位置を突き合わせ、追加の対応点にする。
+
+    チェックボックスが少ないヘッダ部（氏名・医療機関名など）は
+    これを入れないとテキスト欄の転写精度が出ない。
+    """
+    mlab, (mW, mH) = master_labels(page_index)
+    blab = blank_labels(blank)
+    src, dst = [], []
+    for key, (mx, my) in mlab.items():
+        if key in blab:
+            src.append([mx, my])
+            dst.append(list(blab[key]))
+    return src, dst, mW, mH
+
+
+def transfer_texts(page_index, dst_boxes, dst_shape, blank=None):
+    """マスターのテキスト欄を、チェックボックスとラベルの対応点による
+単調な分離型写像で別様式へ転写する。"""
     path = os.path.join(ROOT, "templates", "official_v1.json")
     tpl = json.load(open(path, encoding="utf-8"))
     mpage = next(p for p in tpl["pages"] if p["index"] == page_index)
@@ -205,24 +300,42 @@ def transfer_texts(page_index, dst_boxes, dst_shape):
         src_pts.append([(r[0] + r[2] / 2) * mW, (r[1] + r[3] / 2) * mH])
         dst_pts.append([(b["rect"][0] + b["rect"][2] / 2) * dW,
                         (b["rect"][1] + b["rect"][3] / 2) * dH])
+    n_box = len(src_pts)
+    n_label = 0
+    if blank is not None:
+        lsrc, ldst, _, _ = label_anchors(page_index, blank)
+        # 同じ位置に重ならないものだけ採用する
+        for s_, d_ in zip(lsrc, ldst):
+            if all(abs(s_[0] - p[0]) > 4 or abs(s_[1] - p[1]) > 4 for p in src_pts):
+                src_pts.append(s_)
+                dst_pts.append(d_)
+                n_label += 1
     if len(src_pts) < 8:
         return []
+    print(f"    対応点: チェックボックス {n_box} 個 + ラベル {n_label} 個")
 
-    tps = ThinPlateSpline(src_pts, dst_pts, smooth=1.0)
+    tps = RowLocalMap(src_pts, dst_pts)
+    def clamp(v, lo=0.0, hi=1.0):
+        return max(lo, min(hi, v))
+
     texts = []
     for t in mpage["texts"]:
         x, y, w, h = t["rect"]
         corners = [[x * mW, y * mH], [(x + w) * mW, y * mH],
                    [(x + w) * mW, (y + h) * mH], [x * mW, (y + h) * mH]]
         moved = tps(corners)
-        nx0, ny0 = moved[:, 0].min(), moved[:, 1].min()
-        nx1, ny1 = moved[:, 0].max(), moved[:, 1].max()
+        x0n = clamp(float(moved[:, 0].min() / dW))
+        y0n = clamp(float(moved[:, 1].min() / dH))
+        x1n = clamp(float(moved[:, 0].max() / dW))
+        y1n = clamp(float(moved[:, 1].max() / dH))
+        if x1n - x0n < 0.005 or y1n - y0n < 0.003:
+            continue        # 潰れた矩形は転写できていないので出さない
         texts.append(dict(field=t["field"], type=t["type"],
-                          rect=[round(float(nx0 / dW), 6), round(float(ny0 / dH), 6),
-                                round(float((nx1 - nx0) / dW), 6),
-                                round(float((ny1 - ny0) / dH), 6)],
+                          rect=[round(x0n, 6), round(y0n, 6),
+                                round(x1n - x0n, 6), round(y1n - y0n, 6)],
                           options=t.get("options"),
                           charset=t.get("charset", ""), pii=t.get("pii", ""),
+                          # 別様式から機械的に写した暫定位置。管理画面で調整する前提。
                           transferred=True))
     return texts
 
@@ -280,7 +393,7 @@ def main():
             page_boxes.append(dict(field=fid, opt=oi,
                                    rect=[round(x / W, 6), round(y / H, 6),
                                          round(w / W, 6), round(h / H, 6)]))
-        texts = transfer_texts(pi, page_boxes, (H, W))
+        texts = transfer_texts(pi, page_boxes, (H, W), blank)
         print(f"  page{pi}: テキスト欄 {len(texts)} 個をマスターから転写")
 
         ref_name = f"{args.id}_p{pi}.png"
