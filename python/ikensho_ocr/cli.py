@@ -65,7 +65,8 @@ def cmd_extract(args):
         names = "、".join(os.path.basename(p) for p in g)
         print(f"  [{i}/{len(groups)}] {names}", file=sys.stderr)
         rec = extract_record(g, schema=schema, templates=templates,
-                             engine=args.engine, dpi=args.dpi)
+                             engine=args.engine, dpi=args.dpi,
+                             anonymized=args.anonymized)
         for w in rec.warnings:
             print(f"      ! {w}", file=sys.stderr)
         records.append(rec)
@@ -121,6 +122,8 @@ def build_parser():
     e.add_argument("--engine", default="auto",
                    help="OCRエンジン (auto/tesseract/rapidocr/none)")
     e.add_argument("--dpi", type=int, default=200)
+    e.add_argument("--anonymized", action="store_true",
+                   help="匿名化加工済みデータとして扱う（住所・連絡先をマスク済みにする）")
     e.add_argument("--group", choices=["pair", "file", "all"], default="pair",
                    help="1件のまとめ方: pair=PDF1件/画像2枚1件, file=1ファイル1件, all=全部で1件")
     e.set_defaults(func=cmd_extract)

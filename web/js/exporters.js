@@ -34,7 +34,8 @@
       meta[id] = {
         label: e.label, type: e.type, section: e.section, page: e.page,
         confidence: e.confidence, level: e.level,
-        edited: !!e.edited, raw: e.raw === undefined ? null : e.raw,
+        edited: !!e.edited, anonymized: !!e.anonymized,
+        raw: e.raw === undefined ? null : e.raw,
       };
     }
     return {
@@ -42,6 +43,7 @@
       form_name: schema.formName,
       template_id: rec.templateId,
       ocr_engine: rec.ocrEngine || 'none',
+      anonymized: !!rec.anonymized,
       read_at: rec.readAt,
       sources: rec.pages.map(p => ({
         source: p.source, source_page: p.sourcePage,
@@ -74,12 +76,12 @@
    * Excel で開けるよう BOM 付き UTF-8 にする。
    */
   function exportCsv(records, schema, filename) {
-    const head = ['record_no', 'template_id', 'read_at', 'sources', 'warnings'];
+    const head = ['record_no', 'template_id', 'read_at', 'anonymized', 'sources', 'warnings'];
     for (const id of schema.order) {
       const f = schema.byId[id];
       head.push(`${id}`, `${id}__confidence`);
     }
-    const labelRow = ['#', '様式', '読取日時', '元ファイル', '警告'];
+    const labelRow = ['#', '様式', '読取日時', '匿名化', '元ファイル', '警告'];
     for (const id of schema.order) {
       labelRow.push(schema.byId[id].label, '確信度');
     }
@@ -87,6 +89,7 @@
     records.forEach((rec, i) => {
       const row = [
         i + 1, rec.templateId || '', rec.readAt || '',
+        rec.anonymized ? 'はい' : 'いいえ',
         [...new Set(rec.pages.map(p => p.source))].join('；'),
         (rec.warnings || []).join('；'),
       ];
@@ -111,13 +114,14 @@
         fields[id] = {
           value: (r.values || {})[id] === undefined ? null : r.values[id],
           confidence: m.confidence || 0, level: m.level || 'low',
-          edited: !!m.edited, raw: m.raw || '',
+          edited: !!m.edited, anonymized: !!m.anonymized, raw: m.raw || '',
           label: f.label, type: f.type, section: f.sectionTitle, page: f.page,
           options: f.options,
         };
       }
       out.push({
         fields, templateId: r.template_id, ocrEngine: r.ocr_engine,
+        anonymized: !!r.anonymized,
         readAt: r.read_at, warnings: r.warnings || [], images: {},
         pages: (r.sources || []).map(s => ({
           source: s.source, sourcePage: s.source_page, pageIndex: s.page_index,

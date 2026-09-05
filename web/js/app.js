@@ -137,6 +137,7 @@
 
         for (let gi = 0; gi < groups.length; gi++) {
           const rec = await this.pipeline.process(groups[gi], {
+            anonymized: document.getElementById('opt-anon').checked,
             onProgress: p => {
               const base = gi / groups.length * 100;
               const step = (p.total ? p.current / p.total : 0) / groups.length * 100;

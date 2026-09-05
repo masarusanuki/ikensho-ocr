@@ -776,6 +776,7 @@
      ],
      "options": null,
      "charset": "wareki",
+     "pii": "",
      "transferred": true
     },
     {
@@ -789,6 +790,7 @@
      ],
      "options": null,
      "charset": "kana",
+     "pii": "name",
      "transferred": true
     },
     {
@@ -802,6 +804,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "name",
      "transferred": true
     },
     {
@@ -818,6 +821,7 @@
       "女"
      ],
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -835,6 +839,7 @@
       "昭"
      ],
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -848,6 +853,7 @@
      ],
      "options": null,
      "charset": "wareki",
+     "pii": "",
      "transferred": true
     },
     {
@@ -861,6 +867,7 @@
      ],
      "options": null,
      "charset": "digits",
+     "pii": "",
      "transferred": true
     },
     {
@@ -874,6 +881,7 @@
      ],
      "options": null,
      "charset": "postal",
+     "pii": "mask",
      "transferred": true
     },
     {
@@ -887,6 +895,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "mask",
      "transferred": true
     },
     {
@@ -900,6 +909,7 @@
      ],
      "options": null,
      "charset": "phone",
+     "pii": "mask",
      "transferred": true
     },
     {
@@ -913,6 +923,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "name",
      "transferred": true
     },
     {
@@ -926,6 +937,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "mask",
      "transferred": true
     },
     {
@@ -939,6 +951,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "mask",
      "transferred": true
     },
     {
@@ -952,6 +965,7 @@
      ],
      "options": null,
      "charset": "phone",
+     "pii": "mask",
      "transferred": true
     },
     {
@@ -965,6 +979,7 @@
      ],
      "options": null,
      "charset": "phone",
+     "pii": "mask",
      "transferred": true
     },
     {
@@ -978,6 +993,7 @@
      ],
      "options": null,
      "charset": "wareki",
+     "pii": "",
      "transferred": true
     },
     {
@@ -991,6 +1007,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -1004,6 +1021,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -1021,6 +1039,7 @@
       "令和"
      ],
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -1034,6 +1053,7 @@
      ],
      "options": null,
      "charset": "wareki",
+     "pii": "",
      "transferred": true
     },
     {
@@ -1047,6 +1067,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -1064,6 +1085,7 @@
       "令和"
      ],
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -1077,6 +1099,7 @@
      ],
      "options": null,
      "charset": "wareki",
+     "pii": "",
      "transferred": true
     },
     {
@@ -1090,6 +1113,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -1107,6 +1131,7 @@
       "令和"
      ],
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -1120,6 +1145,7 @@
      ],
      "options": null,
      "charset": "wareki",
+     "pii": "",
      "transferred": true
     },
     {
@@ -1133,6 +1159,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -1146,6 +1173,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -1159,6 +1187,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     }
    ]
@@ -2293,6 +2322,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2306,6 +2336,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2319,6 +2350,7 @@
      ],
      "options": null,
      "charset": "decimal",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2332,6 +2364,7 @@
      ],
      "options": null,
      "charset": "decimal",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2345,6 +2378,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2358,6 +2392,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2371,6 +2406,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2384,6 +2420,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2397,6 +2434,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2410,6 +2448,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2423,6 +2462,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2436,6 +2476,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2449,6 +2490,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2462,6 +2504,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2475,6 +2518,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2488,6 +2532,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2501,6 +2546,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2514,6 +2560,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2527,6 +2574,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2540,6 +2588,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2553,6 +2602,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2566,6 +2616,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     },
     {
@@ -2579,6 +2630,7 @@
      ],
      "options": null,
      "charset": "",
+     "pii": "",
      "transferred": true
     }
    ]

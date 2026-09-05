@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from . import align, checkbox, imaging, ocr as ocr_mod
+from . import align, anonymize, checkbox, imaging, ocr as ocr_mod
 from .dictionaries import Dictionaries, DEFAULT_DICTIONARIES
 from .schema import Schema, load_schema
 from .templates import Template, load_templates
@@ -43,11 +43,13 @@ class Record:
     template_id: Optional[str] = None
     warnings: List[str] = dc_field(default_factory=list)
     ocr_engine: str = "none"
+    anonymized: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return dict(
             template_id=self.template_id,
             ocr_engine=self.ocr_engine,
+            anonymized=self.anonymized,
             pages=[vars(p) for p in self.pages],
             warnings=self.warnings,
             fields=self.fields,
@@ -106,7 +108,8 @@ def extract_record(paths: List[str],
                    engine: str = "auto",
                    dictionaries: Optional[Dictionaries] = None,
                    dpi: int = imaging.DEFAULT_DPI,
-                   keep_pages: bool = False) -> Record:
+                   keep_pages: bool = False,
+                   anonymized: bool = False) -> Record:
     """複数の入力ファイルから1件のレコードを読み取る。
 
     PDF は複数ページ、画像・カメラ撮影は1ページずつ渡されることを想定し、
@@ -204,6 +207,13 @@ def extract_record(paths: List[str],
         if f.options:
             entry["options"] = f.options
         rec.fields[f.id] = entry
+
+    # 匿名化加工済みデータの扱い（氏名欄が白抜きなら「匿名化済み」）
+    if anonymized or anonymize.looks_anonymized(rec.fields, schema):
+        anonymize.apply(rec.fields, schema, force=anonymized)
+        rec.anonymized = True   # type: ignore[attr-defined]
+        if anonymized:
+            rec.warnings.append("匿名化加工済みデータとして処理しました（住所・連絡先はマスク済み）")
 
     if keep_pages:
         rec.warped_pages = warped_pages    # type: ignore[attr-defined]

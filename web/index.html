@@ -53,6 +53,10 @@
         <input type="checkbox" id="opt-split" checked>
         1ページ目が現れるたびに新しい1件として区切る
       </label>
+      <label class="row" style="gap:6px" title="氏名は「匿名化済み」、住所・連絡先は「マスク済み」として取り込みます">
+        <input type="checkbox" id="opt-anon">
+        匿名化加工済みデータ（研究用）
+      </label>
       <span class="spacer"></span>
       <button class="btn" id="btn-clear">クリア</button>
       <button class="btn primary" id="btn-run" disabled>読み取りを開始</button>
@@ -82,11 +86,13 @@
         <span class="conf medium"><span class="dot"></span>中（要確認）</span>
         <span class="conf low"><span class="dot"></span>低（要入力）</span>
         <span class="conf edited"><span class="dot"></span>手動修正済み</span>
+        <span class="conf anon"><span class="dot"></span>匿名化</span>
       </span>
       <span class="spacer"></span>
       <label class="row" style="gap:6px;font-size:12.5px">
         <input type="checkbox" id="only-low"> 要確認のみ表示
       </label>
+      <button class="btn sm" id="btn-anon">匿名化加工済みデータ</button>
       <button class="btn sm" id="btn-prev-low">前の要確認</button>
       <button class="btn sm" id="btn-next-low">次の要確認 ▶</button>
     </div>
@@ -227,6 +233,7 @@
 </script>
 <script src="js/engine.js"></script>
 <script src="js/dicts.js"></script>
+<script src="js/anonymize.js"></script>
 <script src="js/pipeline.js"></script>
 <script src="js/exporters.js"></script>
 <script src="js/review.js"></script>

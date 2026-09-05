@@ -19,13 +19,15 @@
      "label": "申請者ふりがな",
      "type": "text",
      "page": 1,
+     "pii": "name",
      "charset": "kana"
     },
     {
      "id": "applicant_name",
      "label": "申請者氏名",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "pii": "name"
     },
     {
      "id": "applicant_sex",
@@ -68,19 +70,22 @@
      "label": "郵便番号",
      "type": "text",
      "page": 1,
+     "pii": "mask",
      "charset": "postal"
     },
     {
      "id": "applicant_address",
      "label": "住所",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "pii": "mask"
     },
     {
      "id": "applicant_phone",
      "label": "連絡先",
      "type": "text",
      "page": 1,
+     "pii": "mask",
      "charset": "phone"
     },
     {
@@ -97,25 +102,29 @@
      "id": "doctor_name",
      "label": "医師氏名",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "pii": "name"
     },
     {
      "id": "clinic_name",
      "label": "医療機関名",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "pii": "mask"
     },
     {
      "id": "clinic_address",
      "label": "医療機関所在地",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "pii": "mask"
     },
     {
      "id": "clinic_phone",
      "label": "電話",
      "type": "text",
      "page": 1,
+     "pii": "mask",
      "charset": "phone"
     },
     {
@@ -123,6 +132,7 @@
      "label": "FAX",
      "type": "text",
      "page": 1,
+     "pii": "mask",
      "charset": "phone"
     },
     {

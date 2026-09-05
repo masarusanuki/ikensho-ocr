@@ -774,7 +774,8 @@
       0.019004
      ],
      "options": null,
-     "charset": "wareki"
+     "charset": "wareki",
+     "pii": ""
     },
     {
      "field": "applicant_furigana",
@@ -786,7 +787,8 @@
       0.017816
      ],
      "options": null,
-     "charset": "kana"
+     "charset": "kana",
+     "pii": "name"
     },
     {
      "field": "applicant_name",
@@ -798,7 +800,8 @@
       0.028506
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": "name"
     },
     {
      "field": "applicant_sex",
@@ -813,7 +816,8 @@
       "男",
       "女"
      ],
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "birth_era",
@@ -829,7 +833,8 @@
       "大",
       "昭"
      ],
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "birth_date",
@@ -841,7 +846,8 @@
       0.017816
      ],
      "options": null,
-     "charset": "wareki"
+     "charset": "wareki",
+     "pii": ""
     },
     {
      "field": "age",
@@ -853,7 +859,8 @@
       0.017816
      ],
      "options": null,
-     "charset": "digits"
+     "charset": "digits",
+     "pii": ""
     },
     {
      "field": "postal_code",
@@ -865,7 +872,8 @@
       0.017816
      ],
      "options": null,
-     "charset": "postal"
+     "charset": "postal",
+     "pii": "mask"
     },
     {
      "field": "applicant_address",
@@ -877,7 +885,8 @@
       0.028506
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": "mask"
     },
     {
      "field": "applicant_phone",
@@ -889,7 +898,8 @@
       0.019004
      ],
      "options": null,
-     "charset": "phone"
+     "charset": "phone",
+     "pii": "mask"
     },
     {
      "field": "doctor_name",
@@ -901,7 +911,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": "name"
     },
     {
      "field": "clinic_name",
@@ -913,7 +924,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": "mask"
     },
     {
      "field": "clinic_address",
@@ -925,7 +937,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": "mask"
     },
     {
      "field": "clinic_phone",
@@ -937,7 +950,8 @@
       0.017816
      ],
      "options": null,
-     "charset": "phone"
+     "charset": "phone",
+     "pii": "mask"
     },
     {
      "field": "clinic_fax",
@@ -949,7 +963,8 @@
       0.017816
      ],
      "options": null,
-     "charset": "phone"
+     "charset": "phone",
+     "pii": "mask"
     },
     {
      "field": "last_exam_date",
@@ -961,7 +976,8 @@
       0.019004
      ],
      "options": null,
-     "charset": "wareki"
+     "charset": "wareki",
+     "pii": ""
     },
     {
      "field": "other_dept_other_text",
@@ -973,7 +989,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "diagnosis1_name",
@@ -985,7 +1002,8 @@
       0.020192
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "diagnosis1_era",
@@ -1001,7 +1019,8 @@
       "平成",
       "令和"
      ],
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "diagnosis1_date",
@@ -1013,7 +1032,8 @@
       0.020192
      ],
      "options": null,
-     "charset": "wareki"
+     "charset": "wareki",
+     "pii": ""
     },
     {
      "field": "diagnosis2_name",
@@ -1025,7 +1045,8 @@
       0.020192
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "diagnosis2_era",
@@ -1041,7 +1062,8 @@
       "平成",
       "令和"
      ],
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "diagnosis2_date",
@@ -1053,7 +1075,8 @@
       0.020192
      ],
      "options": null,
-     "charset": "wareki"
+     "charset": "wareki",
+     "pii": ""
     },
     {
      "field": "diagnosis3_name",
@@ -1065,7 +1088,8 @@
       0.020192
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "diagnosis3_era",
@@ -1081,7 +1105,8 @@
       "平成",
       "令和"
      ],
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "diagnosis3_date",
@@ -1093,7 +1118,8 @@
       0.020192
      ],
      "options": null,
-     "charset": "wareki"
+     "charset": "wareki",
+     "pii": ""
     },
     {
      "field": "stability_detail",
@@ -1105,7 +1131,8 @@
       0.019004
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "treatment_course",
@@ -1117,7 +1144,8 @@
       0.13778
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "bpsd_other_text",
@@ -1129,7 +1157,8 @@
       0.019004
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     }
    ]
   },
@@ -2262,7 +2291,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "specialist_consult_detail",
@@ -2274,7 +2304,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "height_cm",
@@ -2286,7 +2317,8 @@
       0.019004
      ],
      "options": null,
-     "charset": "decimal"
+     "charset": "decimal",
+     "pii": ""
     },
     {
      "field": "weight_kg",
@@ -2298,7 +2330,8 @@
       0.019004
      ],
      "options": null,
-     "charset": "decimal"
+     "charset": "decimal",
+     "pii": ""
     },
     {
      "field": "limb_defect_site",
@@ -2310,7 +2343,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "paralysis_other_site",
@@ -2322,7 +2356,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "muscle_weakness_site",
@@ -2334,7 +2369,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "joint_contracture_site",
@@ -2346,7 +2382,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "joint_pain_site",
@@ -2358,7 +2395,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "pressure_ulcer_site",
@@ -2370,7 +2408,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "other_skin_disease_site",
@@ -2382,7 +2421,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "nutrition_note",
@@ -2394,7 +2434,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "risk_other_text",
@@ -2406,7 +2447,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "risk_policy",
@@ -2418,7 +2460,8 @@
       0.019004
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "medical_management_other_text",
@@ -2430,7 +2473,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "caution_bp_text",
@@ -2442,7 +2486,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "caution_eating_text",
@@ -2454,7 +2499,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "caution_swallow_text",
@@ -2466,7 +2512,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "caution_move_text",
@@ -2478,7 +2525,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "caution_exercise_text",
@@ -2490,7 +2538,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "caution_other_text",
@@ -2502,7 +2551,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "infection_detail",
@@ -2514,7 +2564,8 @@
       0.017816
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     },
     {
      "field": "special_notes",
@@ -2526,7 +2577,8 @@
       0.122339
      ],
      "options": null,
-     "charset": ""
+     "charset": "",
+     "pii": ""
     }
    ]
   }

@@ -35,6 +35,7 @@ def record_to_json(rec, schema: Schema) -> Dict[str, Any]:
         form_name=schema.form_name,
         template_id=rec.template_id,
         ocr_engine=rec.ocr_engine,
+        anonymized=getattr(rec, "anonymized", False),
         read_at=datetime.datetime.now().astimezone().isoformat(),
         sources=[dict(source=p.source, source_page=p.source_page,
                       page_index=p.page_index, matched=p.matched,
@@ -58,8 +59,8 @@ def write_json(records: List[Any], schema: Schema, path: str) -> None:
 def csv_text(records: List[Any], schema: Schema) -> str:
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator="\r\n")
-    head = ["record_no", "template_id", "read_at", "sources", "warnings"]
-    labels = ["#", "様式", "読取日時", "元ファイル", "警告"]
+    head = ["record_no", "template_id", "read_at", "anonymized", "sources", "warnings"]
+    labels = ["#", "様式", "読取日時", "匿名化", "元ファイル", "警告"]
     for f in schema:
         head += [f.id, f"{f.id}__confidence"]
         labels += [f.label, "確信度"]
@@ -68,7 +69,9 @@ def csv_text(records: List[Any], schema: Schema) -> str:
     now = datetime.datetime.now().astimezone().isoformat()
     for i, rec in enumerate(records, 1):
         srcs = "；".join(dict.fromkeys(p.source for p in rec.pages))
-        row = [i, rec.template_id or "", now, srcs, "；".join(rec.warnings)]
+        row = [i, rec.template_id or "", now,
+               "はい" if getattr(rec, "anonymized", False) else "いいえ",
+               srcs, "；".join(rec.warnings)]
         for f in schema:
             e = rec.fields.get(f.id) or {}
             row += [_flat(e.get("value")), e.get("confidence", "")]

@@ -59,8 +59,8 @@ def main():
     html = read(os.path.join(WEB, "index.html"))
     css = read(os.path.join(WEB, "style.css"))
     app_js = "\n".join(read(os.path.join(WEB, "js", n)) for n in
-                       ("engine.js", "dicts.js", "pipeline.js", "exporters.js",
-                        "review.js", "admin.js", "app.js"))
+                       ("engine.js", "dicts.js", "anonymize.js", "pipeline.js",
+                        "exporters.js", "review.js", "admin.js", "app.js"))
     opencv = read(os.path.join(WEB, "vendor", "opencv.js"))
     tesseract = read(os.path.join(WEB, "vendor", "tesseract.min.js"))
     pdfjs = read(os.path.join(WEB, "vendor", "pdf.min.mjs"))

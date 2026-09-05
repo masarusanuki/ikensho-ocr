@@ -222,7 +222,8 @@ def transfer_texts(page_index, dst_boxes, dst_shape):
                                 round(float((nx1 - nx0) / dW), 6),
                                 round(float((ny1 - ny0) / dH), 6)],
                           options=t.get("options"),
-                          charset=t.get("charset", ""), transferred=True))
+                          charset=t.get("charset", ""), pii=t.get("pii", ""),
+                          transferred=True))
     return texts
 
 

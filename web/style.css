@@ -15,6 +15,8 @@
   --low-bg: #fdeceb;
   --edited: #5b21b6;
   --edited-bg: #f1e9fd;
+  --anon: #0f5f6e;
+  --anon-bg: #e2f2f5;
   --shadow: 0 1px 3px rgba(16, 24, 40, .08), 0 1px 2px rgba(16, 24, 40, .06);
 }
 
@@ -93,6 +95,7 @@ progress { width: 100%; height: 8px; }
 .conf.medium { background: var(--medium-bg); color: var(--medium); }
 .conf.low    { background: var(--low-bg);    color: var(--low); }
 .conf.edited { background: var(--edited-bg); color: var(--edited); }
+.conf.anon   { background: var(--anon-bg);   color: var(--anon); }
 .conf .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
 .legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
@@ -133,6 +136,7 @@ progress { width: 100%; height: 8px; }
 .field.lv-medium { border-left-color: var(--medium); }
 .field.lv-low    { border-left-color: var(--low); }
 .field.lv-edited { border-left-color: var(--edited); }
+.field.lv-anon   { border-left-color: var(--anon); }
 .field .head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .field .lbl { font-weight: 600; font-size: 12.5px; flex: 1; }
 .field .raw { font-size: 11.5px; color: var(--muted); margin-top: 3px; }

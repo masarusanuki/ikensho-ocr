@@ -5,7 +5,7 @@
 (function (global) {
   'use strict';
 
-  const LEVEL_LABEL = { high: '高', medium: '中', low: '低', edited: '修正' };
+  const LEVEL_LABEL = { high: '高', medium: '中', low: '低', edited: '修正', anon: '匿名化' };
 
   class Review {
     constructor(app) {
@@ -31,6 +31,7 @@
         this.onlyLow = e.target.checked;
         this.renderFields();
       });
+      document.getElementById('btn-anon').addEventListener('click', () => this.toggleAnonymize());
       document.getElementById('btn-next-low').addEventListener('click', () => this.jumpLow(1));
       document.getElementById('btn-prev-low').addEventListener('click', () => this.jumpLow(-1));
     }
@@ -46,6 +47,7 @@
       this.showPage(first);
       this.renderWarnings();
       this.renderFields();
+      this.updateAnonButton();
     }
 
     showPage(n) {
@@ -64,6 +66,29 @@
       this.warnEl.innerHTML =
         `<div class="warnbox"><strong>確認してください</strong><ul>${
           w.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    }
+
+    /** 「匿名化加工済みデータ」ボタン。氏名は匿名化済み、住所などはマスク済みにする。 */
+    toggleAnonymize() {
+      if (!this.record) return;
+      const A = global.IkenshoAnonymize;
+      if (this.record.anonymized) {
+        if (!confirm('匿名化の表示を解除します。元の読み取り値は復元できません。よろしいですか？')) return;
+        A.clear(this.record, this.app.schema);
+      } else {
+        const n = A.apply(this.record, this.app.schema, true);
+        this.app.toast(`${n} 項目を匿名化加工済みデータとして扱います`);
+      }
+      this.app.touch();
+      this.renderFields();
+      this.updateAnonButton();
+    }
+
+    updateAnonButton() {
+      const b = document.getElementById('btn-anon');
+      const on = !!(this.record && this.record.anonymized);
+      b.textContent = on ? '匿名化を解除' : '匿名化加工済みデータ';
+      b.classList.toggle('primary', on);
     }
 
     stats() {
@@ -117,22 +142,25 @@
     }
 
     needsCheck(e) {
+      if (e.anonymized) return false;
       return !e.edited && (e.level === 'low' || e.level === 'medium');
     }
 
     // ------------------------------------------------------- 1項目の描画
     fieldRow(f, e) {
       const el = document.createElement('div');
-      const level = e.edited ? 'edited' : e.level;
+      const level = e.anonymized ? 'anon' : (e.edited ? 'edited' : e.level);
       el.className = `field lv-${level}`;
       el.dataset.field = f.id;
 
       const head = document.createElement('div');
       head.className = 'head';
-      head.innerHTML =
-        `<span class="lbl">${esc(f.label)}</span>
-         <span class="conf ${level}"><span class="dot"></span>${LEVEL_LABEL[level]} ${
-           (e.confidence * 100).toFixed(0)}%</span>`;
+      head.innerHTML = e.anonymized
+        ? `<span class="lbl">${esc(f.label)}</span>
+           <span class="conf anon"><span class="dot"></span>匿名化</span>`
+        : `<span class="lbl">${esc(f.label)}</span>
+           <span class="conf ${level}"><span class="dot"></span>${LEVEL_LABEL[level]} ${
+             (e.confidence * 100).toFixed(0)}%</span>`;
       el.appendChild(head);
 
       el.appendChild(this.control(f, e, el));
