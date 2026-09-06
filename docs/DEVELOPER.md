@@ -117,6 +117,13 @@ python3 tools/preview_on_ref.py sample_v1 /tmp/sv1
 # ブラウザ版を実際に動かして確認（スクリーンショットも出る）
 python3 tools/test_web.py --files sample/ikensho_0068.pdf --shots docs/screenshots
 
+# 概要スライド（PPTX）を作り直す
+python3 tools/build_pptx.py
+
+# 医療機関一覧を厚生労働省から取り直す（47都道府県 / 20分ほど）
+python3 tools/fetch_hospitals.py
+python3 tools/fetch_hospitals.py --bureaus kinki kyushu    # 局を絞る
+
 # 作業ログ（WORKLOG.md）を git の履歴から作り直す
 python3 tools/build_worklog.py
 python3 tools/build_worklog.py --check     # 最新かどうかだけ調べる（要更新なら終了コード1）

@@ -8,6 +8,8 @@ import argparse
 import html
 import os
 import re
+import shutil
+import urllib.parse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -17,6 +19,12 @@ DOCS = [
     ("developer.html", "docs/DEVELOPER.md",  "技術者向け",   "構成、全コマンド、新しい様式の追加手順"),
     ("devnotes.html",  "DEVNOTES.md",        "開発メモ",     "設計の経緯、試して駄目だった方法、既知の限界"),
     ("install.html",   "docs/INSTALL.md",    "インストール", "Rocky / Ubuntu / macOS / Windows / Docker"),
+]
+
+# Markdown ではないが、メニューに並べて配布したいファイル
+EXTRA = [
+    ("主治医意見書読み取り_概要.pptx", "docs/主治医意見書読み取り_概要.pptx",
+     "概要スライド", "PowerPoint。構成・ベンチマーク・記録"),
 ]
 
 
@@ -185,6 +193,11 @@ def page(out_name, title, body, headings):
         f'<a href="{o}"{" aria-current=\"page\"" if o == out_name else ""}>'
         f'{html.escape(label)}<span class="d">{html.escape(desc)}</span></a>'
         for o, _, label, desc in DOCS)
+    menu += "".join(
+        f'<a href="{urllib.parse.quote(o)}" download>'
+        f'{html.escape(label)}<span class="d">{html.escape(desc)}</span></a>'
+        for o, src, label, desc in EXTRA
+        if os.path.exists(os.path.join(ROOT, src)))
     toc = "".join(
         f'<a class="l{lv}" href="#{hid}">{html.escape(text)}</a>'
         for lv, text, hid in headings if 2 <= lv <= 4)
@@ -208,6 +221,11 @@ def page(out_name, title, body, headings):
 
 def build(out_dir):
     os.makedirs(out_dir, exist_ok=True)
+    for out_name, src, label, _ in EXTRA:
+        path = os.path.join(ROOT, src)
+        if os.path.exists(path):
+            shutil.copy2(path, os.path.join(out_dir, out_name))
+            print(f"  {out_name}  ← {src}")
     made = 0
     for out_name, src, label, _ in DOCS:
         path = os.path.join(ROOT, src)

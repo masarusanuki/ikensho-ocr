@@ -378,6 +378,15 @@ JSON では `derived` に同じ内容が入ります。
 
 ---
 
+## 概要スライド
+
+構成・ベンチマーク・見つかった不具合・配布方法をまとめた PowerPoint を用意しています。
+
+- [docs/主治医意見書読み取り_概要.pptx](docs/主治医意見書読み取り_概要.pptx)（15枚）
+- 数字はソースから読んで作っています。作り直しは `python3 tools/build_pptx.py`
+
+---
+
 ## 開発者向け
 
 - [docs/DEVELOPER.md](docs/DEVELOPER.md) … 構成、全コマンド、新しい様式の追加手順、精度の測り方
