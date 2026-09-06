@@ -67,7 +67,8 @@ def cmd_extract(args):
         rec = extract_record(g, schema=schema, templates=templates,
                              engine=args.engine, dpi=args.dpi,
                              anonymized=args.anonymized,
-                             use_llm=args.llm, llm_model=args.llm_model)
+                             use_llm=args.llm, llm_model=args.llm_model,
+                             llm_budget=args.llm_budget)
         for w in rec.warnings:
             print(f"      ! {w}", file=sys.stderr)
         records.append(rec)
@@ -116,7 +117,9 @@ def cmd_info(args):
         runtime = "あり"
     except Exception:
         runtime = "なし"
-    print(f"LLM候補提示: 実行環境={runtime} / モデル={model or '未配置'}")
+    from .llm import available as llm_available
+    state = "有効（既定で使用）" if llm_available() else "無効"
+    print(f"LLM候補提示: {state} / 実行環境={runtime} / モデル={model or '未配置'}")
 
 
 def build_parser():
@@ -132,8 +135,12 @@ def build_parser():
                    help="OCRエンジン (auto/ensemble/tesseract/rapidocr/none)。"
                         "ensemble は複数エンジンを併用し精度を上げるが時間は倍かかる")
     e.add_argument("--dpi", type=int, default=200)
-    e.add_argument("--llm", action="store_true",
-                   help="小型LLMで読み取り候補を提示する（候補のみ。値は自動確定しない）")
+    e.add_argument("--llm", dest="llm", action="store_true", default=None,
+                   help="小型LLMで読み取り候補を提示する（既定: 使える環境なら自動で有効）")
+    e.add_argument("--no-llm", dest="llm", action="store_false",
+                   help="LLMによる候補提示を使わない（最も速い）")
+    e.add_argument("--llm-budget", type=int, default=8,
+                   help="1件あたりのLLM呼び出し上限（既定8）")
     e.add_argument("--llm-model", help="GGUFモデルのパス（既定: models/ 内の .gguf）")
     e.add_argument("--anonymized", action="store_true",
                    help="匿名化加工済みデータとして扱う（住所・連絡先をマスク済みにする）")

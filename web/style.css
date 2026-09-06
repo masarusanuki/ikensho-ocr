@@ -215,6 +215,16 @@ code.inline { background: #eef0f4; border-radius: 4px; padding: 1px 6px; font-si
 .muted { color: var(--muted); }
 .err { color: var(--low); }
 
+/* ------------------------------------------------------- ドキュメント */
+.doclinks { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.doclinks a {
+  display: block; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+  text-decoration: none; color: var(--text); background: #fbfcfd;
+}
+.doclinks a:hover { background: var(--accent-weak); border-color: var(--accent); }
+.doclinks strong { display: block; font-size: 13.5px; color: var(--accent); margin-bottom: 2px; }
+.doclinks span { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
 /* ------------------------------------------------------------ 開発メモ */
 .devnotes {
   max-height: 620px; overflow: auto; border: 1px solid var(--border);

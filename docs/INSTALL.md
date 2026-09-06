@@ -5,8 +5,11 @@
 | | 対象 | 導入 | OCR精度 | 一括処理 |
 |---|---|---|---|---|
 | **A. ブラウザ版** | 誰でも | **不要** | 中（tesseract.js） | 画面から数十件 |
-| **B. Python版** | Rocky / Ubuntu / macOS | pip + tesseract | 高 | 数千件 |
-| **C. Windows インストーラ** | Windows | インストーラ実行のみ | 高 | 数千件 |
+| **B. Docker** | **Windows / macOS / Linux 共通** | Docker のみ | 高 | 数千件 |
+| **C. Python版** | Rocky / Ubuntu / macOS | pip + tesseract | 高 | 数千件 |
+
+**OSごとに手順を分けたくない場合は B（Docker）が一番簡単です。**
+Python も tesseract もイメージに入っているため、利用者側の準備は Docker だけです。
 
 > どの方法でも、**チェックボックス186個の読み取り精度は同じ**です（OCRを使わないため）。
 > 違いが出るのは氏名・病名などのテキスト欄だけです。
@@ -36,9 +39,83 @@ python3 tools/build_standalone.py                # dist/ikensho-standalone.html 
 
 ---
 
-## B. Python版（Rocky Linux / Ubuntu / macOS）
+## B. Docker（Windows / macOS / Linux 共通）
 
-### B-1. Rocky Linux 9 / RHEL 9 / AlmaLinux 9
+**利用者側に必要なのは Docker だけです。** Python も tesseract（日本語OCR）も
+イメージに含まれているため、OSごとの手順の違いがありません。
+
+### B-1. Docker を入れる
+
+| OS | 入手先 |
+|---|---|
+| Windows | [Docker Desktop](https://www.docker.com/products/docker-desktop/)（WSL2 が必要。インストーラが案内します） |
+| macOS | [Docker Desktop](https://www.docker.com/products/docker-desktop/) |
+| Rocky / RHEL | `sudo dnf install -y docker podman-docker && sudo systemctl enable --now docker` |
+| Ubuntu / Debian | `sudo apt install -y docker.io docker-compose-v2 && sudo systemctl enable --now docker` |
+
+### B-2. 起動する
+
+```bash
+git clone https://github.com/masarusanuki/ikensho-ocr.git
+cd ikensho-ocr
+docker compose -f packaging/docker-compose.yml up
+```
+
+ブラウザで **http://localhost:8765** を開けば使えます。
+初回はイメージの構築に5〜10分かかります。2回目以降はすぐ立ち上がります。
+
+止めるときは `Ctrl+C`、後片付けは次のとおり。
+
+```bash
+docker compose -f packaging/docker-compose.yml down
+```
+
+### B-3. 公開イメージを使う（ビルド不要）
+
+タグを打つと GitHub Actions がイメージを公開します
+（[.github/workflows/docker-image.yml](../.github/workflows/docker-image.yml)）。
+公開後は、リポジトリを取得しなくても1行で動きます。
+
+```bash
+docker run --rm -p 8765:8765 ghcr.io/masarusanuki/ikensho-ocr:latest
+```
+
+Windows の PowerShell でも同じコマンドで動きます。
+
+### B-4. 大量のファイルをまとめて処理する
+
+`scans` フォルダにPDFを入れて、次を実行します。
+
+```bash
+# Linux / macOS
+docker run --rm -v "$PWD/scans:/data" ghcr.io/masarusanuki/ikensho-ocr \
+    extract '/data/*.pdf' --csv /data/out.csv --json /data/out.json
+```
+
+```powershell
+# Windows PowerShell
+docker run --rm -v "${PWD}\scans:/data" ghcr.io/masarusanuki/ikensho-ocr `
+    extract '/data/*.pdf' --csv /data/out.csv --json /data/out.json
+```
+
+結果は `scans/out.csv` と `scans/out.json` に出ます。
+
+### B-5. LLM による候補提示を使う（任意）
+
+GGUFモデルを `models/` に置いて起動すると、自動で有効になります。
+
+```bash
+python3 tools/fetch_llm_model.py         # models/ にモデルを取得
+docker compose -f packaging/docker-compose.yml up
+```
+
+`docker-compose.yml` が `models/` をコンテナに渡します。
+
+---
+
+## C. Python版（Rocky Linux / Ubuntu / macOS）
+
+### C-1. Rocky Linux 9 / RHEL 9 / AlmaLinux 9
 
 ```bash
 sudo dnf install -y python3 python3-pip git
@@ -56,7 +133,7 @@ pip install -e python
 sudo dnf install -y epel-release && sudo dnf install -y tesseract-langpack-jpn
 ```
 
-### B-2. Ubuntu 22.04 / 24.04 / Debian 12
+### C-2. Ubuntu 22.04 / 24.04 / Debian 12
 
 ```bash
 sudo apt update
@@ -69,7 +146,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e python
 ```
 
-### B-3. macOS（Intel / Apple Silicon 共通）
+### C-3. macOS（Intel / Apple Silicon 共通）
 
 ```bash
 brew install python git
@@ -84,7 +161,7 @@ pip install -e python
 Homebrew が未導入の場合:
 `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
 
-### B-4. 導入確認（共通）
+### C-4. 導入確認（共通）
 
 ```bash
 ikensho info
@@ -100,7 +177,7 @@ ikensho-ocr 0.1.0
 
 `利用可能なOCRエンジン` に `tesseract` が出れば日本語OCRが使えています。
 
-### B-5. 追加のOCRエンジン（任意）
+### C-5. 追加のOCRエンジン（任意）
 
 ```bash
 pip install "ikensho-ocr[ocr] @ ./python"     # RapidOCR を追加
@@ -110,7 +187,7 @@ tesseract と RapidOCR は得意分野が違います（tesseract は印刷さ�
 RapidOCR は短い欄と数字）。両方入れて `--engine ensemble` を指定すると、
 項目ごとに良い方が自動で採用されます。処理時間は 1〜2 割増えます。
 
-### B-6. 読み取り候補の提示にLLMを使う（任意・CPUで動作）
+### C-6. 読み取り候補の提示にLLMを使う（任意・CPUで動作）
 
 **候補を出すだけで、値は自動確定しません**（理由は README を参照）。
 まずは辞書照合で足りることが多いので、読み取りが厳しい様式がある場合にだけ導入してください。
@@ -125,22 +202,12 @@ ikensho extract scans/*.pdf --llm --csv out.csv
 
 導入状況は `ikensho info` で確認できます。
 
-### B-7. Docker（環境を汚したくない場合）
+## D. Windows インストーラ（Docker を使えない場合）
 
-```bash
-docker build -t ikensho-ocr -f packaging/Dockerfile .
-docker run --rm -p 8765:8765 ikensho-ocr serve --host 0.0.0.0
-docker run --rm -v "$PWD/scans:/data" ikensho-ocr extract '/data/*.pdf' --csv /data/out.csv
-```
+社内規程などで Docker を入れられない場合の選択肢です。
+Python も tesseract も同梱するため、利用者側の作業はインストーラの実行だけです。
 
----
-
-## C. Windows（インストーラ）
-
-利用者側の作業はインストーラの実行だけです。Python も tesseract も同梱されるため、
-別途の導入は要りません。
-
-### C-1. 利用者の手順
+### D-1. 利用者の手順
 
 1. `ikensho-ocr-setup-x.y.z.exe` を実行します
 2. 画面の指示に従ってインストールします（既定は `C:\Program Files\主治医意見書読み取り`）
@@ -153,7 +220,7 @@ docker run --rm -v "$PWD/scans:/data" ikensho-ocr extract '/data/*.pdf' --csv /d
 ikensho extract "C:\scans\*.pdf" --csv C:\scans\out.csv
 ```
 
-### C-2. インストーラの作り方（配布側）
+### D-2. インストーラの作り方（配布側）
 
 Windows マシンで次を実行します。詳細は
 [packaging/windows/README.md](../packaging/windows/README.md) を見てください。
@@ -180,7 +247,8 @@ git tag v0.1.0 && git push origin v0.1.0
 |---|---|
 | ブラウザ版 | HTMLファイルを削除するだけ |
 | Python版 | `pip uninstall ikensho-ocr`（tesseract はOSのパッケージ管理で削除） |
-| Windows | 「アプリと機能」から「主治医意見書 読み取り」を削除 |
+| Docker | `docker compose -f packaging/docker-compose.yml down --rmi all` |
+| Windows インストーラ | 「アプリと機能」から「主治医意見書 読み取り」を削除 |
 
 読み取り結果はブラウザ版では端末内（localStorage）に保存されます。
 消す場合は画面の「保存・出力」から各件を削除するか、ブラウザのサイトデータを削除してください。

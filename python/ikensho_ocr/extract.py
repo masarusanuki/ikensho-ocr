@@ -56,6 +56,25 @@ class Record:
         )
 
 
+def _llm_worth_asking(entry) -> bool:
+    """LLM に聞く価値がある欄か。
+
+    辞書で十分に決まった欄や、そもそも読めていない欄に聞いても意味が無く、
+    処理時間が延びるだけなので絞り込む。
+    """
+    if not entry.get("raw") or entry.get("empty"):
+        return False
+    cands = [c for c in (entry.get("candidates") or []) if c.get("source") != "llm"]
+    if not cands:
+        return False                       # 選ばせる候補が無い（創作させない）
+    top = cands[0].get("score")
+    if top is not None and top >= 0.72:
+        return False                       # 辞書で決着済み
+    if entry.get("japanese_score", 1.0) < 0.5:
+        return False                       # 読み取り自体が失敗している
+    return entry.get("confidence", 0.0) < 0.72
+
+
 def _text_fields_for_page(tpl_page, schema: Schema):
     for t in tpl_page.texts:
         f = schema.get(t["field"])
@@ -110,8 +129,9 @@ def extract_record(paths: List[str],
                    dpi: int = imaging.DEFAULT_DPI,
                    keep_pages: bool = False,
                    anonymized: bool = False,
-                   use_llm: bool = False,
-                   llm_model: Optional[str] = None) -> Record:
+                   use_llm: Optional[bool] = None,
+                   llm_model: Optional[str] = None,
+                   llm_budget: int = 8) -> Record:
     """複数の入力ファイルから1件のレコードを読み取る。
 
     PDF は複数ページ、画像・カメラ撮影は1ページずつ渡されることを想定し、
@@ -122,7 +142,10 @@ def extract_record(paths: List[str],
     dicts = dictionaries if dictionaries is not None else DEFAULT_DICTIONARIES()
     ocr_engine = ocr_mod.get_engine(engine)
     # LLM は「候補を出すだけ」。値の自動確定には使わない（llm.py の説明を参照）
-    assist = llm_mod.get_assist(use_llm, llm_model)
+    # 既定は「使える環境なら使う」。処理時間を抑えるため呼び出す欄は絞る。
+    want_llm = llm_mod.available() if use_llm is None else bool(use_llm)
+    assist = llm_mod.get_assist(want_llm, llm_model)
+    llm_left = llm_budget
 
     src_pages: List[imaging.SourcePage] = []
     rec = Record(ocr_engine=ocr_engine.name)
@@ -215,15 +238,18 @@ def extract_record(paths: List[str],
                 entry["note"] = pr.note
 
             # 自由記述はLLMに校正させ、結果は候補として並べる（自動採用はしない）
-            if assist and multiline and entry["value"]:
+            if assist and llm_left > 0 and multiline and len(entry["value"]) >= 20:
+                llm_left -= 1
                 lp = proofread.proofread_with_llm(assist, entry["value"], f.label)
                 if lp:
                     entry.setdefault("candidates", []).insert(
                         0, dict(value=lp.text, score=None, source="llm", note=lp.note))
 
-            # 読み取りが怪しい欄だけ、小型LLMに候補を選ばせる（自動採用はしない）
-            if assist and entry["confidence"] < CONF_HIGH and entry.get("raw"):
-                names = [c["value"] for c in (entry.get("candidates") or [])]
+            # 辞書で決めきれなかった欄だけ、小型LLMに候補を選ばせる（自動採用はしない）
+            if assist and llm_left > 0 and _llm_worth_asking(entry):
+                llm_left -= 1
+                names = [c["value"] for c in (entry.get("candidates") or [])
+                         if c.get("source") != "llm"][:5]
                 sug = assist.suggest(f.label, entry["raw"], names)
                 if sug and sug.value != entry["value"]:
                     entry.setdefault("candidates", []).insert(

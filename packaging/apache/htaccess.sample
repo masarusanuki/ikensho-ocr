@@ -1,0 +1,27 @@
+# 主治医意見書 読み取り — 閲覧にパスワードを要求する
+#
+# 使い方:
+#   htpasswd -cbB /var/www/html/<配置先>/.htpasswd <ユーザー名> <パスワード>
+#   chmod 644 /var/www/html/<配置先>/.htpasswd
+#   cp packaging/apache/htaccess.sample /var/www/html/<配置先>/.htaccess
+#   AuthUserFile のパスを実際の配置先に直す
+#
+# 前提: Apache の設定で AllowOverride All になっていること
+# 注意: Basic認証はHTTPのままだと平文に近い形で流れます。HTTPSで運用してください。
+
+AuthType Basic
+AuthName "主治医意見書 読み取り（ID・パスワードを入力してください）"
+AuthUserFile /var/www/html/CHANGE_ME/.htpasswd
+Require valid-user
+
+# パスワードファイルと設定ファイルは配信しない
+<FilesMatch "^\.ht">
+    Require all denied
+</FilesMatch>
+
+# 読み取り結果はブラウザ内にのみ保存されるが、念のため中間キャッシュに残さない
+<IfModule mod_headers.c>
+    Header set Cache-Control "private, no-store"
+    Header set X-Content-Type-Options "nosniff"
+    Header set Referrer-Policy "no-referrer"
+</IfModule>

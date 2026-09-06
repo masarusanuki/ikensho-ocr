@@ -1,7 +1,10 @@
 # 開発メモ
 
-このファイルは開発の記録です。公開用の説明は [README.md](README.md) を見てください。
-実装の判断理由と、うまくいかなかった方法を残しています。
+このファイルは開発の記録です。実装の判断理由と、うまくいかなかった方法を残しています。
+
+- 使い方 … [README.md](README.md)
+- **実装を触る人向けの手順書（構成・全コマンド・新様式の追加手順）… [docs/DEVELOPER.md](docs/DEVELOPER.md)**
+- 導入手順 … [docs/INSTALL.md](docs/INSTALL.md)
 
 ---
 
@@ -306,6 +309,124 @@ LLM は「辞書に無い表記ゆれ」への保険という位置づけ。既�
 - 解除しても元の値は戻せない（意図的にそうしている）。解除時は確認ダイアログを出す
 
 出力には `anonymized` を入れて、匿名化済みかどうかを後から判別できるようにした。
+
+---
+
+## 5.2 出力するデータの形
+
+保存は JSON と CSV の2種類。どちらも Python 版とブラウザ版で同じ形になる
+（`python/ikensho_ocr/export.py` と `web/js/exporters.js` を対にして直すこと）。
+
+### JSON
+
+読み取った値だけでなく、**どれくらい確からしいか・何をどう直したか**を一緒に残す。
+後から「この値は自動で読んだのか、人が直したのか」を追えるようにするため。
+
+```json
+{
+  "exported_at": "2026-09-06T10:30:00+09:00",
+  "schema_version": "1.0.0",
+  "count": 2,
+  "records": [
+    {
+      "schema_version": "1.0.0",
+      "form_name": "主治医意見書",
+      "template_id": "official_v1",
+      "ocr_engine": "tesseract+rapidocr",
+      "anonymized": false,
+      "read_at": "2026-09-06T10:29:41+09:00",
+      "sources": [
+        { "source": "ikensho_0068.pdf", "source_page": 1,
+          "page_index": 1, "matched": true, "score": 0.9189, "dewarped": false }
+      ],
+      "warnings": [],
+      "values": {
+        "applicant_name": "石井 とめ",
+        "adl_disabled": "A2",
+        "other_dept": ["歯科"],
+        "paralysis": false,
+        "height_cm": "148.6"
+      },
+      "meta": {
+        "adl_disabled": {
+          "label": "(1) 障害高齢者の日常生活自立度",
+          "type": "choice", "section": "３．心身の状態に関する意見", "page": 1,
+          "confidence": 0.86, "level": "high",
+          "edited": false, "anonymized": false,
+          "raw": null, "engine": null, "llm_candidate": null
+        }
+      }
+    }
+  ]
+}
+```
+
+`values` の値は項目の型で決まる。
+
+| 型 | 値 | 例 |
+|---|---|---|
+| `text` `textarea` | 文字列 | `"石井 とめ"` |
+| `choice` `circle` | 選ばれた選択肢の文字列。未選択は `null` | `"A2"` |
+| `multi` | 選ばれた選択肢の配列。未選択は `[]` | `["歯科", "内科"]` |
+| `flag` | 真偽値 | `true` |
+
+`meta` は項目ごとの付帯情報。
+
+| キー | 意味 |
+|---|---|
+| `label` `type` `section` `page` | 項目定義から。CSVの列名だけでは分からないので同梱する |
+| `confidence` | 確信度 0〜1 |
+| `level` | `high` / `medium` / `low`。確信度を色分けの区分に落としたもの |
+| `edited` | 人が確認画面で直したか |
+| `anonymized` | 匿名化して置き換えた欄か |
+| `raw` | OCR の生読み。辞書補正や誤字訂正がかかった場合に元が分かる |
+| `engine` | その欄を読んだ OCR エンジン（併用時にどちらを採ったか） |
+| `llm_candidate` | LLM が出した候補。**採用値ではない** |
+
+`sources` は元ファイルとの対応。1ページずつ撮影した場合でも
+「どのファイルの何ページ目が、様式の何ページ目だったか」が残る。
+
+| キー | 意味 |
+|---|---|
+| `source` `source_page` | 元ファイル名と、その中でのページ番号 |
+| `page_index` | 様式の何ページ目と判定されたか |
+| `matched` | 様式を判別できたか |
+| `score` | 判別のスコア 0〜1。低いときは読み取りも怪しい |
+| `dewarped` | 写真として台形補正をかけたか |
+
+保存した JSON は読み戻せる（確認画面の「保存したJSONを読み込む」）。
+続きから編集して再出力できる。
+
+### CSV
+
+1行1件。**Excel で開けるよう BOM 付き UTF-8、改行は CRLF**。
+
+先頭2行がヘッダになっている。
+
+```
+record_no,template_id,read_at,anonymized,sources,warnings,applicant_name,applicant_name__confidence,...
+#,様式,読取日時,匿名化,元ファイル,警告,申請者氏名,確信度,...
+1,official_v1,2026-09-06T10:29:41+09:00,いいえ,ikensho_0068.pdf,,石井 とめ,0.994,...
+```
+
+- 1行目 … 項目ID。プログラムで扱うときはこちらを使う
+- 2行目 … 日本語の項目名。人が見るとき用
+- 3行目以降 … 1件ずつ
+
+各項目は**値と確信度の2列**が並ぶ（`<項目ID>` と `<項目ID>__confidence`）。
+確信度を残すのは、あとから「確認が要る行」を絞り込めるようにするため。
+
+複数選択の値は `；`（全角セミコロン）で区切る。カンマだと CSV の区切りと
+紛らわしいため。`flag` 型は該当時に `該当`、非該当は空。
+
+列数は項目定義の数で決まる（現在 107 項目 × 2 列 + 先頭6列 = 220 列）。
+項目定義を増やすと列も増えるので、列名（1行目）で参照すること。位置で参照しない。
+
+### 匿名化したとき
+
+`anonymized` が `true` になり、氏名は `匿名化済み`、住所・連絡先は `マスク済み` に
+置き換わる。**このとき `raw`（OCRの生読み）も消す。** 表示だけ変えると
+出力に個人情報が残ってしまうため。
 
 ---
 

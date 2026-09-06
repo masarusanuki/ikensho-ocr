@@ -40,6 +40,8 @@ def collect_assets():
                 full = os.path.join(dirpath, n)
                 web_path = os.path.relpath(full, DIST).replace(os.sep, "/")
                 ext = os.path.splitext(n)[1].lower()
+                if rel == "data" and ext == ".md":
+                    continue    # ドキュメントは別ページとして配信する
                 if rel == "vendor" and ext in (".js", ".mjs") and \
                         n not in ("tesseract.worker.min.js", "tesseract-core-simd.wasm.js",
                                   "pdf.worker.min.mjs"):
@@ -60,7 +62,7 @@ def main():
     css = read(os.path.join(WEB, "style.css"))
     app_js = "\n".join(read(os.path.join(WEB, "js", n)) for n in
                        ("engine.js", "dicts.js", "anonymize.js", "pipeline.js",
-                        "exporters.js", "review.js", "devnotes.js", "admin.js", "app.js"))
+                        "exporters.js", "review.js", "admin.js", "app.js"))
     opencv = read(os.path.join(WEB, "vendor", "opencv.js"))
     tesseract = read(os.path.join(WEB, "vendor", "tesseract.min.js"))
     pdfjs = read(os.path.join(WEB, "vendor", "pdf.min.mjs"))

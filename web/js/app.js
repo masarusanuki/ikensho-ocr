@@ -34,6 +34,7 @@
       global.IkenshoEngine.setThresholds(this.settings);
       this.schema = this.pipeline.schema;
       this.applyOcrAvailability();
+      this.checkSamples();
       this.review = new global.IkenshoReview(this);
       this.admin = new global.IkenshoAdmin(this);
       this.restore();
@@ -82,6 +83,15 @@
       document.getElementById('btn-import').addEventListener('click',
         () => document.getElementById('import-input').click());
       document.getElementById('import-input').addEventListener('change', e => this.importJson(e));
+    }
+
+    /** 配信環境に動作確認用サンプルが置いてあればリンクを出す。 */
+    async checkSamples() {
+      if (global.IkenshoPipeline.ocrBlocked()) return;   // 単一ファイル版では出さない
+      try {
+        const res = await fetch('samples/', { method: 'HEAD' });
+        if (res.ok) document.getElementById('samples-link').hidden = false;
+      } catch (e) { /* 無ければ出さない */ }
     }
 
     /** file:// で開いた場合は OCR を使えないので、その旨を画面に出す。 */

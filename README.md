@@ -22,8 +22,16 @@
 | テキスト欄のOCR | ○ tesseract.js | **×**（下記参照） | ○ tesseract ほか |
 | 一括処理 | 画面から数十件 | 画面から数十件 | 数千件 |
 
-導入手順は **[docs/INSTALL.md](docs/INSTALL.md)** にまとめています
-（Rocky Linux / Ubuntu / macOS / Windows / Docker）。
+導入手順は **[docs/INSTALL.md](docs/INSTALL.md)** にまとめています。
+
+**OSごとに手順を分けたくない場合は Docker が一番簡単です。**
+Python も tesseract（日本語OCR）もイメージに入っているため、
+Windows / macOS / Linux のどれでも同じ1行で動きます。
+
+```bash
+docker compose -f packaging/docker-compose.yml up
+# → ブラウザで http://localhost:8765
+```
 
 > **単一ファイル版のOCRについて**
 > HTMLファイルを直接ダブルクリックして開いた場合、ブラウザのセキュリティ制約により
@@ -294,6 +302,19 @@ python3 tools/build_web.py
 ```
 
 **CSV** は1行1件で、各項目の値と確信度を2列ずつ並べます。Excel で開けるよう BOM 付き UTF-8 です。
+先頭2行がヘッダで、1行目が項目ID、2行目が日本語の項目名です。
+
+各キーの意味は [開発メモ 5.2「出力するデータの形」](DEVNOTES.md) に詳しく書いています。
+
+---
+
+## 開発者向け
+
+- [docs/DEVELOPER.md](docs/DEVELOPER.md) … 構成、全コマンド、新しい様式の追加手順、精度の測り方
+- [DEVNOTES.md](DEVNOTES.md) … 設計の経緯、試して駄目だった方法、出力データの形
+- [docs/INSTALL.md](docs/INSTALL.md) … OS別の導入手順
+
+これらはアプリの「管理」画面からも読めます。
 
 ---
 

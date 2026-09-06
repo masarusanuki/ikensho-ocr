@@ -13,6 +13,9 @@ import argparse
 import json
 import os
 import shutil
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -47,6 +50,10 @@ def main():
         src = os.path.join(ROOT, doc)
         if os.path.exists(src):
             shutil.copy2(src, os.path.join(data, doc))
+    for doc in ("DEVELOPER.md", "INSTALL.md"):
+        src = os.path.join(ROOT, "docs", doc)
+        if os.path.exists(src):
+            shutil.copy2(src, os.path.join(data, doc))
 
     tpl_out = os.path.join(data, "templates")
     os.makedirs(os.path.join(tpl_out, "refs"), exist_ok=True)
@@ -70,6 +77,10 @@ def main():
         json.dump({"templates": ids}, fp, ensure_ascii=False, indent=1)
 
     copytree(os.path.join(ROOT, "dict"), os.path.join(data, "dict"))
+
+    # ドキュメントは別ページとして生成する（画面内で切り替えない）
+    import build_docs_site
+    build_docs_site.build(os.path.join(out, "docs"))
 
     total = sum(os.path.getsize(os.path.join(dp, f))
                 for dp, _, fs in os.walk(out) for f in fs)

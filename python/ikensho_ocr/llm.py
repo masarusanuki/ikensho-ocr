@@ -34,12 +34,17 @@ SYSTEM_PROMPT = (
 
 # OCR結果と候補がこれだけ文字を共有していなければ、無関係な創作とみなす
 MIN_CHAR_OVERLAP = 0.34
+# 手がかりが短すぎる場合は聞かない。実測で「一」の1文字から
+# 「一過性脳虚血発作」を出力した例があるため。
+MIN_OCR_LENGTH = 3
 
 
 # 万一「思考」を出すモデルが指定された場合に備えて取り除く
 THINK_RE = re.compile(r"<think>.*?</think>", re.S)
-# 思考モードを持たないモデルを優先して選ぶ
-PREFERRED = ("qwen3-4b-instruct", "qwen2.5", "instruct-2507", "instruct")
+# 思考モードを持たないモデルを優先し、その中では軽いものを先に選ぶ。
+# この機能は「候補を出すだけ」なので、精度より処理時間を優先する。
+# より正確な大きいモデルを使いたい場合は --llm-model で明示する。
+PREFERRED = ("qwen2.5-1.5b", "qwen2.5-3b", "qwen3-1.7b", "instruct-2507", "instruct")
 
 
 def strip_thinking(text: str) -> str:
@@ -108,11 +113,13 @@ class LlmAssist:
 
         候補が無い場合は何もしない（自由生成はさせない）。
         """
-        if not self.available or not ocr_text or not candidates:
+        if not self.available or not candidates:
             return None
+        if len(normalize(ocr_text)) < MIN_OCR_LENGTH:
+            return None                    # 手がかりが短すぎる
         prompt = (f"項目: {field_label}\n"
-                  f"OCR結果: {ocr_text}\n"
-                  f"候補: {' / '.join(candidates[:8])}\n"
+                  f"OCR結果: {ocr_text[:60]}\n"
+                  f"候補: {' / '.join(candidates[:5])}\n"
                   f"正式名称:")
         try:
             res = self._llm.create_chat_completion(
@@ -156,6 +163,16 @@ class LlmAssist:
 
 
 _CACHE: Optional[LlmAssist] = None
+
+
+def available() -> bool:
+    """LLM候補提示を使える環境か（実行環境とモデルがそろっているか）。"""
+    try:
+        import llama_cpp  # noqa: F401
+    except Exception:
+        return False
+    path = LlmAssist._find_model()
+    return bool(path and os.path.exists(path))
 
 
 def get_assist(enabled: bool = False, model_path: Optional[str] = None

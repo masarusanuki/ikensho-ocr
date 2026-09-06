@@ -1,0 +1,23 @@
+# 主治医意見書 読み取り — これ1つで起動できます
+#
+#   docker compose -f packaging/docker-compose.yml up
+#   → ブラウザで http://localhost:8765
+#
+# 止めるときは Ctrl+C、あるいは
+#   docker compose -f packaging/docker-compose.yml down
+services:
+  ikensho:
+    build:
+      context: ..
+      dockerfile: packaging/Dockerfile
+    # 公開イメージを使う場合はこちらに差し替える
+    # image: ghcr.io/masarusanuki/ikensho-ocr:latest
+    container_name: ikensho-ocr
+    ports:
+      - "8765:8765"
+    volumes:
+      # 読み取りたいファイルの置き場（コマンドで一括処理するとき）
+      - ../scans:/data
+      # LLMのGGUFモデルを使う場合に置く（無ければ空のままでよい）
+      - ../models:/app/models
+    restart: unless-stopped
