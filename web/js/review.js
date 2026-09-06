@@ -19,6 +19,7 @@
       this.marker = document.getElementById('marker');
       this.zoom = document.getElementById('zoom');
       this.zoomcap = document.getElementById('zoomcap');
+      this.zoomScale = 1.0;          // 拡大表示の倍率（利用者が変えられる）
       this.fieldsEl = document.getElementById('fields');
       this.warnEl = document.getElementById('warnings');
       this.bind();
@@ -31,6 +32,15 @@
       document.getElementById('only-low').addEventListener('change', e => {
         this.onlyLow = e.target.checked;
         this.renderFields();
+      });
+      document.querySelectorAll('[data-zoom]').forEach(b => {
+        b.addEventListener('click', () => {
+          const step = Number(b.dataset.zoom);
+          this.zoomScale = Math.max(0.5, Math.min(3.0, this.zoomScale + step * 0.25));
+          document.getElementById('zoomlevel').textContent =
+            this.zoomScale === 1 ? '標準' : `${Math.round(this.zoomScale * 100)}%`;
+          if (this._lastLoc) this.renderZoom(this._lastLoc);
+        });
       });
       document.getElementById('opt-overlay').addEventListener('change', e => {
         document.getElementById('frame').classList.toggle('plain', !e.target.checked);
@@ -280,6 +290,8 @@
 
     renderFields() {
       if (!this.record) return;
+      (this._dictations || []).forEach(d => d.stop());
+      this._dictations = [];
       const schema = this.app.schema;
       const frag = document.createDocumentFragment();
 
@@ -540,6 +552,8 @@
         });
       }
       wrap.appendChild(input);
+      // 記述欄は打ち込みが大変なので、音声でも入れられるようにする
+      if (isArea) this.renderDictation(f, e, wrap, input, mark);
       this.renderCandidates(f, e, wrap, input);
       if (!isArea) this.renderSearch(f, e, wrap, input);
       return wrap;
@@ -640,6 +654,50 @@
       }
       apply(true);
       return wrap;
+    }
+
+    /**
+     * 記述欄の音声入力。話した内容がそのまま欄に入る。
+     * ブラウザの音声認識を使うため、初回に注意を出す（speech.js を参照）。
+     */
+    renderDictation(f, e, wrap, input, mark) {
+      const S = global.IkenshoSpeech;
+      if (!S || !S.supported()) return;
+      const bar = document.createElement('div');
+      bar.className = 'dictate';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'micbtn';
+      btn.innerHTML = '<span class="mic">●</span> 音声で入力';
+      const state = document.createElement('span');
+      state.className = 'dictstate';
+      bar.appendChild(btn);
+      bar.appendChild(state);
+      wrap.appendChild(bar);
+
+      const dictation = new S.Dictation({
+        onText: (text, interim) => {
+          input.value = text;
+          e.value = text;
+          if (!interim) mark();
+        },
+        onState: (kind, message) => {
+          btn.classList.toggle('on', kind === 'listening');
+          btn.innerHTML = kind === 'listening'
+            ? '<span class="mic on"></span> 停止する'
+            : '<span class="mic"></span> 音声で入力';
+          state.textContent = kind === 'listening' ? '話してください…' : (message || '');
+          state.className = 'dictstate' + (kind === 'error' ? ' err' : '');
+          if (kind === 'stopped') mark();
+        },
+      });
+      btn.addEventListener('click', ev => {
+        ev.stopPropagation();
+        if (dictation.active) dictation.stop();
+        else dictation.start(input.value);
+      });
+      this._dictations = this._dictations || [];
+      this._dictations.push(dictation);
     }
 
     /**
@@ -806,6 +864,7 @@
     }
 
     renderZoom(loc) {
+      this._lastLoc = loc;
       const src = (this.record.images || {})[loc.page];
       if (!src) { this.zoom.replaceChildren(); return; }
       const img = new Image();
@@ -815,13 +874,17 @@
         const y = Math.max(0, (loc.rect[1] - pad) * img.height);
         const w = Math.min(img.width - x, (loc.rect[2] + pad * 2) * img.width);
         const h = Math.min(img.height - y, (loc.rect[3] + pad * 2) * img.height);
-        const scale = Math.min(4, Math.max(1.4, 620 / Math.max(w, 1)));
+        // 幅に合わせて縮めると長い欄が読めなくなるので、高さを基準に拡大し、
+        // 横は切らずにスクロールで追えるようにする。
+        const base = Math.min(5, Math.max(1.6, 150 / Math.max(h, 1)));
+        const scale = base * (this.zoomScale || 1);
         const c = document.createElement('canvas');
         c.width = Math.round(w * scale); c.height = Math.round(h * scale);
         const ctx = c.getContext('2d');
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
         this.zoom.replaceChildren(c);
+        this.zoom.scrollLeft = 0;
       };
       img.src = src;
       this.zoomcap.textContent = `${loc.page}ページ目の該当箇所`;
