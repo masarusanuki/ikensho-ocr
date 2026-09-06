@@ -13,7 +13,8 @@
     decimal: '0123456789.',
     wareki:  '0123456789年月日頃明治大正昭和平成令和 ',
     postal:  '0123456789-〒 ',
-    phone:   '0123456789()-  ',
+    // 電話番号は数字とハイフンだけ。印刷された「（ ）」は市外局番の枠なので残さない
+    phone:   '0123456789- ',
     kana:    KATAKANA + 'ー・ 　',
   };
 
@@ -36,9 +37,20 @@
     return out;
   }
 
+  /** 電話番号を「029-873-3111」の形に整える。 */
+  function normalizePhone(text) {
+    const parts = String(text || '').split(/[^0-9]+/).filter(Boolean);
+    return parts.join('-');
+  }
+
   function filterCharset(text, name) {
     const allowed = CHARSETS[name];
     if (!allowed || !text) return text;
+    if (name === 'phone') return normalizePhone(text);
+    if (name === 'postal') {
+      const d = String(text).replace(/[^0-9]/g, '');
+      return d.length >= 7 ? `${d.slice(0, 3)}-${d.slice(3, 7)}` : d;
+    }
     const keep = new Set(allowed + '\n');
     const out = Array.from(text).filter(ch => keep.has(ch)).join('');
     return name === 'kana' ? out.trim() : out.split(/\s+/).filter(Boolean).join(' ');
