@@ -24,6 +24,7 @@ class Field:
     kind: str = ""
     era_field: str = ""
     default_era: str = ""
+    always_pick: bool = False
     section_id: str = ""
     section_title: str = ""
 
@@ -68,6 +69,7 @@ def load_schema(path: str = DEFAULT_SCHEMA) -> Schema:
                        charset=f.get("charset", ""), pii=f.get("pii", ""),
                        kind=f.get("kind", ""), era_field=f.get("era_field", ""),
                        default_era=f.get("default_era", ""),
+                       always_pick=bool(f.get("always_pick")),
                        section_id=sec["id"], section_title=sec["title"])
             sc.fields[fl.id] = fl
             sc.order.append(fl.id)

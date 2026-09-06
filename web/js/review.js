@@ -390,6 +390,7 @@
       });
       wrap.appendChild(input);
       this.renderCandidates(f, e, wrap, input);
+      if (!isArea) this.renderSearch(f, e, wrap, input);
       return wrap;
     }
 
@@ -488,6 +489,57 @@
       }
       apply(true);
       return wrap;
+    }
+
+    /**
+     * 辞書から探すための欄。病名などは一覧から選べた方が速く確実なので、
+     * 入力欄とは別に「探す」欄を用意して、打ち込みながら絞り込めるようにする。
+     */
+    renderSearch(f, e, wrap, input) {
+      const dicts = this.app.pipeline && this.app.pipeline.dicts;
+      const key = dicts && dicts.fieldMap[f.id];
+      if (!key) return;
+      const lex = dicts.lexicons[key];
+      if (!lex) return;
+
+      const box = document.createElement('div');
+      box.className = 'dictsearch';
+      const q = document.createElement('input');
+      q.type = 'search';
+      q.placeholder = `${lex.label}から探す（${lex.entries.length}件）`;
+      const list = document.createElement('div');
+      list.className = 'dictlist';
+      list.hidden = true;
+
+      const draw = () => {
+        const items = dicts.suggest(f.id, q.value, 30);
+        if (!items.length) {
+          list.innerHTML = '<div class="none">該当なし</div>';
+          return;
+        }
+        list.replaceChildren();
+        for (const it of items) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'dictitem';
+          b.innerHTML = esc(it.name) +
+            (it.tokutei ? '<span class="tok">特定疾病</span>' : '') +
+            (it.icd10 ? `<span class="icd">${esc(it.icd10)}</span>` : '');
+          b.addEventListener('click', () => {
+            input.value = it.name;
+            input.dispatchEvent(new Event('input'));
+            q.value = '';
+            list.hidden = true;
+          });
+          list.appendChild(b);
+        }
+      };
+      q.addEventListener('focus', () => { list.hidden = false; draw(); });
+      q.addEventListener('input', () => { list.hidden = false; draw(); });
+      q.addEventListener('blur', () => setTimeout(() => { list.hidden = true; }, 200));
+      box.appendChild(q);
+      box.appendChild(list);
+      wrap.appendChild(box);
     }
 
     /** 辞書からの候補（OCR補正候補＋入力補完）を出す。 */

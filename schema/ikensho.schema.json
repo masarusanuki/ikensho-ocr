@@ -39,7 +39,8 @@
      "options": [
       "男",
       "女"
-     ]
+     ],
+     "always_pick": true
     },
     {
      "id": "birth_era",

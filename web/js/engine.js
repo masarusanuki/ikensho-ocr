@@ -323,7 +323,7 @@
   }
 
   /** 「男・女」「明・大・昭」など丸で囲む方式を読む。 */
-  function readCircle(warped, rect, options) {
+  function readCircle(warped, rect, options, alwaysPick) {
     const W = warped.cols, H = warped.rows;
     const x0 = Math.max(0, Math.round(rect[0] * W)), y0 = Math.max(0, Math.round(rect[1] * H));
     const x1 = Math.min(W, Math.round((rect[0] + rect[2]) * W));
@@ -356,7 +356,11 @@
     const rank = [...excess].sort((a, b) => b - a);
     const margin = rank[0] - (rank[1] || 0);
     const detail = scores.map((s, i) => ({ opt: i, score: +s.toFixed(4) }));
-    if (rank[0] <= 0.012) return { value: null, confidence: 0.2, detail };
+    if (rank[0] <= 0.012) {
+      if (!alwaysPick) return { value: null, confidence: 0.2, detail };
+      // 必ず記入される欄なので、印が弱くても濃い方を採る（確信度は低くする）
+      return { value: options[top], confidence: 0.25, detail, weak: true };
+    }
     return { value: options[top], confidence: Math.min(1, 0.30 + margin / 0.05 * 0.70), detail };
   }
 

@@ -93,6 +93,11 @@ def build(directory):
                 f'<div class="acts">'
                 f'<a href="{html.escape(f)}" target="_blank" rel="noopener">プレビュー</a>'
                 f'<a href="{html.escape(f)}" download>ダウンロード</a>'
+                f'</div>'
+                f'<div class="acts">'
+                f'<a class="verify" href="../?sample={html.escape(f)}"'
+                f' title="このファイルを読み取り画面に渡して、そのまま読み取りを始めます">'
+                f'検証する</a>'
                 f'</div></figure>')
         sections.append(f'<section>{head}<div class="grid">{"".join(cards)}</div></section>')
 
@@ -144,12 +149,16 @@ figcaption{{display:flex;justify-content:space-between;gap:6px;padding:6px 8px 2
 .acts a:hover{{background:#eef4fc}}
 .acts a[download]{{background:#1e5aa8;border-color:#1e5aa8;color:#fff}}
 .acts a[download]:hover{{background:#17498a}}
+.acts a.verify{{background:#1a7f4b;border-color:#1a7f4b;color:#fff;font-weight:600}}
+.acts a.verify:hover{{background:#15683d}}
 </style></head>
 <body><main>
 <a class="back" href="../">← 読み取り画面に戻る</a>
 <h1>動作確認用サンプル</h1>
 <p class="lead">主治医意見書の読み取りを試すためのファイルです（全{len(files)}件）。
-サムネイルまたは「プレビュー」で内容を確認し、「ダウンロード」で取得して読み取り画面に読み込ませてください。</p>
+サムネイルまたは「プレビュー」で内容を確認できます。
+<strong>「検証する」を押すと、そのファイルをそのまま読み取り画面に渡して処理が始まります。</strong>
+手元に保存したい場合は「ダウンロード」を使ってください。</p>
 <div class="note">これらは動作確認のために生成したもので、実在の人物の情報ではありません。</div>
 <div class="bulk">
   <b>まとめてダウンロード</b>

@@ -51,8 +51,8 @@ def _group_by_record(paths, group):
 
 
 def cmd_extract(args):
-    schema = load_schema()
-    templates = load_templates()
+    schema = load_schema(args.schema) if args.schema else load_schema()
+    templates = load_templates(args.templates)
     paths = _expand(args.inputs)
     if not paths:
         sys.exit("入力ファイルが見つかりません")
@@ -95,12 +95,14 @@ def cmd_extract(args):
 
 def cmd_serve(args):
     from .server import serve
-    serve(host=args.host, port=args.port, open_browser=not args.no_browser)
+    serve(host=args.host, port=args.port, open_browser=not args.no_browser,
+          template_dir=args.templates, schema_path=args.schema)
 
 
 def cmd_info(args):
-    schema = load_schema()
-    templates = load_templates()
+    schema = load_schema(args.schema) if args.schema else load_schema()
+    templates = load_templates(args.templates)
+    print(f"テンプレートの置き場: {args.templates or os.environ.get('IKENSHO_TEMPLATES') or '(既定)'}")
     print(f"ikensho-ocr {__version__}")
     print(f"項目定義: v{schema.version} / {len(schema.order)} 項目")
     print("様式テンプレート:")
@@ -125,6 +127,10 @@ def cmd_info(args):
 def build_parser():
     ap = argparse.ArgumentParser(prog="ikensho", description="主治医意見書 読み取り")
     ap.add_argument("--version", action="version", version=__version__)
+    ap.add_argument("--templates", metavar="DIR",
+                    help="様式テンプレートの置き場（既定: リポジトリ内の templates/。"
+                         "環境変数 IKENSHO_TEMPLATES でも指定できる）")
+    ap.add_argument("--schema", metavar="FILE", help="項目定義JSONの場所")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     e = sub.add_parser("extract", help="ファイルを読み取って出力する")

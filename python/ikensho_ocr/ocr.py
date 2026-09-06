@@ -11,7 +11,7 @@ import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import cv2
 import numpy as np
@@ -55,10 +55,26 @@ class OcrEngine:
         return OcrResult("", 0.0, self.name)
 
 
+@dataclass
+class Token:
+    """読み取った文字の並びと、その横位置（切り抜き画像内の画素）。"""
+    text: str
+    x0: float
+    x1: float
+    confidence: float
+
+
 class NullOcr(OcrEngine):
     """OCR エンジンが無い環境用。常に空欄を返す。"""
     name = "none"
     available = True
+
+
+def _tokens_default(self, image, charset=""):
+    return []
+
+
+OcrEngine.read_tokens = _tokens_default
 
 
 class TesseractOcr(OcrEngine):
@@ -114,6 +130,37 @@ class TesseractOcr(OcrEngine):
         conf = round(sum(confs) / len(confs), 3) if confs else 0.0
         return join_japanese(text).strip(), conf
 
+    def read_tokens(self, image: np.ndarray, charset: str = "") -> List[Token]:
+        """位置つきで読み取る。日付欄を年・月・日に振り分けるのに使う。"""
+        if not self.available:
+            return []
+        with tempfile.TemporaryDirectory() as td:
+            src = os.path.join(td, "in.png")
+            cv2.imwrite(src, image)
+            cmd = [self.bin, src, os.path.join(td, "out"), "-l", self.lang,
+                   "--psm", "7", "-c", "preserve_interword_spaces=1", "tsv"]
+            try:
+                subprocess.run(cmd, capture_output=True, timeout=60, check=True)
+            except Exception:
+                return []
+            tsv = os.path.join(td, "out.tsv")
+            if not os.path.exists(tsv):
+                return []
+            out = []
+            with open(tsv, encoding="utf-8", errors="ignore") as fp:
+                next(fp, None)
+                for row in fp:
+                    c = row.rstrip("\n").split("\t")
+                    if len(c) < 12 or not c[11].strip():
+                        continue
+                    try:
+                        left, width, conf = float(c[6]), float(c[8]), float(c[10])
+                    except ValueError:
+                        continue
+                    out.append(Token(c[11], left, left + width,
+                                     max(conf, 0.0) / 100.0))
+        return out
+
     def read(self, image: np.ndarray, multiline: bool = False,
              charset: str = "") -> OcrResult:
         if not self.available:
@@ -144,6 +191,21 @@ class RapidOcr(OcrEngine):
             self.available = True
         except Exception:
             self.available = False
+
+    def read_tokens(self, image: np.ndarray, charset: str = "") -> List[Token]:
+        """位置つきで読み取る。日付欄を年・月・日に振り分けるのに使う。"""
+        if not self.available:
+            return []
+        try:
+            res, _ = self.engine(cv2.cvtColor(image, cv2.COLOR_GRAY2BGR))
+        except Exception:
+            return []
+        out = []
+        for r in (res or []):
+            xs = [float(p[0]) for p in r[0]]
+            out.append(Token(r[1], min(xs), max(xs),
+                             float(r[2]) if len(r) > 2 else 0.5))
+        return out
 
     def read(self, image: np.ndarray, multiline: bool = False,
              charset: str = "") -> OcrResult:
@@ -312,7 +374,151 @@ def available_engines() -> List[str]:
     return out
 
 
-def prepare_roi(warped: np.ndarray, rect: List[float], pad: float = 0.0) -> np.ndarray:
+class DigitReader:
+    """日付欄のように「数字しか入らない欄」を読むための専用処理。
+
+    小さな枠を1つずつ読ませると、1桁の数字は検出に失敗しやすい。
+    そこで**欄の全体を一度に読み、読み取れた「年」「月」「日」で区切って**
+    数字を振り分ける。区切り文字は様式に印刷されているので必ず写っており、
+    小枠の座標を様式ごとに用意しなくても成立する。
+
+    区切り文字が読めなかった場合は、数字の並び順（1つ目=年、2つ目=月、
+    3つ目=日）で割り当て、テンプレートに小枠があればそれで補正する。
+    """
+
+    MARKS = {"年": "year", "月": "month", "日": "day"}
+
+    def __init__(self):
+        self.engines = [e for e in (RapidOcr(), TesseractOcr()) if e.available]
+        self.available = bool(self.engines)
+
+    @staticmethod
+    def _items(token: "Token"):
+        """トークンを1文字ずつ、位置つきに展開する。"""
+        n = len(token.text)
+        if n == 0:
+            return []
+        span = (token.x1 - token.x0) / n
+        return [(ch, token.x0 + span * i, token.x0 + span * (i + 1))
+                for i, ch in enumerate(token.text)]
+
+    def _assign(self, chars, slots_px):
+        """左から順に見て、数字を年・月・日に振り分ける。"""
+        parts = {"year": None, "month": None, "day": None}
+        order = ["year", "month", "day"]
+        cur, idx = "", 0
+        cur_x = None
+        used_marks = False
+
+        def commit(key, text, x):
+            if not text or key is None:
+                return
+            if parts.get(key) is None:
+                parts[key] = int(text[:2])
+
+        for ch, cx0, cx1 in chars:
+            if ch.isdigit():
+                if not cur:
+                    cur_x = cx0
+                cur += ch
+                continue
+            if ch in self.MARKS:
+                used_marks = True
+                commit(self.MARKS[ch], cur, cur_x)
+                idx = order.index(self.MARKS[ch]) + 1
+                cur, cur_x = "", None
+                continue
+            if cur:
+                # 区切り文字以外で切れた場合は順番で割り当てる
+                if not used_marks and idx < len(order):
+                    commit(order[idx], cur, cur_x)
+                    idx += 1
+                elif slots_px:
+                    key = self._slot_of(cur_x, slots_px)
+                    commit(key, cur, cur_x)
+                cur, cur_x = "", None
+        if cur:
+            if not used_marks and idx < len(order):
+                commit(order[idx], cur, cur_x)
+            elif slots_px:
+                commit(self._slot_of(cur_x, slots_px), cur, cur_x)
+            elif idx < len(order):
+                commit(order[idx], cur, cur_x)
+        return parts
+
+    @staticmethod
+    def _slot_of(x, slots_px):
+        if x is None or not slots_px:
+            return None
+        best, bestd = None, None
+        for key, (s0, s1) in slots_px.items():
+            c = (s0 + s1) / 2
+            d = abs(x - c)
+            if bestd is None or d < bestd:
+                best, bestd = key, d
+        return best
+
+    def read_date(self, warped: np.ndarray, rect: List[float],
+                  slots: Optional[Dict[str, List[float]]] = None) -> Dict[str, tuple]:
+        """日付欄を読み、{"year": (値, 確信度), ...} を返す。"""
+        result = {k: (None, 0.0) for k in ("year", "month", "day")}
+        if not self.available:
+            return result
+        pad = 0.02
+        roi = prepare_roi(warped, rect, pad=pad, target_height=72)
+        if roi is None:
+            return result
+        H, W = warped.shape
+        x, y, w, h = rect
+        src_x0 = max(0, int(round((x - w * pad) * W)))
+        src_x1 = min(W, int(round((x + w + w * pad) * W)))
+        src_w = max(src_x1 - src_x0, 1)
+        border = 10
+        inner_w = max(roi.shape[1] - border * 2, 1)
+
+        slots_px = None
+        if slots:
+            slots_px = {k: (v[0] * W, (v[0] + v[2]) * W) for k, v in slots.items()}
+
+        best, best_n, best_conf = None, -1, 0.0
+        for eng in self.engines:
+            tokens = eng.read_tokens(roi)
+            if not tokens:
+                continue
+            chars = []
+            for t in sorted(tokens, key=lambda t: t.x0):
+                for ch, cx0, cx1 in self._items(t):
+                    px0 = src_x0 + (cx0 - border) / inner_w * src_w
+                    px1 = src_x0 + (cx1 - border) / inner_w * src_w
+                    chars.append((ch, px0, px1))
+            parts = self._assign(chars, slots_px)
+            # 月・日の範囲を確かめる
+            if parts["month"] is not None and not 1 <= parts["month"] <= 12:
+                parts["month"] = None
+            if parts["day"] is not None and not 1 <= parts["day"] <= 31:
+                parts["day"] = None
+            n = sum(1 for v in parts.values() if v is not None)
+            conf = sum(t.confidence for t in tokens) / len(tokens)
+            if n > best_n or (n == best_n and conf > best_conf):
+                best, best_n, best_conf = parts, n, conf
+        if best is None:
+            return result
+        return {k: (best[k], round(best_conf, 3) if best[k] is not None else 0.0)
+                for k in result}
+
+
+_DIGIT_READER = None
+
+
+def get_digit_reader() -> DigitReader:
+    global _DIGIT_READER
+    if _DIGIT_READER is None:
+        _DIGIT_READER = DigitReader()
+    return _DIGIT_READER
+
+
+def prepare_roi(warped: np.ndarray, rect: List[float], pad: float = 0.0,
+                target_height: int = 48) -> np.ndarray:
     """テンプレート座標の矩形から OCR 用の切り抜きを作る。"""
     H, W = warped.shape
     x, y, w, h = rect
@@ -325,7 +531,7 @@ def prepare_roi(warped: np.ndarray, rect: List[float], pad: float = 0.0) -> np.n
         return np.full((8, 8), 255, np.uint8)
     roi = warped[y0:y1, x0:x1]
     # 小さい欄は拡大した方が OCR の精度が上がる
-    scale = max(1.0, 48.0 / max(roi.shape[0], 1))
+    scale = max(1.0, float(target_height) / max(roi.shape[0], 1))
     if scale > 1.0:
         roi = cv2.resize(roi, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
     roi = cv2.fastNlMeansDenoising(roi, None, 7, 7, 21)

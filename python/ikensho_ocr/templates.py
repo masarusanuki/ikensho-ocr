@@ -9,9 +9,11 @@ from typing import Dict, List, Optional
 import cv2
 import numpy as np
 
-TEMPLATE_DIR = os.path.join(
+# 様式テンプレートの置き場。環境変数 IKENSHO_TEMPLATES で差し替えられる。
+DEFAULT_TEMPLATE_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "templates")
+TEMPLATE_DIR = os.environ.get("IKENSHO_TEMPLATES") or DEFAULT_TEMPLATE_DIR
 
 
 @dataclass
@@ -63,7 +65,16 @@ class Template:
         return None
 
 
-def load_templates(directory: str = TEMPLATE_DIR) -> Dict[str, Template]:
+def load_templates(directory: Optional[str] = None) -> Dict[str, Template]:
+    """様式テンプレートを読み込む。
+
+    directory を省略すると、環境変数 IKENSHO_TEMPLATES か、
+    リポジトリ内の templates/ を使う。別の場所に置いた独自の様式を
+    読み込ませたい場合は、そのディレクトリを指定する。
+    """
+    directory = directory or TEMPLATE_DIR
+    if not os.path.isdir(directory):
+        raise FileNotFoundError(f"テンプレートの置き場が見つかりません: {directory}")
     out: Dict[str, Template] = {}
     for path in sorted(glob.glob(os.path.join(directory, "*.json"))):
         with open(path, encoding="utf-8") as fp:

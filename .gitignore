@@ -7,6 +7,10 @@ node_modules/
 dist/
 *.egg-info/
 
+# 医療機関一覧（大容量。tools/fetch_hospitals.py で厚労省から取得する）
+dict/hospitals/*.json
+!dict/hospitals/index.json
+
 # LLMモデル（大容量。tools/fetch_llm_model.py で取得する）
 models/
 *.gguf

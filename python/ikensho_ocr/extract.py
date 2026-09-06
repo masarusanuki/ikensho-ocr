@@ -57,6 +57,37 @@ class Record:
         )
 
 
+def _read_date_slots(warped: np.ndarray, t: dict, f) -> dict:
+    """日付欄を小枠ごとに読み、年・月・日を組み立てる。"""
+    reader = ocr_mod.get_digit_reader()
+    slots = t.get("slots") or {}
+    read = reader.read_date(warped, t["rect"], slots)
+    parts, confs, raw = {}, [], []
+    for key in ("year", "month", "day"):
+        value, conf = read.get(key, (None, 0.0))
+        parts[key] = value
+        if value is not None:
+            confs.append(conf)
+            raw.append(f"{key}={value}")
+        else:
+            rect = slots.get(key)
+            empty = (not rect) or (not ocr_mod.has_ink(warped, rect, threshold=0.004))
+            confs.append(0.85 if empty else 0.2)
+    # 月・日の範囲を確かめる
+    if parts.get("month") is not None and not 1 <= parts["month"] <= 12:
+        parts["month"] = None
+    if parts.get("day") is not None and not 1 <= parts["day"] <= 31:
+        parts["day"] = None
+    filled = [v for v in parts.values() if v is not None]
+    conf = round(sum(confs) / len(confs), 3) if confs else 0.0
+    if not filled:
+        return dict(value="", confidence=0.9, raw="", empty=True, candidates=[],
+                    date=parts, slots_used=True)
+    return dict(value=dates_mod.format_wareki(parts), confidence=conf,
+                raw=" ".join(raw), empty=False, candidates=[],
+                date=parts, slots_used=True)
+
+
 def _llm_worth_asking(entry) -> bool:
     """LLM に聞く価値がある欄か。
 
@@ -83,7 +114,8 @@ def _text_fields_for_page(tpl_page, schema: Schema):
             yield t, f
 
 
-def _read_circle(warped: np.ndarray, rect: List[float], options: List[str]) -> dict:
+def _read_circle(warped: np.ndarray, rect: List[float], options: List[str],
+                 always_pick: bool = False) -> dict:
     """「男・女」「明・大・昭」など、印刷済みの選択肢を丸で囲む方式を読む。
 
     欄を選択肢数に等分し、丸印（＝周囲より濃い領域）が最も強い区画を選ぶ。
@@ -114,12 +146,14 @@ def _read_circle(warped: np.ndarray, rect: List[float], options: List[str]) -> d
     top = int(np.argmax(excess))
     ranked = sorted(excess, reverse=True)
     margin = ranked[0] - (ranked[1] if len(ranked) > 1 else 0.0)
+    detail = [dict(opt=i, score=round(s, 4)) for i, s in enumerate(scores)]
     if ranked[0] <= 0.012:
-        return dict(value=None, confidence=0.2,
-                    detail=[dict(opt=i, score=round(s, 4)) for i, s in enumerate(scores)])
+        if not always_pick:
+            return dict(value=None, confidence=0.2, detail=detail)
+        # 必ず記入される欄なので、印が弱くても濃い方を採る（確信度は低くする）
+        return dict(value=options[top], confidence=0.25, detail=detail, weak=True)
     conf = round(min(1.0, 0.30 + margin / 0.05 * 0.70), 3)
-    return dict(value=options[top], confidence=conf,
-                detail=[dict(opt=i, score=round(s, 4)) for i, s in enumerate(scores)])
+    return dict(value=options[top], confidence=conf, detail=detail)
 
 
 def extract_record(paths: List[str],
@@ -200,8 +234,15 @@ def extract_record(paths: List[str],
         readings.extend(checkbox.read_boxes(warped, tp.boxes, blank))
 
         for t, f in _text_fields_for_page(tp, schema):
+            # 日付欄は「年」「月」「日」で区切った小枠ごとに数字だけを読む。
+            # 各枠に1〜2桁の数字しか入らないので、そのまま読むより格段に正確になる。
+            if f.is_date:
+                text_results[f.id] = _read_date_slots(warped, t, f)
+                continue
             if f.type == "circle":
-                text_results[f.id] = _read_circle(warped, t["rect"], t.get("options") or f.options or [])
+                text_results[f.id] = _read_circle(
+                    warped, t["rect"], t.get("options") or f.options or [],
+                    always_pick=bool(t.get("always_pick") or f.always_pick))
                 continue
             if not ocr_mod.has_ink(warped, t["rect"]):
                 text_results[f.id] = dict(value="", confidence=0.95, raw="", empty=True,
@@ -281,7 +322,16 @@ def extract_record(paths: List[str],
             picked = text_results.get(f.era_field, {}).get("value")
             era = picked or era
             fixed = False
-        info = dates_mod.enrich(entry.get("value") or "", era, fixed_era=fixed)
+        if entry.get("slots_used"):
+            parts = dict(entry.get("date") or {})
+            parts["era"] = dates_mod.canonical_era(era)
+            info = dict(parts={k: parts.get(k) for k in ("year", "month", "day")},
+                        era=parts["era"],
+                        text=dates_mod.format_wareki(parts),
+                        gregorian=dates_mod.to_gregorian(parts["era"], parts.get("year"),
+                                                         parts.get("month"), parts.get("day")))
+        else:
+            info = dates_mod.enrich(entry.get("value") or "", era, fixed_era=fixed)
         entry["date"] = info["parts"]
         entry["era"] = info["era"]
         entry["gregorian"] = info["gregorian"]

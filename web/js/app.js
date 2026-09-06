@@ -39,6 +39,7 @@
       this.admin = new global.IkenshoAdmin(this);
       this.restore();
       this.setStatus('準備ができました。ファイルを読み込んでください。');
+      await this.loadFromQuery();
     }
 
     // -------------------------------------------------------------- 画面
@@ -83,6 +84,34 @@
       document.getElementById('btn-import').addEventListener('click',
         () => document.getElementById('import-input').click());
       document.getElementById('import-input').addEventListener('change', e => this.importJson(e));
+    }
+
+    /**
+     * ?sample=ファイル名 が付いていれば、そのサンプルを取り込んで読み取りを始める。
+     * サンプル一覧の「検証する」から呼ばれる。
+     */
+    async loadFromQuery() {
+      const params = new URLSearchParams(location.search);
+      const names = params.getAll('sample').filter(Boolean);
+      if (!names.length) return;
+      this.setStatus('サンプルを取り込んでいます…');
+      const files = [];
+      for (const n of names) {
+        const safe = n.replace(/[^A-Za-z0-9._\-]/g, '');
+        try {
+          const res = await fetch(`samples/${encodeURIComponent(safe)}`);
+          if (!res.ok) throw new Error(String(res.status));
+          const blob = await res.blob();
+          files.push(new File([blob], safe, { type: blob.type || 'application/pdf' }));
+        } catch (e) {
+          this.setStatus(`サンプル ${safe} を取り込めませんでした`, true);
+          return;
+        }
+      }
+      this.files = this.files.concat(files);
+      this.renderFiles();
+      this.showView('upload');
+      await this.run();
     }
 
     /** 配信環境に動作確認用サンプルが置いてあればリンクを出す。 */

@@ -1,0 +1,55 @@
+{
+ "updated": "2026-09-06T11:32:32.687687+09:00",
+ "source": "厚生労働省 地方厚生局「コード内容別医療機関一覧表」",
+ "prefectures": [
+  {
+   "pref": "千葉県",
+   "count": 3718
+  },
+  {
+   "pref": "埼玉県",
+   "count": 4361
+  },
+  {
+   "pref": "山梨県",
+   "count": 644
+  },
+  {
+   "pref": "新潟県",
+   "count": 1322
+  },
+  {
+   "pref": "東京都",
+   "count": 13954
+  },
+  {
+   "pref": "栃木県",
+   "count": 1287
+  },
+  {
+   "pref": "神奈川県",
+   "count": 6818
+  },
+  {
+   "pref": "群馬県",
+   "count": 1390
+  },
+  {
+   "pref": "茨城県",
+   "count": 1566
+  },
+  {
+   "pref": "長野県",
+   "count": 1391
+  }
+ ],
+ "errors": [
+  "hokkaido: 一覧ページを取得できません（HTTP Error 404: Not Found）",
+  "tohoku: 医科の一覧ファイルが見つかりません",
+  "tokaihokuriku: 一覧ページを取得できません（HTTP Error 404: Not Found）",
+  "kinki: 一覧ページを取得できません（HTTP Error 404: Not Found）",
+  "chugoku: 一覧ページを取得できません（HTTP Error 404: Not Found）",
+  "shikoku: 医科の一覧ファイルが見つかりません",
+  "kyushu: 一覧ページを取得できません（HTTP Error 404: Not Found）"
+ ]
+}

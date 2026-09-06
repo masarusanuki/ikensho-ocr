@@ -48,7 +48,10 @@
 
   class Pipeline {
     constructor(opts) {
-      this.base = opts.dataBase || 'data';
+      // 様式テンプレートの置き場は ?data=... で差し替えられる。
+      // 自前の様式一式を別の場所に置いて読み込ませたい場合に使う。
+      const params = new URLSearchParams(location.search);
+      this.base = params.get('data') || opts.dataBase || 'data';
       this.vendor = opts.vendorBase || 'vendor';
       this.schema = null;
       this.templates = {};
@@ -302,7 +305,8 @@
           const f = this.schema.byId[t.field];
           if (!f) continue;
           if (f.type === 'circle') {
-            textResults[t.field] = E.readCircle(w.mat, t.rect, t.options || f.options || []);
+            textResults[t.field] = E.readCircle(w.mat, t.rect,
+              t.options || f.options || [], !!(t.always_pick || f.always_pick));
             continue;
           }
           textJobs.push({ t, f, w });

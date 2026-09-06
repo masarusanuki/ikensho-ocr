@@ -43,6 +43,7 @@ def apply_to(tid, dry_run=False):
                                       kind=mt.get("kind", ""),
                                       era_field=mt.get("era_field", ""),
                                       default_era=mt.get("default_era", ""),
+                                      always_pick=bool(mt.get("always_pick")),
                                       transferred=True))
             restored += 1
     if restored:
@@ -79,6 +80,30 @@ def apply_to(tid, dry_run=False):
                 t["placement"] = "暫定"
                 t["transferred"] = True
                 stats["provisional"] += 1
+
+    # 日付欄の小枠（年・月・日）を、公式様式での相対位置からこの様式へ写す。
+    # 区切り文字の位置は様式によらず「年」「月」「日」の順なので、
+    # 欄の幅に対する割合で置き換えれば十分な精度になる。
+    for page in tpl["pages"]:
+        mpage = next((p for p in master["pages"] if p["index"] == page["index"]), None)
+        if not mpage:
+            continue
+        mslots = {t["field"]: (t["rect"], t.get("slots"))
+                  for t in mpage["texts"] if t.get("slots")}
+        for t in page["texts"]:
+            src = mslots.get(t["field"])
+            if not src:
+                continue
+            (mx, my, mw, mh), slots = src
+            x, y, w, h = t["rect"]
+            out = {}
+            for key, r in (slots or {}).items():
+                rel0 = (r[0] - mx) / mw
+                rel1 = (r[0] + r[2] - mx) / mw
+                out[key] = [round(x + rel0 * w, 6), round(y, 6),
+                            round((rel1 - rel0) * w, 6), round(h, 6)]
+            if out:
+                t["slots"] = out
 
     for page in tpl["pages"]:
         page["texts"].sort(key=lambda t: (round(t["rect"][1], 3), t["rect"][0]))

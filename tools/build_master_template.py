@@ -95,6 +95,43 @@ def snap_to_contour(gray, cx, cy, expect_px):
     return best
 
 
+def date_slots(pdf_path, page_index, rect, page_w, page_h):
+    """日付欄を「年」「月」「日」で区切り、数字だけが入る小枠を作る。
+
+    様式に印刷された区切り文字の位置は決まっているので、
+    そこで割れば各枠には数字しか入らない。1〜2桁の数字だけを
+    読めばよくなるので、OCR がぐっと楽になる。
+    """
+    import pdfplumber
+    x, y, w, h = rect
+    px0, py0, px1, py1 = x * page_w, y * page_h, (x + w) * page_w, (y + h) * page_h
+    with pdfplumber.open(pdf_path) as pdf:
+        chars = pdf.pages[page_index - 1].chars
+    marks = {}
+    for c in chars:
+        if c["text"] not in "年月日":
+            continue
+        if not (px0 - 2 <= c["x0"] and c["x1"] <= px1 + 2):
+            continue
+        if not (py0 - 4 <= c["top"] and c["bottom"] <= py1 + 4):
+            continue
+        marks.setdefault(c["text"], (c["x0"], c["x1"]))
+
+    slots = {}
+    left = px0
+    for key, mark in (("year", "年"), ("month", "月"), ("day", "日")):
+        if mark not in marks:
+            continue
+        mx0, mx1 = marks[mark]
+        pad = (mx1 - mx0) * 0.12
+        s0, s1 = left + pad, mx0 - pad
+        if s1 - s0 >= (px1 - px0) * 0.03:
+            slots[key] = [round(s0 / page_w, 6), round(y, 6),
+                          round((s1 - s0) / page_w, 6), round(h, 6)]
+        left = mx1
+    return slots
+
+
 def main():
     boxes = extract_boxes(MASTER)
     images = render(MASTER)
@@ -162,7 +199,11 @@ def main():
                     pii=f.get("pii", ""), kind=f.get("kind", ""),
                     era_field=f.get("era_field", ""),
                     default_era=f.get("default_era", ""),
+                    always_pick=bool(f.get("always_pick")),
                 ))
+                if f.get("kind") == "date_wareki":
+                    page_texts[-1]["slots"] = date_slots(
+                        MASTER, pi, page_texts[-1]["rect"], meta["width"], meta["height"])
 
         ref_name = f"official_v1_p{pi}.png"
         cv2.imwrite(os.path.join(REF_DIR, ref_name),

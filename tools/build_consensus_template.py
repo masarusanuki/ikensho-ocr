@@ -337,6 +337,7 @@ def transfer_texts(page_index, dst_boxes, dst_shape, blank=None):
                           charset=t.get("charset", ""), pii=t.get("pii", ""),
                           kind=t.get("kind", ""), era_field=t.get("era_field", ""),
                           default_era=t.get("default_era", ""),
+                          always_pick=bool(t.get("always_pick")),
                           # 別様式から機械的に写した暫定位置。管理画面で調整する前提。
                           transferred=True))
     return texts

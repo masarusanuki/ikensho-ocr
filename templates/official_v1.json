@@ -779,6 +779,27 @@
      "kind": "date_wareki",
      "era_field": "",
      "default_era": "令和",
+     "always_pick": false,
+     "slots": {
+      "year": [
+       0.811657,
+       0.052261,
+       0.017989,
+       0.019004
+      ],
+      "month": [
+       0.850392,
+       0.052261,
+       0.021383,
+       0.019004
+      ],
+      "day": [
+       0.89252,
+       0.052261,
+       0.021383,
+       0.019004
+      ]
+     },
      "placement": "検証済み"
     },
     {
@@ -796,6 +817,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -813,6 +835,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -833,6 +856,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": true,
      "placement": "検証済み"
     },
     {
@@ -850,6 +874,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -867,6 +892,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -884,6 +910,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -905,6 +932,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -913,7 +941,7 @@
      "rect": [
       0.267083,
       0.128278,
-      0.166297,
+      0.183095,
       0.017816
      ],
      "options": null,
@@ -922,6 +950,27 @@
      "kind": "date_wareki",
      "era_field": "birth_era",
      "default_era": "",
+     "always_pick": false,
+     "slots": {
+      "year": [
+       0.269091,
+       0.128278,
+       0.04364,
+       0.017816
+      ],
+      "month": [
+       0.333476,
+       0.128278,
+       0.03771,
+       0.017816
+      ],
+      "day": [
+       0.391932,
+       0.128278,
+       0.038315,
+       0.017816
+      ]
+     },
      "placement": "検証済み"
     },
     {
@@ -939,6 +988,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -956,6 +1006,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -973,6 +1024,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -990,6 +1042,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -1007,6 +1060,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -1024,6 +1078,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -1041,6 +1096,27 @@
      "kind": "date_wareki",
      "era_field": "",
      "default_era": "令和",
+     "always_pick": false,
+     "slots": {
+      "year": [
+       0.297647,
+       0.235177,
+       0.094302,
+       0.019004
+      ],
+      "month": [
+       0.412694,
+       0.235177,
+       0.088305,
+       0.019004
+      ],
+      "day": [
+       0.521745,
+       0.235177,
+       0.10527,
+       0.019004
+      ]
+     },
      "placement": "検証済み"
     },
     {
@@ -1058,6 +1134,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -1075,6 +1152,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -1096,6 +1174,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -1113,6 +1192,27 @@
      "kind": "date_wareki",
      "era_field": "diagnosis1_era",
      "default_era": "",
+     "always_pick": false,
+     "slots": {
+      "year": [
+       0.702472,
+       0.371769,
+       0.051988,
+       0.020192
+      ],
+      "month": [
+       0.775205,
+       0.371769,
+       0.046579,
+       0.020192
+      ],
+      "day": [
+       0.84253,
+       0.371769,
+       0.046378,
+       0.020192
+      ]
+     },
      "placement": "検証済み"
     },
     {
@@ -1130,6 +1230,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -1151,6 +1252,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -1168,6 +1270,27 @@
      "kind": "date_wareki",
      "era_field": "diagnosis2_era",
      "default_era": "",
+     "always_pick": false,
+     "slots": {
+      "year": [
+       0.702472,
+       0.395525,
+       0.051988,
+       0.020192
+      ],
+      "month": [
+       0.775205,
+       0.395525,
+       0.046579,
+       0.020192
+      ],
+      "day": [
+       0.84253,
+       0.395525,
+       0.046378,
+       0.020192
+      ]
+     },
      "placement": "検証済み"
     },
     {
@@ -1185,6 +1308,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -1206,6 +1330,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -1223,6 +1348,27 @@
      "kind": "date_wareki",
      "era_field": "diagnosis3_era",
      "default_era": "",
+     "always_pick": false,
+     "slots": {
+      "year": [
+       0.702472,
+       0.41928,
+       0.051988,
+       0.020192
+      ],
+      "month": [
+       0.775205,
+       0.41928,
+       0.046579,
+       0.020192
+      ],
+      "day": [
+       0.84253,
+       0.41928,
+       0.046378,
+       0.020192
+      ]
+     },
      "placement": "検証済み"
     },
     {
@@ -1240,6 +1386,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -1257,6 +1404,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -1274,6 +1422,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     }
    ]
@@ -2412,6 +2561,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2429,6 +2579,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2446,6 +2597,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2463,6 +2615,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2480,6 +2633,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2497,6 +2651,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2514,6 +2669,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2531,6 +2687,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2548,6 +2705,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2565,6 +2723,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2582,6 +2741,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2599,6 +2759,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2616,6 +2777,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2633,6 +2795,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2650,6 +2813,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2667,6 +2831,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2684,6 +2849,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2701,6 +2867,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2718,6 +2885,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2735,6 +2903,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2752,6 +2921,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2769,6 +2939,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     },
     {
@@ -2786,6 +2957,7 @@
      "kind": "",
      "era_field": "",
      "default_era": "",
+     "always_pick": false,
      "placement": "検証済み"
     }
    ]

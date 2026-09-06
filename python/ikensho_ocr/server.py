@@ -202,9 +202,11 @@ class ReusableServer(socketserver.ThreadingTCPServer):
     daemon_threads = True
 
 
-def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True) -> None:
-    Handler.schema = load_schema()
-    Handler.templates = load_templates()
+def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True,
+          template_dir: Optional[str] = None,
+          schema_path: Optional[str] = None) -> None:
+    Handler.schema = load_schema(schema_path) if schema_path else load_schema()
+    Handler.templates = load_templates(template_dir)
     Handler.dicts = DEFAULT_DICTIONARIES()
     root = _web_root()
     if not os.path.exists(os.path.join(root, "index.html")):
@@ -214,6 +216,8 @@ def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True) 
         url = f"http://{host}:{port}/"
         print(f"主治医意見書 読み取り: {url}")
         print(f"  配信元: {root}")
+        print(f"  様式テンプレート: {template_dir or os.environ.get('IKENSHO_TEMPLATES') or '(既定)'}"
+              f" / {len(Handler.templates)} 種類")
         print(f"  利用可能なOCRエンジン: {', '.join(available_engines())}")
         print("  停止するには Ctrl+C")
         if open_browser:

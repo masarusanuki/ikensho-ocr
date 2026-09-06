@@ -147,12 +147,20 @@ progress { width: 100%; height: 8px; }
   padding: 9px 12px; margin-bottom: 7px; background: var(--panel); cursor: pointer;
 }
 .field:hover { background: #fafbfc; }
-.field.active { box-shadow: 0 0 0 2px var(--accent-weak); background: #fafcff; }
-.field.lv-high   { border-left-color: var(--high); }
-.field.lv-medium { border-left-color: var(--medium); }
-.field.lv-low    { border-left-color: var(--low); }
-.field.lv-edited { border-left-color: var(--edited); }
-.field.lv-anon   { border-left-color: var(--anon); }
+.field.active { box-shadow: 0 0 0 2px var(--accent); }
+/* 確信度は左の線だけでなく、背景の色でも分かるようにする */
+.field.lv-high   { border-left-color: var(--high);   background: #f4fbf7; }
+.field.lv-medium { border-left-color: var(--medium); background: #fffaf0; }
+.field.lv-low    { border-left-color: var(--low);    background: #fef6f5; }
+.field.lv-edited { border-left-color: var(--edited); background: #f9f6fe; }
+.field.lv-anon   { border-left-color: var(--anon);   background: #f2fafb; }
+.field.lv-high:hover   { background: #eaf7f0; }
+.field.lv-medium:hover { background: #fdf5e6; }
+.field.lv-low:hover    { background: #fdeeec; }
+.field.lv-edited:hover { background: #f4eefd; }
+.field.lv-anon:hover   { background: #e9f6f8; }
+.field.lv-low    { border-color: #f0c6c2; border-left-color: var(--low); }
+.field.lv-medium { border-color: #ecdcb0; border-left-color: var(--medium); }
 .field .head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .field .lbl { font-weight: 600; font-size: 12.5px; flex: 1; }
 .field .raw { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
@@ -189,6 +197,27 @@ progress { width: 100%; height: 8px; }
 .seireki { font-size: 12px; color: var(--high); background: var(--high-bg);
            border-radius: 999px; padding: 2px 10px; margin-left: 4px; }
 .seireki.none { display: none; }
+
+/* 辞書から探す欄（病名・診療科など） */
+.dictsearch { position: relative; margin-top: 6px; }
+.dictsearch input {
+  width: 100%; border: 1px dashed var(--border); border-radius: 7px;
+  padding: 5px 9px; font-size: 12.5px; background: #fbfcfd;
+}
+.dictsearch input:focus { outline: 2px solid var(--accent-weak); border-style: solid;
+                          border-color: var(--accent); background: #fff; }
+.dictlist {
+  position: absolute; z-index: 40; left: 0; right: 0; top: 100%; margin-top: 3px;
+  max-height: 240px; overflow: auto; background: #fff; border: 1px solid var(--border);
+  border-radius: 9px; box-shadow: 0 6px 18px rgba(16, 24, 40, .14); padding: 4px;
+}
+.dictitem { display: block; width: 100%; text-align: left; border: 0; background: none;
+            padding: 5px 9px; border-radius: 6px; cursor: pointer; font-size: 12.5px; }
+.dictitem:hover { background: var(--accent-weak); }
+.dictlist .none { padding: 8px 10px; color: var(--muted); font-size: 12.5px; }
+.dictitem .icd { opacity: .7; font-size: 10.5px; margin-left: 6px; }
+.dictitem .tok { background: var(--medium-bg); color: var(--medium); border-radius: 4px;
+                 padding: 0 4px; font-size: 10px; margin-left: 6px; font-weight: 700; }
 
 .cands { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
 .cand {
