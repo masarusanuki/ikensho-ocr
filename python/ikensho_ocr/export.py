@@ -35,7 +35,12 @@ def record_to_json(rec, schema: Schema) -> Dict[str, Any]:
                           engine=e.get("engine"), llm_candidate=e.get("llm_candidate"),
                           anonymized=bool(e.get("anonymized")),
                           date=e.get("date"), era=e.get("era"),
-                          gregorian=e.get("gregorian"))
+                          gregorian=e.get("gregorian"),
+                          # なぜ確信度が低いのかが分かるよう、注記と訂正も残す
+                          note=e.get("note") or "",
+                          corrections=e.get("corrections") or [],
+                          expected_chars=e.get("expected_chars"),
+                          llm_applied=bool(e.get("llm_applied")))
     return dict(
         schema_version=schema.version,
         form_name=schema.form_name,

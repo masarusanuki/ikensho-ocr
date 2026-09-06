@@ -59,6 +59,7 @@
       document.getElementById('btn-token-copy').addEventListener('click', () => this.copyToken());
       document.getElementById('btn-token-new').addEventListener('click', () => this.newToken());
       document.getElementById('btn-token-use').addEventListener('click', () => this.useToken());
+      document.getElementById('btn-token-purge').addEventListener('click', () => this.purgeOthers());
 
       // 操作ログ
       document.getElementById('oplog-values').addEventListener('change', e => {
@@ -79,7 +80,7 @@
         this.renderOpLog();
       });
       document.getElementById('btn-oplog-clear').addEventListener('click', () => {
-        if (!confirm('この端末に残っている操作ログを消します。元に戻せません。よろしいですか？')) return;
+        if (!confirm('この利用者（今のトークン）の操作ログを消します。元に戻せません。よろしいですか？')) return;
         global.IkenshoOpLog.clear();
         this.renderOpLog();
         this.app.toast('操作ログを消去しました');
@@ -119,11 +120,34 @@
 
     // ------------------------------------------------------ 利用者トークン
     renderToken() {
-      document.getElementById('token-view').textContent = global.IkenshoSession.token;
-      const others = global.IkenshoSession.known().length - 1;
+      const S = global.IkenshoSession;
+      document.getElementById('token-view').textContent = S.token;
+      const others = S.otherCount();
+      const btn = document.getElementById('btn-token-purge');
+      if (btn) {
+        btn.hidden = others === 0;
+        btn.textContent = `この端末に残っている他の記録を消す（${others}件）`;
+      }
+      if (!S.storable) {
+        return this.setTokenStatus(
+          'この環境ではブラウザに保存できません（読み取り結果も操作ログも残りません）。'
+          + 'ファイルを直接開いている場合は、サーバ経由で開いてください。', true);
+      }
       this.setTokenStatus(others > 0
-        ? `この端末には、ほかに ${others} 人分の記録が残っています（トークンを入れないと見えません）`
+        ? `この端末には、ほかに ${others} 件ぶんの記録が残っています。`
+          + '見えないだけで消えてはいないので、共用端末では作業後に消してください'
         : 'この端末の記録はこのトークンの分だけです');
+    }
+
+    /** 共用端末で作業を終えるとき、他の利用者の記録を実際に消す。 */
+    purgeOthers() {
+      const n = global.IkenshoSession.otherCount();
+      if (!n) return;
+      if (!confirm(`この端末に残っている他の ${n} 件ぶんの記録（読み取り結果・操作ログ）を消します。\n`
+        + '元に戻せません。よろしいですか？')) return;
+      const removed = global.IkenshoSession.clearOthers();
+      this.renderToken();
+      this.app.toast(`${removed} 件の保存領域を消しました`);
     }
 
     setTokenStatus(msg, isError) {

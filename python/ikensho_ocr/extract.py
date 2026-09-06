@@ -263,123 +263,135 @@ def extract_record(paths: List[str],
             continue
         blank = tp.blank_image(tpl.base_dir)
         readings.extend(checkbox.read_boxes(warped, tp.boxes, blank))
+        # 書き込みだけを残した差分。欄ごとに作り直すと重いので1ページ1回にする
+        mark = text_check.mark_layer(warped, blank)
 
         for t, f in _text_fields_for_page(tp, schema):
-            # 日付欄は「年」「月」「日」で区切った小枠ごとに数字だけを読む。
-            # 各枠に1〜2桁の数字しか入らないので、そのまま読むより格段に正確になる。
-            if f.is_date:
-                entry = _read_date_slots(warped, t)
-                _mark_provisional(entry, t)
-                text_results[f.id] = entry
-                continue
-            if f.type == "circle":
-                entry = _read_circle(
-                    warped, t["rect"], t.get("options") or f.options or [],
-                    always_pick=bool(t.get("always_pick") or f.always_pick))
-                _mark_provisional(entry, t)
-                text_results[f.id] = entry
-                continue
-            # 測った左端が記入の先頭に食い込んでいることがあるので、
-            # 印刷内容にぶつからない範囲で左へ広げてから読む
-            rect = textbox.widen_left(blank, t["rect"])
-            if not ocr_mod.has_ink(warped, rect):
-                text_results[f.id] = dict(value="", confidence=0.95, raw="", empty=True,
-                                          candidates=[])
-                continue
-            roi = ocr_mod.prepare_roi(warped, rect, pad=0.02)
-            charset = t.get("charset") or getattr(f, "charset", "")
-            multiline = f.type == "textarea"
+            try:
+                # 日付欄は「年」「月」「日」で区切った小枠ごとに数字だけを読む。
+                # 各枠に1〜2桁の数字しか入らないので、そのまま読むより格段に正確になる。
+                if f.is_date:
+                    entry = _read_date_slots(warped, t)
+                    _mark_provisional(entry, t)
+                    text_results[f.id] = entry
+                    continue
+                if f.type == "circle":
+                    entry = _read_circle(
+                        warped, t["rect"], t.get("options") or f.options or [],
+                        always_pick=bool(t.get("always_pick") or f.always_pick))
+                    _mark_provisional(entry, t)
+                    text_results[f.id] = entry
+                    continue
+                # 測った左端が記入の先頭に食い込んでいることがあるので、
+                # 印刷内容にぶつからない範囲で左へ広げてから読む
+                rect = textbox.widen_left(blank, t["rect"])
+                if not ocr_mod.has_ink(warped, rect):
+                    text_results[f.id] = dict(value="", confidence=0.95, raw="", empty=True,
+                                              candidates=[])
+                    continue
+                roi = ocr_mod.prepare_roi(warped, rect, pad=0.02)
+                charset = t.get("charset") or getattr(f, "charset", "")
+                multiline = f.type == "textarea"
 
-            def _prepare(raw_text):
-                """辞書を引く前に、字体と誤字を直しておく。
-                こうしないと『褥創』が辞書の『褥瘡』に当たらない。
-                罫線やカッコ由来の記号は先に端から落とす。"""
-                trimmed, cut = text_check.trim_edges(raw_text or "")
-                pr = proofread.proofread_text(trimmed, multiline=multiline)
-                if cut:
-                    pr.corrections.extend(
-                        proofread.Correction(before="", after="", reason=c) for c in cut)
-                return pr
-            if isinstance(ocr_engine, ocr_mod.EnsembleOcr):
-                # 複数エンジンの結果を辞書照合まで通し、最も確からしいものを採る
-                best = None
-                for res in ocr_engine.read_all(roi, multiline, charset):
+                def _prepare(raw_text):
+                    """辞書を引く前に、字体と誤字を直しておく。
+                    こうしないと『褥創』が辞書の『褥瘡』に当たらない。
+                    罫線やカッコ由来の記号は先に端から落とす。"""
+                    trimmed, cut = text_check.trim_edges(raw_text or "")
+                    pr = proofread.proofread_text(trimmed, multiline=multiline)
+                    if cut:
+                        pr.corrections.extend(
+                            proofread.Correction(before="", after="", reason=c) for c in cut)
+                    return pr
+                if isinstance(ocr_engine, ocr_mod.EnsembleOcr):
+                    # 複数エンジンの結果を辞書照合まで通し、最も確からしいものを採る
+                    best = None
+                    for res in ocr_engine.read_all(roi, multiline, charset):
+                        pr = _prepare(res.text)
+                        cv, cc, cands = dicts.correct(f, pr.text, res.confidence)
+                        if best is None or cc > best[1]:
+                            best = (cv, cc, cands, res.text, res.engine, pr)
+                    corrected, conf, cands, raw_text, used, pr = best
+                    entry = dict(value=corrected, confidence=round(conf, 3),
+                                 raw=raw_text, candidates=cands, empty=False,
+                                 engine=used)
+                else:
+                    res = ocr_engine.read(roi, multiline=multiline, charset=charset)
                     pr = _prepare(res.text)
-                    cv, cc, cands = dicts.correct(f, pr.text, res.confidence)
-                    if best is None or cc > best[1]:
-                        best = (cv, cc, cands, res.text, res.engine, pr)
-                corrected, conf, cands, raw_text, used, pr = best
-                entry = dict(value=corrected, confidence=round(conf, 3),
-                             raw=raw_text, candidates=cands, empty=False,
-                             engine=used)
-            else:
-                res = ocr_engine.read(roi, multiline=multiline, charset=charset)
-                pr = _prepare(res.text)
-                corrected, conf, cands = dicts.correct(f, pr.text, res.confidence)
-                entry = dict(value=corrected, confidence=round(conf, 3),
-                             raw=res.text, candidates=cands, empty=False,
-                             engine=res.engine)
-            # ふりがな欄はひらがなに揃える（様式が「ふりがな」のため）
-            if f.charset == "kana" and entry.get("value"):
-                fixed, note = proofread.to_furigana(entry["value"])
-                if note is not None:
-                    entry["value"] = fixed
-                    entry.setdefault("corrections", []).append(
-                        dict(before=note.before, after=note.after, reason=note.reason))
+                    corrected, conf, cands = dicts.correct(f, pr.text, res.confidence)
+                    entry = dict(value=corrected, confidence=round(conf, 3),
+                                 raw=res.text, candidates=cands, empty=False,
+                                 engine=res.engine)
+                # ふりがな欄はひらがなに揃える（様式が「ふりがな」のため）
+                if f.charset == "kana" and entry.get("value"):
+                    fixed, note = proofread.to_furigana(entry["value"])
+                    if note is not None:
+                        entry["value"] = fixed
+                        entry.setdefault("corrections", []).append(
+                            dict(before=note.before, after=note.after, reason=note.reason))
 
-            # 書かれている量・端の接し方と、読めた文字列を突き合わせる
-            chk = text_check.check(entry.get("value") or "", warped, blank, rect, charset)
-            if chk["notes"]:
-                entry["confidence"] = round(entry["confidence"] * chk["penalty"], 3)
-                for n in chk["notes"]:
-                    _add_note(entry, n)
-            entry["expected_chars"] = chk["expected"]
+                # 書かれている量・端の接し方と、読めた文字列を突き合わせる
+                chk = text_check.check(entry.get("value") or "", warped, blank, rect,
+                                       charset, mark)
+                if chk["notes"]:
+                    entry["confidence"] = round(entry["confidence"] * chk["penalty"], 3)
+                    for n in chk["notes"]:
+                        _add_note(entry, n)
+                entry["expected_chars"] = chk["expected"]
 
-            # 日本語チェックの結果を記録する（訂正は辞書照合の前に済ませている）
-            if pr.corrections:
-                entry["corrections"] = [dict(before=c.before, after=c.after,
-                                             reason=c.reason) for c in pr.corrections]
-            entry["japanese_score"] = pr.japanese_score
-            if pr.japanese_score < 0.6:
-                entry["confidence"] = round(entry["confidence"] * 0.6, 3)
-                _add_note(entry, pr.note)
+                # 日本語チェックの結果を記録する（訂正は辞書照合の前に済ませている）
+                if pr.corrections:
+                    # 既にある訂正（ふりがなの変換など）を消さないこと
+                    entry.setdefault("corrections", []).extend(
+                        dict(before=c.before, after=c.after, reason=c.reason)
+                        for c in pr.corrections)
+                entry["japanese_score"] = pr.japanese_score
+                if pr.japanese_score < 0.6:
+                    entry["confidence"] = round(entry["confidence"] * 0.6, 3)
+                    _add_note(entry, pr.note)
 
-            # 自由記述はLLMに校正させ、結果は候補として並べる（自動採用はしない）
-            if assist and llm_left > 0 and multiline and len(entry["value"]) >= 20:
-                llm_left -= 1
-                lp = proofread.proofread_with_llm(assist, entry["value"], f.label)
-                if lp:
-                    entry.setdefault("candidates", []).insert(
-                        0, dict(value=entry["value"], score=None, source="raw",
-                                note="LLM補正前の読み取り"))
-                    entry["value"] = lp.text
-                    entry["llm_applied"] = True
-                    _add_note(entry, lp.note)
+                # 自由記述はLLMに校正させ、結果は候補として並べる（自動採用はしない）
+                if assist and llm_left > 0 and multiline and len(entry["value"]) >= 20:
+                    llm_left -= 1
+                    lp = proofread.proofread_with_llm(assist, entry["value"], f.label)
+                    if lp:
+                        entry.setdefault("candidates", []).insert(
+                            0, dict(value=entry["value"], score=None, source="raw",
+                                    note="LLM補正前の読み取り"))
+                        entry["value"] = lp.text
+                        entry["llm_applied"] = True
+                        _add_note(entry, lp.note)
 
-            # 辞書で決めきれなかった欄だけ、小型LLMに候補を選ばせる（自動採用はしない）
-            if assist and llm_left > 0 and _llm_worth_asking(entry):
-                llm_left -= 1
-                names = [c["value"] for c in (entry.get("candidates") or [])
-                         if c.get("source") != "llm"][:5]
-                sug = assist.suggest(f.label, entry["raw"], names)
-                if sug and sug.value != entry["value"]:
-                    entry.setdefault("candidates", []).insert(
-                        0, dict(value=sug.value, score=None, source="llm",
-                                note=sug.note))
-                    entry["llm_candidate"] = sug.value
-                    # LLM の結果を採用する。出力は辞書に載っている語に限っているので
-                    # 書かれていない病名を作り出すことはない。
-                    # 元の読み取りは raw に残し、画面には「LLMが補正」と出す。
-                    entry["value"] = sug.value
-                    entry["llm_applied"] = True
-                    entry["confidence"] = max(entry.get("confidence", 0.0), 0.55)
-                    entry["note"] = "LLMが補正しました。原文と見比べて確認してください。"
-            if t.get("transferred"):
-                # 別様式から機械的に写した暫定位置。枠がずれている可能性がある
-                entry["confidence"] = round(entry["confidence"] * 0.5, 3)
-                entry["note"] = "欄の位置が暫定です（管理画面のテンプレート編集で調整できます）"
-            text_results[f.id] = entry
+                # 辞書で決めきれなかった欄だけ、小型LLMに候補を選ばせる（自動採用はしない）
+                if assist and llm_left > 0 and _llm_worth_asking(entry):
+                    llm_left -= 1
+                    names = [c["value"] for c in (entry.get("candidates") or [])
+                             if c.get("source") != "llm"][:5]
+                    sug = assist.suggest(f.label, entry["raw"], names)
+                    if sug and sug.value != entry["value"]:
+                        entry.setdefault("candidates", []).insert(
+                            0, dict(value=sug.value, score=None, source="llm",
+                                    note=sug.note))
+                        entry["llm_candidate"] = sug.value
+                        # LLM の結果を採用する。出力は辞書に載っている語に限っているので
+                        # 書かれていない病名を作り出すことはない。
+                        # 元の読み取りは raw に残し、画面には「LLMが補正」と出す。
+                        entry["value"] = sug.value
+                        entry["llm_applied"] = True
+                        entry["confidence"] = max(entry.get("confidence", 0.0), 0.55)
+                        _add_note(entry, "LLMが補正しました。原文と見比べて確認してください。")
+                if t.get("transferred"):
+                    # 別様式から機械的に写した暫定位置。枠がずれている可能性がある
+                    entry["confidence"] = round(entry["confidence"] * 0.5, 3)
+                    _add_note(entry, "欄の位置が暫定です（管理画面のテンプレート編集で調整できます）")
+                text_results[f.id] = entry
 
+            except Exception as exc:
+                # 1欄の失敗で1件まるごと落とさない。読めなかった欄だけ要確認にする
+                rec.warnings.append(f"{f.label}: 欄の読み取りに失敗しました（{exc}）")
+                text_results[f.id] = dict(
+                    value="", confidence=0.0, raw="", empty=False, candidates=[],
+                    note=f"この欄の読み取りに失敗しました（{exc}）")
     expected_pages = ([p.index for p in templates[rec.template_id].pages]
                       if rec.template_id in templates else [1, 2])
     missing = [i for i in expected_pages if i not in warped_pages]

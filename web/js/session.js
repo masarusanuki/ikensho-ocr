@@ -48,7 +48,11 @@
 
     short() { return this.token.slice(0, 8); }
 
-    /** トークン導入前のデータを、今のトークンの下へ移す（1度だけ）。 */
+    /**
+     * トークン導入前のデータを、今のトークンの下へ移す（1度だけ）。
+     * 共用端末では前の利用者の記録を引き継ぐことになるので、
+     * 引き継いだ場合は `migrated` を立てて画面に知らせる。
+     */
     migrate() {
       try {
         for (const base of Object.keys(LEGACY)) {
@@ -56,10 +60,20 @@
           if (old === null) continue;
           if (localStorage.getItem(this.key(base)) === null) {
             localStorage.setItem(this.key(base), old);
+            this.migrated = true;
           }
           localStorage.removeItem(base);
         }
       } catch (e) { /* 使えない環境では何もしない */ }
+    }
+
+    /** localStorage が使えるか（使えないと保存は全部失敗する）。 */
+    get storable() {
+      try {
+        localStorage.setItem('ikensho.probe', '1');
+        localStorage.removeItem('ikensho.probe');
+        return true;
+      } catch (e) { return false; }
     }
 
     /** 新しいトークンを発行する。それまでの履歴は見えなくなる。 */
@@ -79,17 +93,37 @@
       return t;
     }
 
-    /** この端末に残っているトークンの一覧（保存先の名前から拾う）。 */
-    known() {
+    /**
+     * この端末に残っている「今の自分以外」の記録の数。
+     * トークン文字列そのものは返さない（返すと他人の記録を開けてしまう）。
+     */
+    otherCount() {
       const found = new Set();
       try {
         for (let i = 0; i < localStorage.length; i++) {
-          const m = /^ikensho\.records\.v1\.([0-9a-f]{8,64})$/.exec(localStorage.key(i));
-          if (m) found.add(m[1]);
+          const m = /^ikensho\.(?:records|oplog|settings)\.v1\.([0-9a-f]{8,64})$/
+            .exec(localStorage.key(i));
+          if (m && m[1] !== this.token) found.add(m[1]);
         }
       } catch (e) { /* 無視 */ }
-      found.add(this.token);
-      return [...found];
+      return found.size;
+    }
+
+    /**
+     * この端末に残っている、今のトークン以外の記録をすべて消す。
+     * 共用端末で作業を終えるときに使う。消したら元に戻せない。
+     */
+    clearOthers() {
+      const keys = [];
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          const m = /^ikensho\.(records|oplog|settings)\.v1\.([0-9a-f]{8,64})$/.exec(k);
+          if (m && m[2] !== this.token) keys.push(k);
+        }
+        keys.forEach(k => localStorage.removeItem(k));
+      } catch (e) { /* 無視 */ }
+      return keys.length;
     }
   }
 

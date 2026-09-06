@@ -102,6 +102,12 @@
         edited: !!e.edited, confirmed: !!e.confirmed, anonymized: !!e.anonymized,
         raw: e.raw === undefined ? null : e.raw,
         date: e.date || null, era: e.era || '', gregorian: e.gregorian || null,
+        // なぜ確信度が低いのかが分かるよう、注記と訂正も残す。
+        // これが無いと、書き出して読み直したときに理由だけが消える
+        note: e.note || '',
+        corrections: e.corrections || [],
+        expected_chars: e.expected_chars === undefined ? null : e.expected_chars,
+        llm_applied: !!e.llm_applied,
       };
     }
     return {
@@ -191,12 +197,17 @@
           edited: !!m.edited, confirmed: !!m.confirmed,
           anonymized: !!m.anonymized, raw: m.raw || '',
           date: m.date || null, era: m.era || '', gregorian: m.gregorian || null,
+          note: m.note || '', corrections: m.corrections || [],
+          expected_chars: m.expected_chars === undefined ? null : m.expected_chars,
+          llm_applied: !!m.llm_applied,
           kind: f.kind || '',
           label: f.label, type: f.type, section: f.sectionTitle, page: f.page,
           options: f.options,
         };
       }
       out.push({
+        // 取り込んだ件にも目印を付ける（操作ログを件ごとに分けるため）
+        id: 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         fields, templateId: r.template_id, ocrEngine: r.ocr_engine,
         anonymized: !!r.anonymized,
         readAt: r.read_at, warnings: r.warnings || [], images: {},

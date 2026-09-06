@@ -413,7 +413,12 @@
 
   /** 白紙様式の指定範囲について、列ごとの印刷インクの画素数を数える。 */
   function columnInk(blank, x, y, w, h) {
-    if (w <= 0 || h <= 0) return [];
+    // 画像の外にはみ出す指定で roi が例外を投げるため、必ず内側に収める
+    x = Math.max(0, Math.min(blank.cols - 1, Math.round(x)));
+    y = Math.max(0, Math.min(blank.rows - 1, Math.round(y)));
+    w = Math.min(Math.round(w), blank.cols - x);
+    h = Math.min(Math.round(h), blank.rows - y);
+    if (!(w > 0) || !(h > 0)) return [];
     const band = blank.roi(new cv.Rect(x, y, w, h));
     const bw = binarize(band);
     const k = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
@@ -436,12 +441,13 @@
    * 白紙様式の印刷内容にぶつからない範囲だけ左へ広げる。
    */
   function widenLeft(blank, rect) {
-    if (!blank) return rect;
+    if (!blank || !rect || !rect.every(v => Number.isFinite(v))) return rect;
     const W = blank.cols, H = blank.rows;
     const x0 = Math.round(rect[0] * W);
     const y0 = Math.max(0, Math.round(rect[1] * H));
     const y1 = Math.min(H, Math.round((rect[1] + rect[3]) * H));
-    if (x0 <= 1 || y1 - y0 < 4) return rect;
+    // 欄が画像の外や端に掛かっている場合は触らない
+    if (x0 <= 1 || x0 >= W - 1 || y1 - y0 < 4) return rect;
     const gap = Math.max(WIDEN_GAP_MIN, Math.round((y1 - y0) * WIDEN_GAP_RATIO));
     // 欄の左端のすぐ内側に印刷（「（」など）がある場合は、
     // もともと印刷の際まで測れているので広げない
@@ -463,27 +469,69 @@
     return [nx, rect[1], rect[2] + (rect[0] - nx), rect[3]];
   }
 
-  const LEAD_JUNK = '（(｜|[]{}「」『』:：;；,，、。・･_＿=＝~〜/／\\＊*+＋"\'`^ 　>＞→ー―—–-';
-  const TAIL_JUNK = '｜|[]{}「『:；;,，_＿=＝~〜/／\\＊*+＋"\'`^ 　>＞→';
+  // 先頭・末尾に残りやすい記号。「→ 対処方針 （」のような印刷を拾ったときに出る。
+  // 括弧は対応が取れているかどうかで扱いを変えるので別に持つ。
+  // （Python の text_check.py と同じ。片方だけ直さないこと）
+  const LEAD_MISC = '｜|:：;；,，、。・･_＿=＝~〜/／\\＊*+＋"\'`^>＞→ー―—–-';
+  const TAIL_MISC = '｜|:；;,，_＿=＝~〜/／\\＊*+＋"\'`^>＞→';
+  const OPENERS = '（(「『［[｛{';
+  const CLOSERS = '）)」』］]｝}';
+  const SIGNS = '+＋-ー―—–';
+  // 空白の扱いを Python と揃える（trim() と str.strip() は対象が微妙に違う）
+  const WS = '[\\t\\n\\v\\f\\r \\u001c-\\u001f\\u0085\\u00a0\\u1680\\u2000-\\u200a'
+           + '\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]';
+  const RE_TRIM = new RegExp(`^${WS}+|${WS}+$`, 'g');
+  const RE_WS = new RegExp(WS, 'g');
+  const trim = s => String(s).replace(RE_TRIM, '');
 
-  /** 罫線やカッコ由来の記号が先頭・末尾に残っていたら落とす。 */
+  const unbalanced = (t, opener) => {
+    const close = CLOSERS[OPENERS.indexOf(opener)];
+    return t.split(opener).length > t.split(close).length;
+  };
+  const unmatchedClose = (t, closer) => {
+    const open = OPENERS[CLOSERS.indexOf(closer)];
+    return t.split(closer).length > t.split(open).length;
+  };
+
+  /**
+   * 先頭・末尾に残った記号を落とす。
+   * 括弧は対応が取れていないものだけ落とす（`（右）大腿骨頸部骨折` を壊さないため）。
+   * 符号（`-3kg`）と、単独の `-`（「該当なし」の意思表示）は残す。
+   */
   function trimEdges(text) {
     if (!text) return { text: text || '', notes: [] };
+    const original = trim(text);
     const notes = [];
-    let out = text.trim();
-    let i = 0;
-    while (i < out.length && LEAD_JUNK.includes(out[i])) i++;
-    if (i > 0) { notes.push(`先頭の記号「${out.slice(0, i)}」を削除`); out = out.slice(i); }
-    let j = out.length;
-    while (j > 0 && TAIL_JUNK.includes(out[j - 1])) j--;
-    if (j < out.length) { notes.push(`末尾の記号「${out.slice(j)}」を削除`); out = out.slice(0, j); }
-    while (/[）)]$/.test(out) &&
-           (out.split('（').length + out.split('(').length) <
-           (out.split('）').length + out.split(')').length)) {
-      notes.push('末尾の閉じカッコを削除');
-      out = out.slice(0, -1).trim();
+    let out = original;
+
+    let removed = '';
+    while (out) {
+      const ch = out[0];
+      if (SIGNS.includes(ch) && out.length > 1 && /[0-9.]/.test(out[1])) break;
+      if (CLOSERS.includes(ch) && unmatchedClose(out, ch)) { /* 落とす */ }
+      else if (OPENERS.includes(ch) && unbalanced(out, ch)) { /* 落とす */ }
+      else if (LEAD_MISC.includes(ch) && !OPENERS.includes(ch) && !CLOSERS.includes(ch)) { /* 落とす */ }
+      else break;
+      removed += ch;
+      out = trim(out.slice(1));
     }
-    return { text: out.trim(), notes };
+    if (removed) notes.push(`先頭の記号「${removed}」を削除`);
+
+    removed = '';
+    while (out) {
+      const ch = out[out.length - 1];
+      if (OPENERS.includes(ch) && unbalanced(out, ch)) { /* 落とす */ }
+      else if (CLOSERS.includes(ch) && unmatchedClose(out, ch)) { /* 落とす */ }
+      else if (TAIL_MISC.includes(ch) && !OPENERS.includes(ch) && !CLOSERS.includes(ch)) { /* 落とす */ }
+      else break;
+      removed = ch + removed;
+      out = trim(out.slice(0, -1));
+    }
+    if (removed) notes.push(`末尾の記号「${removed}」を削除`);
+
+    out = trim(out);
+    if (!out) return { text: original, notes: [] };   // 全部消えるなら元のまま
+    return { text: out, notes };
   }
 
   // 1文字あたりの「インクのある列数 ÷ 行の高さ」。実測で 0.24〜1.70 とばらつくため、
@@ -493,17 +541,23 @@
   const SHORT_RATIO = 0.8;
   const LONG_MARGIN = 2;
   const MIN_EXPECT = 3;
+  // 1文字ぶんにも満たない書き込みしか無ければ「記入なし」とみなす
+  const EMPTY_DENSITY = 0.25;
+  const EMPTY_PENALTY = 0.35;
   const EDGE_PX = 2;
 
   /** 欄の中の書き込みから、行数・おおよその文字数・端に接しているかを出す。 */
-  function writtenShape(warped, blank, rect) {
-    const diff = markLayer(warped, blank);
+  function writtenShape(warped, blank, rect, sharedDiff) {
+    if (!rect || !rect.every(v => Number.isFinite(v))) return null;
+    // 差分は1ページに1回作れば足りる。欄ごとに作り直すと重い
+    const diff = sharedDiff || markLayer(warped, blank);
     if (!diff) return null;
     const W = diff.cols, H = diff.rows;
-    const x0 = Math.max(0, Math.round(rect[0] * W)), y0 = Math.max(0, Math.round(rect[1] * H));
+    const x0 = Math.max(0, Math.min(W - 1, Math.round(rect[0] * W)));
+    const y0 = Math.max(0, Math.min(H - 1, Math.round(rect[1] * H)));
     const x1 = Math.min(W, Math.round((rect[0] + rect[2]) * W));
     const y1 = Math.min(H, Math.round((rect[1] + rect[3]) * H));
-    if (x1 - x0 < 8 || y1 - y0 < 6) { diff.delete(); return null; }
+    if (x1 - x0 < 8 || y1 - y0 < 6) { if (!sharedDiff) diff.delete(); return null; }
     const roi = diff.roi(new cv.Rect(x0, y0, x1 - x0, y1 - y0));
     const win = roi.isContinuous() ? roi : roi.clone();
     const rows = win.rows, cols = win.cols, d = win.data;
@@ -540,7 +594,8 @@
       if (colInk[c] >= 2) { if (firstCol < 0) firstCol = c; lastCol = c; }
     }
     if (win !== roi) win.delete();
-    roi.delete(); diff.delete();
+    roi.delete();
+    if (!sharedDiff) diff.delete();
     return { density,
              minChars: Math.round(density / DENSITY_MAX),
              maxChars: Math.round(density / DENSITY_MIN),
@@ -554,18 +609,24 @@
    * charset のある欄（数字・電話など）は半角が混ざり幅が揃わないので、
    * 文字数の判定はしない。
    */
-  function checkText(text, warped, blank, rect, charset) {
-    const out = { penalty: 1, notes: [], expected: null,
-                  read: (text || '').replace(/\s/g, '').length };
-    const shape = writtenShape(warped, blank, rect);
+  function checkText(text, warped, blank, rect, charset, sharedDiff) {
+    const out = { penalty: 1, notes: [], expected: null, emptyInk: false,
+                  read: [...String(text || '').replace(RE_WS, '')].length };
+    const shape = writtenShape(warped, blank, rect, sharedDiff);
     if (!shape) return out;
     out.expected = shape.minChars;
     const lo = shape.minChars, hi = shape.maxChars, read = out.read;
-    if (!charset) {
+    // 何も書かれていないのに文字が出た場合。罫線や印刷を読んでしまった疑いが濃い。
+    // この機能が本来いちばん拾うべき場面なので、文字種による除外もしない。
+    if (shape.density < EMPTY_DENSITY && read >= 1) {
+      out.emptyInk = true;
+      out.notes.push('この欄に書き込みが見当たりません（罫線や印刷を読んだ可能性）');
+      out.penalty *= EMPTY_PENALTY;
+    } else if (!charset) {
       if (lo >= MIN_EXPECT && read < lo * SHORT_RATIO) {
         out.notes.push(`書かれている量に対して読めた文字が少ない（${lo}文字以上あるはずが${read}文字）`);
         out.penalty *= 0.8;
-      } else if (hi >= 1 && read > hi + LONG_MARGIN) {
+      } else if (read > hi + LONG_MARGIN) {
         out.notes.push(`書かれている量より読めた文字が多い（多くても${hi}文字のはずが${read}文字）`);
         out.penalty *= 0.8;
       }

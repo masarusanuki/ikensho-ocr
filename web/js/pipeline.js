@@ -337,12 +337,32 @@
             + 'ブラウザの制約でOCRを起動できません）。チェックボックスはすべて読み取っています。'
           : 'テキスト欄のOCRは使っていません。チェックボックスはすべて読み取っています。');
       }
+      // 白紙様式との差分は1ページに1回だけ作る（欄ごとに作ると重い）
+      const diffs = {};
+      for (const [idx, w] of Object.entries(warped)) {
+        const b = this.blanks[`${templateId}:${idx}`];
+        const d = b ? E.markLayer(w.mat, b) : null;
+        if (d) diffs[idx] = d;
+      }
+      try {
       for (let i = 0; i < textJobs.length; i++) {
         const { t, f, w } = textJobs[i];
         onProgress({ phase: 'ocr', current: i + 1, total: textJobs.length,
                      message: `テキスト欄を読み取っています（${f.label}）` });
-        textResults[t.field] = await this.readText(
-          w.mat, t, f, this.blanks[`${templateId}:${w.tplPage.index}`]);
+        try {
+          textResults[t.field] = await this.readText(
+            w.mat, t, f, this.blanks[`${templateId}:${w.tplPage.index}`],
+            diffs[w.tplPage.index]);
+        } catch (e) {
+          // 1欄の失敗で1件まるごと落とさない。読めなかった欄だけ要確認にする
+          console.error('欄の読み取りに失敗:', f.id, e);
+          textResults[t.field] = { value: '', confidence: 0, raw: '', empty: false,
+                                   candidates: [],
+                                   note: `この欄の読み取りに失敗しました（${e && e.message ? e.message : e}）` };
+        }
+      }
+      } finally {
+        Object.values(diffs).forEach(d => d.delete());
       }
 
       // --- 4.5) 日付欄は年・月・日に分けておく（確認画面で数字だけ直せるように）
@@ -389,7 +409,11 @@
         w.mat.delete();
       }
 
-      const record = { fields, pages: pageInfos, templateId, warnings, images,
+      // 件ごとの目印。操作ログで別の意見書と混ざらないようにするために要る。
+      // 氏名などを含めないよう、内容とは無関係な文字列にする。
+      const id = 'r' + Date.now().toString(36) +
+                 Math.random().toString(36).slice(2, 6);
+      const record = { id, fields, pages: pageInfos, templateId, warnings, images,
                        ocrEngine: this.ocrReady ? 'tesseract.js(jpn)' : 'none',
                        anonymized: false };
       // 匿名化加工済みデータの扱い（氏名欄が白抜きなら「匿名化済み」）
@@ -405,7 +429,7 @@
       return record;
     }
 
-    async readText(warped, t, f, blank) {
+    async readText(warped, t, f, blank, diff) {
       // 測った左端が記入の先頭に食い込んでいることがあるので、
       // 印刷内容にぶつからない範囲で左へ広げてから読む
       const rect = blank ? E.widenLeft(blank, t.rect) : t.rect;
@@ -451,7 +475,7 @@
           trimmed.notes.map(n => ({ before: '', after: '', reason: n })));
       }
       // 書かれている量・端の接し方と、読めた文字列を突き合わせる
-      const chk = E.checkText(entry.value || '', warped, blank, rect, charset);
+      const chk = E.checkText(entry.value || '', warped, blank, rect, charset, diff);
       entry.expected_chars = chk.expected;
       if (chk.notes.length) {
         entry.confidence = Math.round(entry.confidence * chk.penalty * 1000) / 1000;
@@ -460,7 +484,8 @@
       if (t.transferred) {
         // 別様式から機械的に写した暫定位置。枠がずれている可能性がある
         entry.confidence *= 0.5;
-        entry.note = '欄の位置が暫定です（管理画面のテンプレート編集で調整できます）';
+        entry.note = [entry.note, '欄の位置が暫定です（管理画面のテンプレート編集で調整できます）']
+          .filter(Boolean).join('／');
       }
       return entry;
     }

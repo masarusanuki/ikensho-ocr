@@ -112,7 +112,9 @@
      * 直す前の値は、その項目を最初に触った時点のものを使う。
      */
     edit(record, field, entry, beforeValue) {
-      const key = (record && record.id ? record.id : '-') + '/' + field.id;
+      // 件ごとに分ける。混ざると、別の意見書の「直す前」と「直した後」が
+      // 組み合わさった、存在しない訂正が記録されてしまう
+      const key = (this.recordLabel(record) || '-') + '/' + field.id;
       if (!this._before.has(key)) this._before.set(key, beforeValue);
       const prev = this._pending.get(key);
       if (prev) clearTimeout(prev.timer);
@@ -144,7 +146,16 @@
 
     recordLabel(record) {
       if (!record) return '';
-      return record.id || (record.files && record.files[0]) || '';
+      // 内容とは無関係な目印だけを残す。ファイル名や氏名は入れない
+      if (!record.id) {
+        try {
+          Object.defineProperty(record, 'id', {
+            value: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            enumerable: true, writable: true, configurable: true,
+          });
+        } catch (e) { return ''; }
+      }
+      return record.id;
     }
 
     /** 何をどれだけ直したかの要約。 */

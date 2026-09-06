@@ -9,6 +9,8 @@
 そこで**白紙様式**を見て、左どなりの印刷内容にぶつからない範囲でだけ広げる。
 白紙様式は様式ごとに用意してあり、チェック欄の差分にも使っているもの。
 """
+import math
+
 from typing import List, Optional
 
 import cv2
@@ -21,6 +23,11 @@ GAP_RATIO = 0.35
 GAP_MIN = 3
 # その列に印刷内容があるとみなす画素数
 INK_MIN = 2
+
+
+def _r(v: float) -> int:
+    """四捨五入。ブラウザの Math.round と同じ規則にする（Python の round は偶数丸め）。"""
+    return int(math.floor(v + 0.5))
 
 
 def _printed(blank: np.ndarray) -> np.ndarray:
@@ -40,23 +47,29 @@ def widen_left(blank: Optional[np.ndarray], rect: List[float],
         return rect
     H, W = blank.shape[:2]
     x, y, w, h = rect
-    x0 = int(round(x * W))
-    y0, y1 = max(0, int(round(y * H))), min(H, int(round((y + h) * H)))
-    if x0 <= 1 or y1 - y0 < 4:
+    if not all(np.isfinite(v) for v in (x, y, w, h)):
+        return rect
+    x0 = _r(x * W)
+    y0, y1 = max(0, _r(y * H)), min(H, _r((y + h) * H))
+    # 欄が画像の外や端に掛かっている場合は触らない（切り抜きが空になり落ちる）
+    if x0 <= 1 or x0 >= W - 1 or y1 - y0 < 4:
         return rect
 
-    gap = max(GAP_MIN, int(round((y1 - y0) * GAP_RATIO)))
+    gap = max(GAP_MIN, _r((y1 - y0) * GAP_RATIO))
     # 欄の左端のすぐ内側に印刷（「（」など）がある場合は、
     # もともと印刷の際まで測れているので広げない
-    inside = _printed(blank[y0:y1, x0:min(W, x0 + gap)])
-    if inside.size and ((inside > 0).sum(axis=0) >= INK_MIN).any():
+    inside_win = blank[y0:y1, x0:min(W, x0 + gap)]
+    if inside_win.size == 0:
+        return rect
+    inside = _printed(inside_win)
+    if ((inside > 0).sum(axis=0) >= INK_MIN).any():
         return rect
 
-    limit = max(0, x0 - int(round(max_pad * W)))
-    band = _printed(blank[y0:y1, limit:x0])
-    if band.size == 0:
+    limit = max(0, x0 - _r(max_pad * W))
+    band_win = blank[y0:y1, limit:x0]
+    if band_win.size == 0:
         return rect
-    col = (band > 0).sum(axis=0)
+    col = (_printed(band_win) > 0).sum(axis=0)
 
     # 欄の左端から左へ、印刷内容にぶつかるまで戻る
     new_x0 = x0

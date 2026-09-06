@@ -53,6 +53,10 @@
 
     // ------------------------------------------------------------ 表示
     show(record) {
+      // 前の件で打ちかけの修正を、件が変わる前に確定させる
+      if (global.IkenshoOpLog && this.record && this.record !== record) {
+        global.IkenshoOpLog.flush();
+      }
       this.record = record;
       this.activeField = null;
       document.getElementById('review-empty').hidden = !!record;
@@ -175,10 +179,7 @@
         const n = A.apply(this.record, this.app.schema, true);
         this.app.toast(`${n} 項目を匿名化加工済みデータとして扱います`);
       }
-      this.op('anonymize', {
-        note: this.record.anonymized ? '適用' : '解除',
-        count: this.record.anonymized ? undefined : undefined,
-      });
+      this.op('anonymize', { note: this.record.anonymized ? '適用' : '解除' });
       this.app.touch();
       this.renderFields();
       this.updateAnonButton();
@@ -492,9 +493,13 @@
       if (e.corrections && e.corrections.length) {
         const c = document.createElement('div');
         c.className = 'raw';
-        c.textContent = '訂正: ' + e.corrections.slice(0, 4)
-          .map(x => `${x[0] || x.before}→${(x[1] !== undefined ? x[1] : x.after) || '（削除）'}`)
-          .join('、');
+        c.textContent = '訂正: ' + e.corrections.slice(0, 4).map(x => {
+          const before = x[0] !== undefined ? x[0] : x.before;
+          const after = x[1] !== undefined ? x[1] : x.after;
+          // 「先頭の記号を削除」のように、前後の文字ではなく理由だけを持つものもある
+          if (!before && !after) return x.reason || '';
+          return `${before}→${after || '（削除）'}`;
+        }).filter(Boolean).join('、');
         el.appendChild(c);
       }
       if (e.note) {
@@ -840,19 +845,31 @@
 
     /** 選んだ医療機関の所在地・電話を、対応する欄に入れる。 */
     applyHospital(h) {
+      const L = global.IkenshoOpLog;
+      const byId = this.app.schema.byId;
       const set = (id, value) => {
         const e = this.record.fields[id];
         if (!e || !value) return;
+        // 自動で入れた欄も、何が入ったか分かるように記録する
+        this.op('hospital', {
+          field: id, label: (byId[id] || {}).label || id,
+          before: L ? L.shape(e.value, (byId[id] || {}).pii) : '',
+          after: L ? L.shape(value, (byId[id] || {}).pii) : '',
+          blen: L ? L.len(e.value) : null, alen: L ? L.len(value) : null,
+          note: '一覧から選んだ医療機関に合わせて入力',
+        });
         e.value = value;
         e.edited = true;
         e.level = 'edited';
       };
+      this.op('hospital', {
+        field: 'clinic_name', label: '医療機関名',
+        after: L ? L.shape(h.name, (byId.clinic_name || {}).pii) : '',
+        alen: L ? L.len(h.name) : null,
+        note: '一覧から選択',
+      });
       set('clinic_address', h.address);
       set('clinic_phone', h.phone);
-      this.op('hospital', {
-        field: 'clinic_name', label: '医療機関名', after: h.name,
-        note: '所在地・電話も入力',
-      });
       this.app.toast(`${h.name} の所在地と電話番号を入れました`);
       this.app.touch();
       this.renderFields();

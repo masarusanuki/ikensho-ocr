@@ -273,6 +273,8 @@
       読み取った内容と操作ログは<strong>この端末の中だけ</strong>に保存し、どこにも送りません。
       同じ端末を複数の人が使うと履歴が混ざるため、ブラウザごとに発行したトークンで保存先を分けています。
       共用の端末では、作業を終えたら<strong>新しく発行</strong>してください。
+      ただし<strong>これは認証ではありません。</strong>切り離した記録も端末の中には残るため、
+      共用の端末では「この端末に残っている他の記録を消す」まで行ってください。
     </p>
     <div class="row" style="margin-bottom:10px">
       <code class="inline" id="token-view" style="font-size:15px;padding:6px 10px"></code>
@@ -284,6 +286,9 @@
       <input type="text" id="token-input" placeholder="別の端末で使っていたトークンを入れる"
              style="flex:1;min-width:220px;border:1px solid var(--border);border-radius:7px;padding:6px 9px">
       <button class="btn" id="btn-token-use">このトークンに切り替える</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="btn-token-purge" hidden>この端末に残っている他の記録を消す</button>
     </div>
     <div class="status" id="token-status"></div>
   </div>

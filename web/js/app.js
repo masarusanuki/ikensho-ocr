@@ -40,6 +40,9 @@
       this.review = new global.IkenshoReview(this);
       this.admin = new global.IkenshoAdmin(this);
       this.restore();
+      if (global.IkenshoSession.migrated) {
+        this.toast('この端末に残っていた以前の記録を引き継ぎました（管理画面で確認できます）');
+      }
       this.setStatus('準備ができました。ファイルを読み込んでください。');
       await this.loadFromQuery();
     }
@@ -195,10 +198,8 @@
       const prog = document.getElementById('prog');
       btn.disabled = true; prog.hidden = false; prog.value = 0;
       const started = Date.now();
-      this.op('read_start', {
-        count: this.files.length,
-        note: this.files.map(f => f.name).slice(0, 5).join('、'),
-      });
+      // ファイル名には氏名が入っていることが多いので記録しない（件数だけ残す）
+      this.op('read_start', { count: this.files.length });
       this.pipeline.ocrEnabled = document.getElementById('opt-ocr').checked;
       const split = document.getElementById('opt-split').checked;
 
@@ -238,7 +239,7 @@
         this.showView('review');
       } catch (e) {
         console.error(e);
-        this.op('read_error', { note: e.message });
+        this.op('read_error', { note: scrubNames(e.message) });
         this.setStatus('読み取り中にエラーが発生しました: ' + e.message, true);
       } finally {
         btn.disabled = this.files.length === 0;
@@ -301,7 +302,8 @@
 
     saveSettings() {
       global.IkenshoEngine.setThresholds(this.settings);
-      localStorage.setItem(SETTINGS_KEY(), JSON.stringify(this.settings));
+      try { localStorage.setItem(SETTINGS_KEY(), JSON.stringify(this.settings)); }
+      catch (e) { this.toast('この環境では設定を保存できません（今回の読み取りには反映されます）', true); }
     }
 
     // ------------------------------------------------------------ 一覧
@@ -376,7 +378,7 @@
         const recs = global.IkenshoExport.importJson(payload, this.schema);
         this.records = this.records.concat(recs);
         this.persist(); this.refreshRecordSelect(); this.renderRecords();
-        this.op('import', { count: recs.length, note: file.name });
+        this.op('import', { count: recs.length });
         this.setExportStatus(`${recs.length} 件を読み込みました`);
       } catch (e) {
         this.setExportStatus('読み込みに失敗しました: ' + e.message, true);
@@ -389,6 +391,11 @@
       el.textContent = msg;
       el.className = 'status' + (isError ? ' err' : '');
     }
+  }
+
+  /** 例外の文面に混ざったファイル名（氏名を含むことがある）を伏せる。 */
+  function scrubNames(msg) {
+    return String(msg || '').replace(/[^\s、,]+\.(pdf|jpe?g|png|json|csv)/gi, '（ファイル名）');
   }
 
   function readJson(key) {
