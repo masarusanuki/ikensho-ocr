@@ -477,6 +477,17 @@
       // 書かれている量・端の接し方と、読めた文字列を突き合わせる
       const chk = E.checkText(entry.value || '', warped, blank, rect, charset, diff);
       entry.expected_chars = chk.expected;
+      // 記述の欄に1文字だけというのは、まず記入ではなく罫線やゴミを拾ったもの。
+      // 空にして要確認にする。元の読みは raw に残るので「OCR生読み」から戻せる。
+      if ((f.type === 'text' || f.type === 'textarea') && !charset &&
+          !(f.options && f.options.length) &&
+          [...String(entry.value || '').replace(/\s/g, '')].length === 1) {
+        entry.value = '';
+        entry.confidence = Math.min(entry.confidence || 0, 0.30);
+        entry.note = [entry.note,
+          '1文字だけ読めましたが、記述としてあり得ないため空にしました（必要なら「OCR生読み」から戻せます）']
+          .filter(Boolean).join('／');
+      }
       if (chk.notes.length) {
         entry.confidence = Math.round(entry.confidence * chk.penalty * 1000) / 1000;
         entry.note = [entry.note, ...chk.notes].filter(Boolean).join('／');

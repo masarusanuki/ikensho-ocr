@@ -107,6 +107,16 @@
    * 2-gram の Dice 係数と、編集距離による部分一致の大きい方を採る。
    * Dice だけでは「骨粗葵症」と「骨粗鬆症」のような1文字違いを取り逃す。
    */
+  // 辞書語が読み取り結果にそのまま含まれていて、しかもこれより短い場合は、
+  // 置き換えると情報が減るだけなので採用しない（Python の dictionaries.py と同じ）
+  const SHORTEN_RATIO = 0.70;
+
+  function isShortening(text, term) {
+    const nt = normalize(text), nb = normalize(term);
+    if (!nt || !nb || !nt.includes(nb)) return false;
+    return nb.length < nt.length * SHORTEN_RATIO;
+  }
+
   function similarity(a, b) {
     const na = normalize(a), nb = normalize(b);
     if (!na || !nb) return 0;
@@ -284,9 +294,18 @@
         icd10: h.entry.icd10 || '', tokutei: !!h.entry.tokutei
       }));
       if (!hits.length) return { value: t, confidence: baseConfidence * 0.7, candidates: [] };
+      // そのものが辞書にあるなら、一致度の順に関わらずそれを採る
+      const exact = hits.find(h => normalize(h.entry.name) === normalize(t));
+      if (exact) {
+        return Object.assign({ value: exact.entry.name,
+                 confidence: Math.min(1, baseConfidence + 0.2), candidates }, extra);
+      }
       const best = hits[0];
-      if (normalize(best.entry.name) === normalize(t)) {
-        return Object.assign({ value: best.entry.name, confidence: Math.min(1, baseConfidence + 0.2), candidates }, extra);
+      if (isShortening(t, best.entry.name)) {
+        // 読み取れた文字列の一部を辞書語がそのまま含んでいるだけの場合は
+        // 置き換えない。置き換えると情報が減る。
+        // 例: 『1 筑波記念病院記』→『病院』、『右大腿骨骨折』→『骨折』
+        return Object.assign({ value: t, confidence: baseConfidence * 0.75, candidates }, extra);
       }
       if (best.score >= AUTO_ADOPT) {
         return Object.assign({ value: best.entry.name,
@@ -297,5 +316,6 @@
   }
 
   global.IkenshoDicts = { Dictionaries, similarity, normalize, cleanOcr,
-                          normalizeVariants, levenshtein, proofread, japaneseScore };
+                          normalizeVariants, levenshtein, proofread, japaneseScore,
+                          isShortening };
 })(window);

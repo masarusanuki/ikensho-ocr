@@ -96,6 +96,19 @@ def _partial_similarity(query: str, term: str) -> float:
     return max(0.0, best)
 
 
+# 辞書語が読み取り結果にそのまま含まれていて、しかもこれより短い場合は、
+# 置き換えると情報が減るだけなので採用しない
+SHORTEN_RATIO = 0.70
+
+
+def _is_shortening(text: str, term: str) -> bool:
+    """辞書語で置き換えると内容が削られてしまう関係か。"""
+    nt, nb = normalize(text), normalize(term)
+    if not nt or not nb or nb not in nt:
+        return False
+    return len(nb) < len(nt) * SHORTEN_RATIO
+
+
 def similarity(a: str, b: str) -> float:
     """OCR 結果と辞書語の類似度 0..1。
 
@@ -236,9 +249,16 @@ class Dictionaries:
             # 辞書に無い＝読み違いの可能性が高いので確信度を下げる
             return text, round(base_confidence * 0.7, 3), []
 
+        # そのものが辞書にあるなら、一致度の順に関わらずそれを採る
+        exact = next((e for e, _ in hits if normalize(e.name) == normalize(text)), None)
+        if exact is not None:
+            return exact.name, round(min(1.0, base_confidence + 0.20), 3), candidates
         best, score = hits[0]
-        if normalize(best.name) == normalize(text):
-            return best.name, round(min(1.0, base_confidence + 0.20), 3), candidates
+        if _is_shortening(text, best.name):
+            # 読み取れた文字列の一部を辞書語がそのまま含んでいるだけの場合は
+            # 置き換えない。置き換えると情報が減る。
+            # 例: 『1 筑波記念病院記』→『病院』、『右大腿骨骨折』→『骨折』
+            return text, round(base_confidence * 0.75, 3), candidates
         if score >= AUTO_ADOPT:
             # 辞書の正式表記を採用し、確信度は一致度との折衷にする
             conf = round(min(0.95, (base_confidence * 0.5 + score * 0.5)), 3)

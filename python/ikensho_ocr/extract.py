@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 """入力ファイル群から1件の主治医意見書レコードを組み立てる。"""
 import os
+import re
 from dataclasses import dataclass, field as dc_field
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 from . import (align, anonymize, checkbox, dates as dates_mod, imaging,
-               llm as llm_mod, ocr as ocr_mod, proofread, text_check, textbox)
+               hospitals, llm as llm_mod, ocr as ocr_mod, proofread,
+               text_check, textbox)
 from .dictionaries import Dictionaries, DEFAULT_DICTIONARIES
 from .schema import Schema, load_schema
 from .templates import Template, load_templates
@@ -56,6 +58,9 @@ class Record:
             warnings=self.warnings,
             fields=self.fields,
         )
+
+
+RE_SPACE = re.compile(r"\s")
 
 
 def _add_note(entry: dict, msg: str) -> None:
@@ -183,6 +188,75 @@ def _read_circle(warped: np.ndarray, rect: List[float], options: List[str],
         return dict(value=options[top], confidence=0.25, detail=detail, weak=True)
     conf = round(min(1.0, 0.30 + margin / 0.05 * 0.70), 3)
     return dict(value=options[top], confidence=conf, detail=detail)
+
+
+def _apply_hospital_list(text_results: Dict[str, dict], assist) -> Optional[str]:
+    """医療機関名を、厚生労働省の医療機関一覧と突き合わせる。
+
+    意見書には施設名しか書かれないが、一覧の正式名称には開設者名が付く。
+    所在地から都道府県を絞り、名前が十分に近ければ正式名称を採用し、
+    所在地・電話が読めていなければ一覧の値で補う。
+
+    決めきれない場合は候補を並べるだけにする。LLM に選ばせる場合も、
+    **一覧にある名前**からしか選ばせない（無い病院を作り出さないため）。
+    """
+    entry = text_results.get("clinic_name")
+    if not entry or entry.get("empty"):
+        return None
+    name = (entry.get("value") or "").strip()
+    if len(name) < hospitals.MIN_QUERY or not hospitals.available():
+        return None
+    pref = hospitals.guess_pref(
+        (text_results.get("clinic_address") or {}).get("value") or "",
+        (text_results.get("applicant_address") or {}).get("value") or "")
+    if not pref or pref not in hospitals.prefectures():
+        return None
+    hits = hospitals.find(name, pref, limit=5)
+    if not hits:
+        return None
+
+    cands = entry.setdefault("candidates", [])
+    for h in hits[:3]:
+        cands.append(dict(value=h["name"], score=h["score"], source="hospital",
+                          note=h.get("address") or ""))
+
+    top = hits[0]
+    if top["score"] < hospitals.ADOPT and assist is not None:
+        # 一覧の候補からLLMに選ばせる。読み取り結果と重ならない答えは採らない。
+        sug = assist.suggest("医療機関名", entry.get("raw") or name,
+                             [h["name"] for h in hits])
+        if sug:
+            picked = next((h for h in hits
+                           if h["name"] == sug.value), None)
+            if picked and hospitals.match_score(name, picked["name"]) >= 0.60:
+                top = picked
+                entry["llm_candidate"] = picked["name"]
+                _add_note(entry, "LLMが一覧から選びました。原本と見比べて確認してください。")
+                top = dict(picked, score=max(picked["score"], hospitals.ADOPT))
+
+    if top["score"] < hospitals.ADOPT:
+        return None
+
+    if top["name"] != entry.get("value"):
+        entry["value"] = top["name"]
+        _add_note(entry, f"医療機関一覧（{pref}）の名称に合わせました")
+    entry["confidence"] = max(entry.get("confidence") or 0.0, 0.90)
+    entry["hospital_code"] = top.get("code") or ""
+
+    # 所在地・電話が読めていなければ一覧の値で補う
+    for fid, key, label in (("clinic_address", "address", "所在地"),
+                            ("clinic_phone", "phone", "電話")):
+        ent = text_results.get(fid)
+        value = top.get(key)
+        if not ent or not value:
+            continue
+        cur = (ent.get("value") or "").strip()
+        if cur and (ent.get("confidence") or 0) >= 0.5:
+            continue
+        ent["value"] = value
+        ent["confidence"] = max(ent.get("confidence") or 0.0, 0.80)
+        _add_note(ent, f"医療機関一覧の{label}で補いました（原本と違う場合は直してください）")
+    return top["name"]
 
 
 def extract_record(paths: List[str],
@@ -339,6 +413,18 @@ def extract_record(paths: List[str],
                         _add_note(entry, n)
                 entry["expected_chars"] = chk["expected"]
 
+                # 記述の欄に1文字だけというのは、まず記入ではなく
+                # 罫線やゴミを拾ったもの。空にして要確認にする。
+                # 元の読みは raw に残るので、確認画面の「OCR生読み」で戻せる。
+                if (f.type in ("text", "textarea") and not charset
+                        and not f.options
+                        and len(RE_SPACE.sub("", entry.get("value") or "")) == 1):
+                    entry["value"] = ""
+                    entry["confidence"] = min(entry.get("confidence") or 0.0, 0.30)
+                    _add_note(entry,
+                              "1文字だけ読めましたが、記述としてあり得ないため空にしました"
+                              "（必要なら「OCR生読み」から戻せます）")
+
                 # 日本語チェックの結果を記録する（訂正は辞書照合の前に済ませている）
                 if pr.corrections:
                     # 既にある訂正（ふりがなの変換など）を消さないこと
@@ -392,6 +478,12 @@ def extract_record(paths: List[str],
                 text_results[f.id] = dict(
                     value="", confidence=0.0, raw="", empty=False, candidates=[],
                     note=f"この欄の読み取りに失敗しました（{exc}）")
+    # 医療機関名は一覧（厚生労働省）と突き合わせる。所在地・電話も補える。
+    try:
+        _apply_hospital_list(text_results, assist)
+    except Exception as exc:               # 一覧が壊れていても読み取りは続ける
+        rec.warnings.append(f"医療機関一覧との照合に失敗しました（{exc}）")
+
     expected_pages = ([p.index for p in templates[rec.template_id].pages]
                       if rec.template_id in templates else [1, 2])
     missing = [i for i in expected_pages if i not in warped_pages]
