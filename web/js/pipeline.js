@@ -322,6 +322,23 @@
         textResults[t.field] = await this.readText(w.mat, t, f);
       }
 
+      // --- 4.5) 日付欄は年・月・日に分けておく（確認画面で数字だけ直せるように）
+      const D = global.IkenshoDates;
+      for (const f of Object.values(this.schema.byId)) {
+        if (f.kind !== 'date_wareki') continue;
+        const entry = textResults[f.id];
+        if (!entry) continue;
+        let era = f.default_era || '';
+        if (f.era_field && textResults[f.era_field] && textResults[f.era_field].value) {
+          era = textResults[f.era_field].value;
+        }
+        const info = D.enrich(entry.value || '', era);
+        entry.date = info.parts;
+        entry.era = info.era;
+        entry.gregorian = info.gregorian;
+        if (info.text) entry.value = info.text;
+      }
+
       // --- 5) レコード組み立て
       const fields = {};
       for (const f of this.schema.order.map(id => this.schema.byId[id])) {
@@ -333,6 +350,7 @@
         entry.level = E.confidenceLevel(entry.confidence);
         entry.label = f.label; entry.type = f.type;
         entry.section = f.sectionTitle; entry.page = f.page;
+        entry.kind = f.kind || '';
         if (f.options) entry.options = f.options;
         fields[f.id] = entry;
       }

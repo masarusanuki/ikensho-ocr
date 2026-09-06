@@ -12,6 +12,8 @@
      "type": "text",
      "page": 1,
      "charset": "wareki",
+     "kind": "date_wareki",
+     "default_era": "令和",
      "hint": "令和○年○月○日"
     },
     {
@@ -56,6 +58,8 @@
      "type": "text",
      "page": 1,
      "charset": "wareki",
+     "kind": "date_wareki",
+     "era_field": "birth_era",
      "hint": "○年○月○日"
     },
     {
@@ -141,6 +145,8 @@
      "type": "text",
      "page": 1,
      "charset": "wareki",
+     "kind": "date_wareki",
+     "default_era": "令和",
      "hint": "令和○年○月○日"
     },
     {
@@ -219,6 +225,8 @@
      "type": "text",
      "page": 1,
      "charset": "wareki",
+     "kind": "date_wareki",
+     "era_field": "diagnosis1_era",
      "hint": "○年○月○日頃"
     },
     {
@@ -244,6 +252,8 @@
      "type": "text",
      "page": 1,
      "charset": "wareki",
+     "kind": "date_wareki",
+     "era_field": "diagnosis2_era",
      "hint": "○年○月○日頃"
     },
     {
@@ -269,6 +279,8 @@
      "type": "text",
      "page": 1,
      "charset": "wareki",
+     "kind": "date_wareki",
+     "era_field": "diagnosis3_era",
      "hint": "○年○月○日頃"
     },
     {

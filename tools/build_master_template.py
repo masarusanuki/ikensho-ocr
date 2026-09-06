@@ -159,7 +159,9 @@ def main():
                           round((y1 - y0) / meta["height"], 6)],
                     options=f.get("options"),
                     charset=f.get("charset", ""),
-                    pii=f.get("pii", ""),
+                    pii=f.get("pii", ""), kind=f.get("kind", ""),
+                    era_field=f.get("era_field", ""),
+                    default_era=f.get("default_era", ""),
                 ))
 
         ref_name = f"official_v1_p{pi}.png"

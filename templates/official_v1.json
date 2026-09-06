@@ -776,6 +776,9 @@
      "options": null,
      "charset": "wareki",
      "pii": "",
+     "kind": "date_wareki",
+     "era_field": "",
+     "default_era": "令和",
      "placement": "検証済み"
     },
     {
@@ -790,6 +793,9 @@
      "options": null,
      "charset": "kana",
      "pii": "name",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -804,6 +810,9 @@
      "options": null,
      "charset": "postal",
      "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -821,6 +830,9 @@
      ],
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -835,6 +847,9 @@
      "options": null,
      "charset": "",
      "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -849,6 +864,9 @@
      "options": null,
      "charset": "",
      "pii": "name",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -863,6 +881,9 @@
      "options": null,
      "charset": "phone",
      "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -881,6 +902,9 @@
      ],
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -895,6 +919,9 @@
      "options": null,
      "charset": "wareki",
      "pii": "",
+     "kind": "date_wareki",
+     "era_field": "birth_era",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -909,6 +936,9 @@
      "options": null,
      "charset": "digits",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -923,6 +953,9 @@
      "options": null,
      "charset": "",
      "pii": "name",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -937,6 +970,9 @@
      "options": null,
      "charset": "",
      "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -951,6 +987,9 @@
      "options": null,
      "charset": "phone",
      "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -965,6 +1004,9 @@
      "options": null,
      "charset": "",
      "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -979,6 +1021,9 @@
      "options": null,
      "charset": "phone",
      "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -993,6 +1038,9 @@
      "options": null,
      "charset": "wareki",
      "pii": "",
+     "kind": "date_wareki",
+     "era_field": "",
+     "default_era": "令和",
      "placement": "検証済み"
     },
     {
@@ -1007,6 +1055,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -1021,6 +1072,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -1039,6 +1093,9 @@
      ],
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -1053,6 +1110,9 @@
      "options": null,
      "charset": "wareki",
      "pii": "",
+     "kind": "date_wareki",
+     "era_field": "diagnosis1_era",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -1067,6 +1127,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -1085,6 +1148,9 @@
      ],
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -1099,6 +1165,9 @@
      "options": null,
      "charset": "wareki",
      "pii": "",
+     "kind": "date_wareki",
+     "era_field": "diagnosis2_era",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -1113,6 +1182,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -1131,6 +1203,9 @@
      ],
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -1145,6 +1220,9 @@
      "options": null,
      "charset": "wareki",
      "pii": "",
+     "kind": "date_wareki",
+     "era_field": "diagnosis3_era",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -1159,6 +1237,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -1173,6 +1254,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -1187,6 +1271,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     }
    ]
@@ -2322,6 +2409,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2336,6 +2426,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2350,6 +2443,9 @@
      "options": null,
      "charset": "decimal",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2364,6 +2460,9 @@
      "options": null,
      "charset": "decimal",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2378,6 +2477,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2392,6 +2494,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2406,6 +2511,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2420,6 +2528,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2434,6 +2545,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2448,6 +2562,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2462,6 +2579,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2476,6 +2596,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2490,6 +2613,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2504,6 +2630,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2518,6 +2647,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2532,6 +2664,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2546,6 +2681,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2560,6 +2698,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2574,6 +2715,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2588,6 +2732,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2602,6 +2749,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2616,6 +2766,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     },
     {
@@ -2630,6 +2783,9 @@
      "options": null,
      "charset": "",
      "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
      "placement": "検証済み"
     }
    ]

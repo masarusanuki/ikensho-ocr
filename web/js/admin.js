@@ -64,6 +64,7 @@
     // -------------------------------------------------------------- 初期化
     render() {
       this.renderSysInfo();
+      this.renderModels();
       const tplSel = document.getElementById('tpl-select');
       const ids = Object.keys(this.app.pipeline.templates);
       tplSel.innerHTML = ids.map(id =>
@@ -82,6 +83,102 @@
       this.renderTemplate();
       this.renderDict();
       this.renderThresholds();
+    }
+
+    /**
+     * LLMモデルの一覧と取得。
+     * サーバ版（ikensho serve）でのみ使える。ブラウザだけで開いた場合は
+     * ファイルを保存できないので、そもそもパネルを出さない。
+     */
+    async renderModels() {
+      const panel = document.getElementById('panel-models');
+      let info;
+      try {
+        const res = await fetch('api/models');
+        if (!res.ok) throw new Error(String(res.status));
+        info = await res.json();
+      } catch (e) {
+        panel.hidden = true;
+        return;
+      }
+      panel.hidden = false;
+
+      const state = document.getElementById('model-state');
+      if (!info.runtime) {
+        state.innerHTML = '実行環境が入っていません。次を実行してください：' +
+          '<code class="inline">pip install --extra-index-url ' +
+          'https://abetlen.github.io/llama-cpp-python/whl/cpu llama-cpp-python</code>';
+      } else if (info.enabled) {
+        state.innerHTML = `<span class="conf high"><span class="dot"></span>有効</span> ` +
+          `使用中: <code class="inline">${esc(info.current)}</code>`;
+      } else {
+        state.textContent = 'モデルが置かれていません。下から選んで取得してください。';
+      }
+
+      const list = document.getElementById('model-list');
+      list.innerHTML = info.models.map(m => `
+        <div class="modelcard${m.installed ? ' on' : ''}">
+          <div class="mname">${esc(m.key)}</div>
+          <div class="mnote">${esc(m.note)}</div>
+          <div class="mfoot">
+            ${m.installed
+              ? '<span class="conf high"><span class="dot"></span>取得済み</span>'
+              : `<button class="btn sm primary" data-get="${esc(m.key)}">ダウンロード</button>`}
+            ${m.installed && info.current === m.file
+              ? '<span class="muted" style="font-size:12px">使用中</span>' : ''}
+          </div>
+        </div>`).join('');
+      list.querySelectorAll('button[data-get]').forEach(b => {
+        b.addEventListener('click', () => this.downloadModel(b.dataset.get, b));
+      });
+
+      if (info.progress && info.progress.status === 'running') this.watchDownload();
+    }
+
+    async downloadModel(key, btn) {
+      btn.disabled = true;
+      btn.textContent = '取得中…';
+      try {
+        const res = await fetch('api/models/download', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key }),
+        });
+        const r = await res.json();
+        if (r.error) throw new Error(r.error);
+        this.watchDownload();
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'ダウンロード';
+        this.app.toast('取得を開始できませんでした: ' + e.message, true);
+      }
+    }
+
+    watchDownload() {
+      const box = document.getElementById('model-progress');
+      const bar = document.getElementById('model-bar');
+      const msg = document.getElementById('model-msg');
+      box.hidden = false;
+      clearInterval(this._dlTimer);
+      this._dlTimer = setInterval(async () => {
+        let info;
+        try { info = await fetch('api/models').then(r => r.json()); }
+        catch (e) { return; }
+        const p = info.progress || {};
+        const mb = n => (n / 1024 / 1024).toFixed(0);
+        if (p.total) {
+          bar.value = Math.min(100, p.received / p.total * 100);
+          msg.textContent = `${esc(p.name)} を取得しています… ${mb(p.received)} / ${mb(p.total)} MB`;
+        } else {
+          msg.textContent = `${esc(p.name)} を取得しています…`;
+        }
+        if (p.status === 'done' || p.status === 'error') {
+          clearInterval(this._dlTimer);
+          bar.value = p.status === 'done' ? 100 : 0;
+          msg.textContent = p.message || '';
+          msg.className = 'status' + (p.status === 'error' ? ' err' : '');
+          setTimeout(() => { box.hidden = true; this.renderModels(); }, 2500);
+        }
+      }, 1000);
     }
 
     renderSysInfo() {

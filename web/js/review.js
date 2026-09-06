@@ -285,7 +285,7 @@
         n.textContent = '※ ' + e.note;
         el.appendChild(n);
       }
-      if (e.raw && String(e.raw) !== String(e.value || '')) {
+      if (f.kind !== 'date_wareki' && e.raw && String(e.raw) !== String(e.value || '')) {
         const raw = document.createElement('div');
         raw.className = 'raw';
         raw.textContent = `OCR生読み: ${e.raw}`;
@@ -373,6 +373,10 @@
         return wrap;
       }
 
+      if (f.kind === 'date_wareki') {
+        return this.dateControl(f, e, wrap, mark);
+      }
+
       // text / textarea
       const isArea = f.type === 'textarea';
       const input = document.createElement(isArea ? 'textarea' : 'input');
@@ -386,6 +390,103 @@
       });
       wrap.appendChild(input);
       this.renderCandidates(f, e, wrap, input);
+      return wrap;
+    }
+
+    /**
+     * 和暦の日付欄。年・月・日を別々の数字入力にして、
+     * 数字を埋めるだけで直せるようにする。西暦も合わせて表示する。
+     */
+    dateControl(f, e, wrap, mark) {
+      const D = global.IkenshoDates;
+      const parts = Object.assign({ year: null, month: null, day: null }, e.date || {});
+      let era = e.era || f.default_era || '';
+
+      const row = document.createElement('div');
+      row.className = 'daterow';
+
+      // 元号: 別の項目から取っている場合は表示のみ、そうでなければ選べる
+      const eraFrom = f.era_field ? this.record.fields[f.era_field] : null;
+      if (f.default_era) {
+        const fixed = document.createElement('span');
+        fixed.className = 'era fixed';
+        fixed.textContent = f.default_era;
+        row.appendChild(fixed);
+        era = f.default_era;
+      } else {
+        const sel = document.createElement('select');
+        sel.className = 'era';
+        sel.innerHTML = '<option value="">元号</option>' +
+          D.ERA_LIST.map(x => `<option value="${x}">${x}</option>`).join('');
+        sel.value = D.canonicalEra(era) || '';
+        sel.addEventListener('change', () => {
+          era = sel.value;
+          if (eraFrom && f.era_field) {
+            eraFrom.value = sel.value ? sel.value.slice(0, f.era_field === 'birth_era' ? 1 : 2) : null;
+            eraFrom.edited = true;
+            eraFrom.level = 'edited';
+          }
+          apply();
+        });
+        row.appendChild(sel);
+      }
+
+      const inputs = {};
+      for (const [key, label, max] of [['year', '年', 4], ['month', '月', 2], ['day', '日', 2]]) {
+        const box = document.createElement('span');
+        box.className = 'datebox';
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.inputMode = 'numeric';
+        inp.autocomplete = 'off';
+        inp.maxLength = max;
+        inp.placeholder = '—';
+        inp.value = (parts[key] === null || parts[key] === undefined) ? '' : String(parts[key]);
+        inp.addEventListener('input', () => {
+          inp.value = inp.value.replace(/[^0-9]/g, '').slice(0, max);
+          // 埋まったら次の欄へ自動で移る
+          if (inp.value.length >= (key === 'year' ? 2 : 2)) {
+            const order = ['year', 'month', 'day'];
+            const next = order[order.indexOf(key) + 1];
+            if (next && inputs[next] && !inputs[next].value) inputs[next].focus();
+          }
+          apply();
+        });
+        inputs[key] = inp;
+        box.appendChild(inp);
+        const unit = document.createElement('span');
+        unit.className = 'unit';
+        unit.textContent = label;
+        box.appendChild(unit);
+        row.appendChild(box);
+      }
+
+      const info = document.createElement('span');
+      info.className = 'seireki';
+      row.appendChild(info);
+      wrap.appendChild(row);
+
+      const raw = document.createElement('div');
+      raw.className = 'raw';
+      wrap.appendChild(raw);
+
+      const self = this;
+      function apply(initial) {
+        const p = {};
+        for (const k of ['year', 'month', 'day']) {
+          const v = inputs[k].value.trim();
+          p[k] = v === '' ? null : parseInt(v, 10);
+        }
+        e.date = p;
+        e.era = D.canonicalEra(era);
+        e.value = D.format(p);
+        e.gregorian = D.toGregorian(e.era, p.year, p.month, p.day);
+        info.textContent = e.gregorian ? `西暦 ${e.gregorian}` : '';
+        info.classList.toggle('none', !e.gregorian);
+        raw.textContent = e.raw ? `OCR生読み: ${e.raw}` : '';
+        if (!initial) mark();
+      }
+      apply(true);
       return wrap;
     }
 

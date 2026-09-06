@@ -36,6 +36,7 @@
         confidence: e.confidence, level: e.level,
         edited: !!e.edited, anonymized: !!e.anonymized,
         raw: e.raw === undefined ? null : e.raw,
+        date: e.date || null, era: e.era || '', gregorian: e.gregorian || null,
       };
     }
     return {
@@ -115,6 +116,8 @@
           value: (r.values || {})[id] === undefined ? null : r.values[id],
           confidence: m.confidence || 0, level: m.level || 'low',
           edited: !!m.edited, anonymized: !!m.anonymized, raw: m.raw || '',
+          date: m.date || null, era: m.era || '', gregorian: m.gregorian || null,
+          kind: f.kind || '',
           label: f.label, type: f.type, section: f.sectionTitle, page: f.page,
           options: f.options,
         };

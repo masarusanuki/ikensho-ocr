@@ -40,6 +40,9 @@ def apply_to(tid, dry_run=False):
                                       options=mt.get("options"),
                                       charset=mt.get("charset", ""),
                                       pii=mt.get("pii", ""),
+                                      kind=mt.get("kind", ""),
+                                      era_field=mt.get("era_field", ""),
+                                      default_era=mt.get("default_era", ""),
                                       transferred=True))
             restored += 1
     if restored:

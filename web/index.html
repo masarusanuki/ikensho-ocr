@@ -236,6 +236,21 @@
     </div>
   </div>
 
+  <div class="panel" id="panel-models" hidden>
+    <h2>LLMモデル（読み取り候補の提示）</h2>
+    <p class="hint">
+      辞書で決めきれなかった欄に候補を出すために使います。<strong>候補を出すだけで、
+      値は自動で確定しません。</strong>モデルを置くと自動で有効になります。
+      比較は<a href="docs/developer.html#h20" target="_blank" rel="noopener">技術者向けページ</a>にあります。
+    </p>
+    <div id="model-state" class="status"></div>
+    <div class="models" id="model-list"></div>
+    <div id="model-progress" hidden>
+      <progress id="model-bar" value="0" max="100"></progress>
+      <div class="status" id="model-msg"></div>
+    </div>
+  </div>
+
   <div class="panel">
     <h2>判定のしきい値</h2>
     <p class="hint">読み取り結果が実態に合わない場合に調整します。既定値で多くの様式に対応できます。</p>
@@ -259,6 +274,7 @@
 <script src="js/engine.js"></script>
 <script src="js/dicts.js"></script>
 <script src="js/anonymize.js"></script>
+<script src="js/dates.js"></script>
 <script src="js/pipeline.js"></script>
 <script src="js/exporters.js"></script>
 <script src="js/review.js"></script>

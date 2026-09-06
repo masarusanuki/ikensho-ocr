@@ -21,12 +21,19 @@ class Field:
     dictionary: str = ""
     charset: str = ""
     pii: str = ""
+    kind: str = ""
+    era_field: str = ""
+    default_era: str = ""
     section_id: str = ""
     section_title: str = ""
 
     @property
     def is_choice(self) -> bool:
         return self.type in ("choice", "multi", "circle")
+
+    @property
+    def is_date(self) -> bool:
+        return self.kind == "date_wareki"
 
     @property
     def is_text(self) -> bool:
@@ -59,6 +66,8 @@ def load_schema(path: str = DEFAULT_SCHEMA) -> Schema:
                        options=f.get("options"), hint=f.get("hint", ""),
                        dictionary=f.get("dictionary", ""),
                        charset=f.get("charset", ""), pii=f.get("pii", ""),
+                       kind=f.get("kind", ""), era_field=f.get("era_field", ""),
+                       default_era=f.get("default_era", ""),
                        section_id=sec["id"], section_title=sec["title"])
             sc.fields[fl.id] = fl
             sc.order.append(fl.id)

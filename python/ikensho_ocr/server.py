@@ -12,6 +12,7 @@ import socketserver
 import tempfile
 import threading
 import urllib.parse
+import urllib.request
 import webbrowser
 from typing import Optional
 
@@ -32,6 +33,62 @@ def _web_root() -> str:
     if os.path.isdir(WEB_DIR) and os.path.exists(os.path.join(WEB_DIR, "index.html")):
         return WEB_DIR
     return FALLBACK_WEB
+
+
+# LLMモデルの取得状況（画面に進捗を返すために持つ）
+_download = dict(name="", status="idle", received=0, total=0, message="")
+_download_lock = threading.Lock()
+
+
+def _model_dir() -> str:
+    return os.path.join(ROOT, "models")
+
+
+def _model_choices():
+    """選べるモデルの一覧。tools/fetch_llm_model.py の定義を使う。"""
+    import importlib.util
+    path = os.path.join(ROOT, "tools", "fetch_llm_model.py")
+    spec = importlib.util.spec_from_file_location("fetch_llm_model", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.CHOICES
+
+
+def _download_model(key: str):
+    """モデルを取得する。進捗は _download に書き込む。"""
+    choices = _model_choices()
+    if key not in choices:
+        with _download_lock:
+            _download.update(status="error", message="そのモデルは選べません")
+        return
+    fname, url, note = choices[key]
+    os.makedirs(_model_dir(), exist_ok=True)
+    dst = os.path.join(_model_dir(), fname)
+    tmp = dst + ".part"
+    with _download_lock:
+        _download.update(name=key, status="running", received=0, total=0, message=note)
+    try:
+        with urllib.request.urlopen(url, timeout=60) as res, open(tmp, "wb") as fp:
+            total = int(res.headers.get("Content-Length") or 0)
+            with _download_lock:
+                _download["total"] = total
+            got = 0
+            while True:
+                chunk = res.read(1024 * 512)
+                if not chunk:
+                    break
+                fp.write(chunk)
+                got += len(chunk)
+                with _download_lock:
+                    _download["received"] = got
+        os.replace(tmp, dst)
+        with _download_lock:
+            _download.update(status="done", message="取得しました。次の読み取りから使われます。")
+    except Exception as exc:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        with _download_lock:
+            _download.update(status="error", message=f"取得に失敗しました: {exc}")
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -68,6 +125,26 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 dictionaries={k: len(v.entries)
                               for k, v in Handler.dicts.lexicons.items()},
             ))
+        if path == "/api/models":
+            from .llm import LlmAssist, available
+            choices = _model_choices()
+            installed = os.path.join(ROOT, "models")
+            have = set(os.listdir(installed)) if os.path.isdir(installed) else set()
+            try:
+                import llama_cpp  # noqa: F401
+                runtime = True
+            except Exception:
+                runtime = False
+            with _download_lock:
+                progress = dict(_download)
+            return self._json(dict(
+                runtime=runtime,
+                enabled=available(),
+                current=os.path.basename(LlmAssist._find_model() or ""),
+                models=[dict(key=k, file=v[0], note=v[2], installed=v[0] in have)
+                        for k, v in choices.items()],
+                progress=progress,
+            ))
         if path == "/api/suggest":
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self._json(dict(items=Handler.dicts.suggest(
@@ -76,6 +153,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_POST(self):
         path = urllib.parse.urlparse(self.path).path
+        if path == "/api/models/download":
+            length = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(length) or b"{}")
+            with _download_lock:
+                if _download["status"] == "running":
+                    return self._json(dict(error="すでに取得中です"), 409)
+            threading.Thread(target=_download_model, args=(body.get("key", ""),),
+                             daemon=True).start()
+            return self._json(dict(started=True))
         if path != "/api/extract":
             return self._json(dict(error="not found"), 404)
         length = int(self.headers.get("Content-Length") or 0)

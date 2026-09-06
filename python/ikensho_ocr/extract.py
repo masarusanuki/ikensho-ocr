@@ -6,7 +6,8 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from . import align, anonymize, checkbox, imaging, llm as llm_mod, ocr as ocr_mod, proofread
+from . import (align, anonymize, checkbox, dates as dates_mod, imaging,
+               llm as llm_mod, ocr as ocr_mod, proofread)
 from .dictionaries import Dictionaries, DEFAULT_DICTIONARIES
 from .schema import Schema, load_schema
 from .templates import Template, load_templates
@@ -268,6 +269,22 @@ def extract_record(paths: List[str],
             "未取得のページ: " + "、".join(f"{i}ページ目" for i in missing))
 
     box_values = checkbox.resolve_groups(readings, schema)
+
+    # 日付欄は年・月・日に分けておく。確認画面で数字だけ直せるようにするため。
+    for f in schema:
+        if not f.is_date or f.id not in text_results:
+            continue
+        entry = text_results[f.id]
+        era = f.default_era
+        if f.era_field:
+            picked = text_results.get(f.era_field, {}).get("value")
+            era = picked or era
+        info = dates_mod.enrich(entry.get("value") or "", era)
+        entry["date"] = info["parts"]
+        entry["era"] = info["era"]
+        entry["gregorian"] = info["gregorian"]
+        if info["text"]:
+            entry["value"] = info["text"]
 
     for f in schema:
         entry: Dict[str, Any]
