@@ -14,7 +14,8 @@
       this.record = null;
       this.activeField = null;
       this.currentPage = 1;
-      this.onlyLow = false;
+      // 絞り込み: null（すべて）／'check'（要確認のみ）／確信度の区分名
+      this.filter = null;
       this.imgEl = document.getElementById('page-img');
       this.marker = document.getElementById('marker');
       this.zoom = document.getElementById('zoom');
@@ -31,8 +32,7 @@
         b.addEventListener('click', () => this.showPage(+b.dataset.page));
       });
       document.getElementById('only-low').addEventListener('change', e => {
-        this.onlyLow = e.target.checked;
-        this.renderFields();
+        this.setFilter(e.target.checked ? 'check' : null);
       });
       document.querySelectorAll('[data-zoom]').forEach(b => {
         b.addEventListener('click', () => {
@@ -126,9 +126,11 @@
     /** 指定の項目を右側で表示・選択する。絞り込み中なら解除して探す。 */
     jumpTo(fieldId) {
       let el = this.fieldsEl.querySelector(`.field[data-field="${fieldId}"]`);
-      if (!el && this.onlyLow) {
-        this.onlyLow = false;
-        document.getElementById('only-low').checked = false;
+      if (!el && this.filter) {
+        // 絞り込みで隠れている項目に飛ぶ場合は、絞り込みを解除する
+        this.filter = null;
+        const chk = document.getElementById('only-low');
+        if (chk) chk.checked = false;
         this.renderFields();
         el = this.fieldsEl.querySelector(`.field[data-field="${fieldId}"]`);
       }
@@ -193,7 +195,8 @@
     }
 
     stats() {
-      const s = { high: 0, medium: 0, low: 0, edited: 0, done: 0, filled: 0, total: 0 };
+      const s = { high: 0, medium: 0, low: 0, edited: 0, done: 0, anon: 0,
+                  filled: 0, total: 0 };
       for (const id of this.app.schema.order) {
         const e = this.record.fields[id];
         if (!e) continue;
@@ -205,20 +208,52 @@
       return s;
     }
 
-    /** 上部の集計を貼り替える。 */
+    /**
+     * 上部の集計を貼り替える。
+     * 各区分は押すとその区分だけの表示に切り替わる（もう一度押すと解除）。
+     */
     updateStats() {
       const st = this.stats();
       const host = this.fieldsEl.querySelector('.statrow');
       if (!host) return;
-      host.innerHTML = `<span>読み取り ${st.filled} / ${st.total} 項目</span>
-        <span class="conf done"><span class="dot"></span>確定 ${st.done}</span>
-        <span class="conf high"><span class="dot"></span>高 ${st.high}</span>
-        <span class="conf medium"><span class="dot"></span>中 ${st.medium}</span>
-        <span class="conf low"><span class="dot"></span>低 ${st.low}</span>
-        <span class="conf edited"><span class="dot"></span>修正 ${st.edited}</span>
-        <button class="btn sm" id="btn-confirm-all">表示中をすべて確定</button>`;
+      const badges = [
+        ['done', '確定', st.done], ['high', '高', st.high],
+        ['medium', '中', st.medium], ['low', '要確認', st.low],
+        ['edited', '修正', st.edited], ['anon', '匿名化', st.anon],
+      ].filter(([, , n], i) => n > 0 || i < 5);
+      host.innerHTML = `<span>読み取り ${st.filled} / ${st.total} 項目</span>` +
+        badges.map(([lv, label, n]) =>
+          `<button type="button" class="conf ${lv} filt${this.filter === lv ? ' on' : ''}"` +
+          ` data-level="${lv}"${n ? '' : ' disabled'}` +
+          ` title="${esc(label)}の項目だけを表示します">` +
+          `<span class="dot"></span>${esc(label)} ${n}</button>`).join('') +
+        (this.filter
+          ? '<button class="btn sm" id="btn-filter-clear">絞り込みを解除</button>'
+          : '') +
+        '<button class="btn sm" id="btn-confirm-all">表示中をすべて確定</button>';
+      host.querySelectorAll('button[data-level]').forEach(b => {
+        b.addEventListener('click', () => this.setFilter(
+          this.filter === b.dataset.level ? null : b.dataset.level));
+      });
+      const clear = host.querySelector('#btn-filter-clear');
+      if (clear) clear.addEventListener('click', () => this.setFilter(null));
       const all = host.querySelector('#btn-confirm-all');
       if (all) all.addEventListener('click', () => this.confirmAllVisible());
+    }
+
+    /** 絞り込みを切り替える。 */
+    setFilter(value) {
+      this.filter = value || null;
+      const chk = document.getElementById('only-low');
+      if (chk) chk.checked = (this.filter === 'check');
+      this.renderFields();
+    }
+
+    /** その項目をいま表示するか。 */
+    passes(e) {
+      if (!this.filter) return true;
+      if (this.filter === 'check') return this.needsCheck(e);
+      return this.levelOf(e) === this.filter;
     }
 
     /** いま表示されている項目をまとめて確定にする。 */
@@ -347,6 +382,7 @@
       const frag = document.createDocumentFragment();
 
       const st = this.stats();
+      let shown = 0;
       const head = document.createElement('div');
       head.className = 'panel statpanel';
       head.style.padding = '9px 14px';
@@ -365,13 +401,13 @@
             const members = sec.fields.filter(x => x.group === f.group &&
                                                    this.record.fields[x.id]);
             const visible = members.filter(
-              x => !this.onlyLow || this.needsCheck(this.record.fields[x.id]));
+              x => this.passes(this.record.fields[x.id]));
             if (!visible.length) { doneGroups.add(f.group); continue; }
             doneGroups.add(f.group);
             rows.push(this.groupCard(f.group_label || f.label, visible));
             continue;
           }
-          if (this.onlyLow && !this.needsCheck(e)) continue;
+          if (!this.passes(e)) continue;
           rows.push(this.fieldRow(f, e));
         }
         if (!rows.length) continue;
@@ -382,6 +418,15 @@
         box.appendChild(h);
         rows.forEach(r => box.appendChild(r));
         frag.appendChild(box);
+        shown += rows.length;
+      }
+      if (!shown && this.filter) {
+        const none = document.createElement('div');
+        none.className = 'panel';
+        none.style.padding = '14px';
+        none.innerHTML = '<span class="hint">この区分に当てはまる項目はありません。' +
+          '上の区分をもう一度押すと解除できます。</span>';
+        frag.appendChild(none);
       }
       this.fieldsEl.replaceChildren(frag);
       this.updateStats();

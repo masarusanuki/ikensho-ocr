@@ -101,6 +101,12 @@ progress { width: 100%; height: 8px; }
 .conf.anon   { background: var(--anon-bg);   color: var(--anon); }
 .conf.done   { background: var(--done-bg);   color: var(--done); }
 .conf .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+/* 集計の区分は押すと絞り込みになる */
+.conf.filt { border: 1px solid transparent; cursor: pointer; font-family: inherit; }
+.conf.filt:hover:not(:disabled) { border-color: currentColor; }
+.conf.filt:disabled { opacity: .45; cursor: default; }
+.conf.filt.on { border-color: currentColor; font-weight: 700;
+                box-shadow: inset 0 0 0 1px currentColor; }
 
 .legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
           font-size: 12.5px; color: var(--muted); }
