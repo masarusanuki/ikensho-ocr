@@ -13,26 +13,34 @@ import urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODELS = os.path.join(ROOT, "models")
 
+# いずれも思考モード（<think>…</think> を出す推論モード）を持たないモデル。
+# Qwen3 は Instruct-2507 が非思考版、Thinking 版とは別物なので取り違えないこと。
 CHOICES = {
-    # 名前: (ファイル名, URL, おおよそのサイズ)
+    # 名前: (ファイル名, URL, 説明)
+    "qwen3-4b": (
+        "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+        "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/"
+        "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+        "約2.4GB / 思考モードなし / 日本語が最も正確 / 1件あたり5〜7秒",
+    ),
     "qwen2.5-1.5b": (
         "qwen2.5-1.5b-instruct-q4_k_m.gguf",
         "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/"
         "qwen2.5-1.5b-instruct-q4_k_m.gguf",
-        "約1.1GB / CPUで1件あたり0.5〜2秒",
+        "約1.1GB / 思考モードなし / 軽くて速い / 1件あたり0.5〜2秒",
     ),
     "qwen2.5-3b": (
         "qwen2.5-3b-instruct-q4_k_m.gguf",
         "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/"
         "qwen2.5-3b-instruct-q4_k_m.gguf",
-        "約2.0GB / 精度は上がるが2〜3倍遅い",
+        "約2.0GB / 思考モードなし / 中間",
     ),
 }
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("model", nargs="?", default="qwen2.5-1.5b", choices=list(CHOICES))
+    ap.add_argument("model", nargs="?", default="qwen3-4b", choices=list(CHOICES))
     ap.add_argument("--list", action="store_true", help="選べるモデルを表示する")
     args = ap.parse_args()
 

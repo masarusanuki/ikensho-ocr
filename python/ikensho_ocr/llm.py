@@ -14,6 +14,7 @@
 まずは辞書照合（編集距離ベース）で足りる場合が多い。LLM はその補助に使う。
 """
 import os
+import re
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -33,6 +34,17 @@ SYSTEM_PROMPT = (
 
 # OCR結果と候補がこれだけ文字を共有していなければ、無関係な創作とみなす
 MIN_CHAR_OVERLAP = 0.34
+
+
+# 万一「思考」を出すモデルが指定された場合に備えて取り除く
+THINK_RE = re.compile(r"<think>.*?</think>", re.S)
+# 思考モードを持たないモデルを優先して選ぶ
+PREFERRED = ("qwen3-4b-instruct", "qwen2.5", "instruct-2507", "instruct")
+
+
+def strip_thinking(text: str) -> str:
+    text = THINK_RE.sub("", text or "")
+    return text.replace("<think>", "").replace("</think>", "").strip()
 
 
 @dataclass
@@ -79,10 +91,16 @@ class LlmAssist:
             return env
         if not os.path.isdir(DEFAULT_MODEL_DIR):
             return None
-        for name in sorted(os.listdir(DEFAULT_MODEL_DIR)):
-            if name.lower().endswith(".gguf"):
-                return os.path.join(DEFAULT_MODEL_DIR, name)
-        return None
+        names = [n for n in sorted(os.listdir(DEFAULT_MODEL_DIR))
+                 if n.lower().endswith(".gguf")]
+        if not names:
+            return None
+        # 思考モードを持たない Instruct 系を優先する
+        for key in PREFERRED:
+            for n in names:
+                if key in n.lower():
+                    return os.path.join(DEFAULT_MODEL_DIR, n)
+        return os.path.join(DEFAULT_MODEL_DIR, names[0])
 
     def suggest(self, field_label: str, ocr_text: str,
                 candidates: List[str]) -> Optional[Suggestion]:
@@ -101,7 +119,8 @@ class LlmAssist:
                 messages=[{"role": "system", "content": SYSTEM_PROMPT},
                           {"role": "user", "content": prompt}],
                 max_tokens=self.max_tokens, temperature=0.0)
-            out = res["choices"][0]["message"]["content"].strip().split("\n")[0].strip()
+            out = strip_thinking(res["choices"][0]["message"]["content"])
+            out = out.split("\n")[0].strip()
         except Exception:
             return None
         if not out or out == "不明":
@@ -120,6 +139,20 @@ class LlmAssist:
             return None
         return Suggestion(value=match, source="llm",
                           note="LLMによる候補です。内容を確認してから採用してください。")
+
+
+    def complete(self, system: str, prompt: str, max_tokens: int = 256) -> str:
+        """自由な補完。文章の校正に使う。"""
+        if not self.available:
+            return ""
+        try:
+            res = self._llm.create_chat_completion(
+                messages=[{"role": "system", "content": system},
+                          {"role": "user", "content": prompt}],
+                max_tokens=max_tokens, temperature=0.0)
+            return strip_thinking(res["choices"][0]["message"]["content"])
+        except Exception:
+            return ""
 
 
 _CACHE: Optional[LlmAssist] = None

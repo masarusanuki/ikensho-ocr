@@ -119,6 +119,68 @@
     return Math.max(dice, partial);
   }
 
+  // OCR がよく取り違える字の訂正。前後の文字種を見て「こちらしかあり得ない」場合だけ直す。
+  const HIRA = 'ぁ-ゟ', KATA = 'ァ-ヿ', KANJI = '㐀-鿿豈-﫿';
+  const JP = HIRA + KATA + KANJI;
+  const CONTEXT_FIXES = [
+    ['カタカナのカを漢字の力と誤認', new RegExp(`(?<=[${KATA}])力(?=[${KATA}])`, 'g'), 'カ'],
+    ['カタカナのロを漢字の口と誤認', new RegExp(`(?<=[${KATA}])口(?=[${KATA}])`, 'g'), 'ロ'],
+    ['カタカナのニを漢字の二と誤認', new RegExp(`(?<=[${KATA}])二(?=[${KATA}])`, 'g'), 'ニ'],
+    ['カタカナのヘをひらがなのへと誤認', new RegExp(`(?<=[${KATA}])へ(?=[${KATA}])`, 'g'), 'ヘ'],
+    ['ひらがなのへをカタカナのヘと誤認', new RegExp(`(?<=[${HIRA}])ヘ(?=[${HIRA}])`, 'g'), 'へ'],
+    ['長音記号を漢数字の一と誤認', new RegExp(`(?<=[${KATA}])一(?=[${KATA}])`, 'g'), 'ー'],
+    ['長音記号をハイフンと誤認', new RegExp(`(?<=[${KATA}])[-−–—](?=[${KATA}])`, 'g'), 'ー'],
+  ];
+
+  // 医療・介護文書でよくある誤字
+  const WORD_FIXES = {
+    '遍数回':'週数回','遍1回':'週1回','遍2回':'週2回','遍3回':'週3回',
+    '山床':'臥床','卧床':'臥床','褥創':'褥瘡','褥瘖':'褥瘡','嚥化':'嚥下','臙下':'嚥下',
+    '肺災':'肺炎','認知庄':'認知症','麻庫':'麻痺','麻痴':'麻痺','徘個':'徘徊','俳徊':'徘徊',
+    '介謹':'介護','介穫':'介護','訪間':'訪問','訪聞':'訪問','白立':'自立','リハピリ':'リハビリ',
+    '高血庄':'高血圧','血庄':'血圧','骨析':'骨折','内脹':'内服','脹薬':'服薬','排洩':'排泄',
+    '更依':'更衣','人浴':'入浴','転倒':'転倒','頼倒':'転倒','安走':'安定','経渦':'経過',
+    '痘状':'症状','治僚':'治療','糠尿病':'糖尿病','見寺り':'見守り','リハビリテーシヨン':'リハビリテーション',
+  };
+  const NOISE = '|｜!！"\'`^~*#$%&@={}<>\\';
+
+  /**
+   * 日本語として妥当か調べ、誤字を直す。
+   * OCR が失敗した欄は記号やアルファベットの羅列になるので、
+   * 「日本語度」が下がり、確認画面で要確認として扱える。
+   */
+  function proofread(text) {
+    if (!text || !text.trim()) return { text: text || '', corrections: [], score: 1 };
+    const corrections = [];
+    let out = '';
+    for (const ch of text) {
+      if (NOISE.includes(ch)) { corrections.push([ch, '']); continue; }
+      out += ch;
+    }
+    out = out.replace(/[ 　]{2,}/g, ' ').replace(/^[\s.,、。・:：;；\-ー_]+/, '').trim();
+    for (const [reason, re, rep] of CONTEXT_FIXES) {
+      out = out.replace(re, m => { corrections.push([m, rep]); return rep; });
+    }
+    for (const [wrong, right] of Object.entries(WORD_FIXES)) {
+      if (out.includes(wrong)) { out = out.split(wrong).join(right); corrections.push([wrong, right]); }
+    }
+    return { text: out, corrections, score: japaneseScore(out) };
+  }
+
+  const VALID_RE = new RegExp(`[${JP}0-9０-９a-zA-Zａ-ｚＡ-Ｚ\\s、。・（）()「」『』〔〕：:；;／/＋+－\\-.,％%℃ー～〜]`);
+
+  /** 日本語として成立している度合い 0..1。 */
+  function japaneseScore(text) {
+    const t = (text || '').trim();
+    if (!t) return 1;
+    const chars = Array.from(t);
+    const valid = chars.filter(c => VALID_RE.test(c)).length / chars.length;
+    const digits = chars.filter(c => /[0-9０-９]/.test(c)).length;
+    if (digits >= chars.length * 0.6) return valid;
+    const jp = chars.filter(c => new RegExp(`[${JP}]`).test(c)).length / chars.length;
+    return Math.min(1, valid * 0.6 + Math.min(jp * 2, 1) * 0.4);
+  }
+
   /** 罫線や括弧だけの読み取りは無意味なので落とす。 */
   function cleanOcr(text) {
     if (!text) return '';
@@ -200,9 +262,15 @@
     /** OCR結果を辞書で補正し {value, confidence, candidates} を返す。 */
     correct(fieldId, text, baseConfidence) {
       let t = this.stripBoilerplate(cleanOcr(text));
+      const pr = proofread(t);
+      const corrections = pr.corrections;
+      t = pr.text;
+      const jscore = pr.score;
       const key = this.fieldMap[fieldId];
+      const extra = { corrections, japaneseScore: jscore };
+      if (jscore < 0.6) baseConfidence *= 0.6;
       if (!key || !this.lexicons[key] || !t) {
-        return { value: t, confidence: baseConfidence, candidates: [] };
+        return Object.assign({ value: t, confidence: baseConfidence, candidates: [] }, extra);
       }
       const hits = this.search(key, t);
       const candidates = hits.map(h => ({
@@ -212,16 +280,16 @@
       if (!hits.length) return { value: t, confidence: baseConfidence * 0.7, candidates: [] };
       const best = hits[0];
       if (best.score >= 0.999) {
-        return { value: best.entry.name, confidence: Math.min(1, baseConfidence + 0.2), candidates };
+        return Object.assign({ value: best.entry.name, confidence: Math.min(1, baseConfidence + 0.2), candidates }, extra);
       }
       if (best.score >= AUTO_ADOPT) {
-        return { value: best.entry.name,
-                 confidence: Math.min(0.95, baseConfidence * 0.5 + best.score * 0.5), candidates };
+        return Object.assign({ value: best.entry.name,
+                 confidence: Math.min(0.95, baseConfidence * 0.5 + best.score * 0.5), candidates }, extra);
       }
-      return { value: t, confidence: baseConfidence * 0.75, candidates };
+      return Object.assign({ value: t, confidence: baseConfidence * 0.75, candidates }, extra);
     }
   }
 
   global.IkenshoDicts = { Dictionaries, similarity, normalize, cleanOcr,
-                          normalizeVariants, levenshtein };
+                          normalizeVariants, levenshtein, proofread, japaneseScore };
 })(window);

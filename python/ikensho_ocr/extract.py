@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from . import align, anonymize, checkbox, imaging, llm as llm_mod, ocr as ocr_mod
+from . import align, anonymize, checkbox, imaging, llm as llm_mod, ocr as ocr_mod, proofread
 from .dictionaries import Dictionaries, DEFAULT_DICTIONARIES
 from .schema import Schema, load_schema
 from .templates import Template, load_templates
@@ -203,6 +203,24 @@ def extract_record(paths: List[str],
                 entry = dict(value=corrected, confidence=round(conf, 3),
                              raw=res.text, candidates=cands, empty=False,
                              engine=res.engine)
+            # 日本語として妥当か調べ、誤字を直す（規則ベース・常時）
+            pr = proofread.proofread_text(entry["value"], multiline=multiline)
+            if pr.corrections:
+                entry["value"] = pr.text
+                entry["corrections"] = [dict(before=c.before, after=c.after,
+                                             reason=c.reason) for c in pr.corrections]
+            entry["japanese_score"] = pr.japanese_score
+            if pr.japanese_score < 0.6:
+                entry["confidence"] = round(entry["confidence"] * 0.6, 3)
+                entry["note"] = pr.note
+
+            # 自由記述はLLMに校正させ、結果は候補として並べる（自動採用はしない）
+            if assist and multiline and entry["value"]:
+                lp = proofread.proofread_with_llm(assist, entry["value"], f.label)
+                if lp:
+                    entry.setdefault("candidates", []).insert(
+                        0, dict(value=lp.text, score=None, source="llm", note=lp.note))
+
             # 読み取りが怪しい欄だけ、小型LLMに候補を選ばせる（自動採用はしない）
             if assist and entry["confidence"] < CONF_HIGH and entry.get("raw"):
                 names = [c["value"] for c in (entry.get("candidates") or [])]

@@ -271,6 +271,14 @@
 
       el.appendChild(this.control(f, e, el));
 
+      if (e.corrections && e.corrections.length) {
+        const c = document.createElement('div');
+        c.className = 'raw';
+        c.textContent = '訂正: ' + e.corrections.slice(0, 4)
+          .map(x => `${x[0] || x.before}→${(x[1] !== undefined ? x[1] : x.after) || '（削除）'}`)
+          .join('、');
+        el.appendChild(c);
+      }
       if (e.note) {
         const n = document.createElement('div');
         n.className = 'raw';
