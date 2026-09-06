@@ -19,6 +19,7 @@
       this.marker = document.getElementById('marker');
       this.zoom = document.getElementById('zoom');
       this.zoomcap = document.getElementById('zoomcap');
+      this.zoomHint = document.getElementById('zoomhint');
       this.zoomScale = 1.0;          // 拡大表示の倍率（利用者が変えられる）
       this.fieldsEl = document.getElementById('fields');
       this.warnEl = document.getElementById('warnings');
@@ -1099,9 +1100,57 @@
         ctx.drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
         this.zoom.replaceChildren(c);
         this.zoom.scrollLeft = 0;
+        this.bindZoomPan();
+        // 横に続いていることが分かるよう、はみ出す場合だけ案内を出す
+        const over = this.zoom.scrollWidth > this.zoom.clientWidth + 4;
+        if (this.zoomHint) this.zoomHint.hidden = !over;
       };
       img.src = src;
       this.zoomcap.textContent = `${loc.page}ページ目の該当箇所`;
+    }
+
+    /**
+     * 拡大表示を横に動かせるようにする。
+     * スクロールバーだけでは気づきにくいので、掴んで動かす操作と、
+     * ホイールでの横移動も付ける。
+     */
+    bindZoomPan() {
+      if (this._zoomPanBound) return;
+      this._zoomPanBound = true;
+      const z = this.zoom;
+      // ホイールは縦にしか効かないので、横に流せる場合は横に回す
+      z.addEventListener('wheel', ev => {
+        const over = z.scrollWidth > z.clientWidth + 4;
+        if (!over) return;
+        const dx = Math.abs(ev.deltaX) > Math.abs(ev.deltaY) ? ev.deltaX : ev.deltaY;
+        if (!dx) return;
+        const before = z.scrollLeft;
+        z.scrollLeft += dx;
+        if (z.scrollLeft !== before) ev.preventDefault();
+      }, { passive: false });
+
+      let drag = null;
+      z.addEventListener('pointerdown', ev => {
+        if (ev.button !== 0) return;
+        drag = { x: ev.clientX, y: ev.clientY,
+                 left: z.scrollLeft, top: z.scrollTop, id: ev.pointerId };
+        z.classList.add('grabbing');
+        z.setPointerCapture(ev.pointerId);
+      });
+      const end = ev => {
+        if (!drag) return;
+        z.classList.remove('grabbing');
+        try { z.releasePointerCapture(drag.id); } catch (e) { /* すでに解放済み */ }
+        drag = null;
+      };
+      z.addEventListener('pointermove', ev => {
+        if (!drag) return;
+        z.scrollLeft = drag.left - (ev.clientX - drag.x);
+        z.scrollTop = drag.top - (ev.clientY - drag.y);
+      });
+      z.addEventListener('pointerup', end);
+      z.addEventListener('pointercancel', end);
+      z.addEventListener('pointerleave', end);
     }
 
     jumpLow(dir) {

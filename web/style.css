@@ -155,11 +155,22 @@ progress { width: 100%; height: 8px; }
   position: absolute; border: 2px solid #ff9f0a; border-radius: 3px;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, .42); pointer-events: none; transition: .18s;
 }
-/* 拡大表示。長い欄は縮めずに、横スクロールで全文を追えるようにする。 */
+/* 拡大表示。長い欄は縮めずに、横スクロールで全文を追えるようにする。
+   スクロールバーを常に出し、掴んで動かせるようにしないと、
+   横に続いていること自体に気づけない。 */
 .imagepane .zoom { margin-top: 8px; background: #fff; border: 1px solid var(--border);
                    border-radius: 8px; min-height: 74px; max-height: 240px;
-                   overflow: auto; padding: 6px; }
-.imagepane .zoom canvas, .imagepane .zoom img { display: block; max-width: none; }
+                   overflow-x: scroll; overflow-y: auto; padding: 6px;
+                   cursor: grab; overscroll-behavior-x: contain; }
+.imagepane .zoom.grabbing { cursor: grabbing; }
+.imagepane .zoom::-webkit-scrollbar { height: 12px; }
+.imagepane .zoom::-webkit-scrollbar-track { background: #eef0f4; border-radius: 6px; }
+.imagepane .zoom::-webkit-scrollbar-thumb { background: #9aa3ae; border-radius: 6px;
+                                            border: 3px solid #eef0f4; }
+.imagepane .zoom::-webkit-scrollbar-thumb:hover { background: #6b7480; }
+.imagepane .zoom { scrollbar-color: #9aa3ae #eef0f4; }
+.imagepane .zoom canvas, .imagepane .zoom img { display: block; max-width: none;
+                                                user-select: none; -webkit-user-drag: none; }
 .imagepane .zoom:empty { display: grid; place-items: center; }
 .imagepane .zoomtools { display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
                         margin-top: 6px; font-size: 11.5px; color: var(--muted); }
