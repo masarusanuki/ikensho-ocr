@@ -50,6 +50,71 @@
       this.updateAnonButton();
     }
 
+    /** 画像上に、項目ごとの当たり判定を敷く。クリックで右の該当項目へ移動する。 */
+    renderHotspots() {
+      const host = document.getElementById('hotspots');
+      if (!host) return;
+      host.replaceChildren();
+      const tpl = this.app.pipeline.templates[this.record.templateId];
+      if (!tpl) return;
+      const page = tpl.pages.find(p => p.index === this.currentPage);
+      if (!page) return;
+
+      const spots = [];
+      for (const t of page.texts) spots.push({ field: t.field, rect: t.rect });
+      const byField = {};
+      for (const b of page.boxes) {
+        const r = byField[b.field];
+        const [x, y, w, h] = b.rect;
+        if (!r) byField[b.field] = [x, y, x + w, y + h];
+        else {
+          r[0] = Math.min(r[0], x); r[1] = Math.min(r[1], y);
+          r[2] = Math.max(r[2], x + w); r[3] = Math.max(r[3], y + h);
+        }
+      }
+      for (const [f, r] of Object.entries(byField)) {
+        // ラベル側も押せるよう右に広げる
+        spots.push({ field: f, rect: [r[0], r[1], Math.min(1 - r[0], r[2] - r[0] + 0.10),
+                                      r[3] - r[1]] });
+      }
+      // 小さいものを上に重ねる（大きな枠に埋もれないように）
+      spots.sort((a, b) => (b.rect[2] * b.rect[3]) - (a.rect[2] * a.rect[3]));
+      for (const s of spots) {
+        const el = document.createElement('div');
+        el.className = 'hot';
+        el.style.left = (s.rect[0] * 100) + '%';
+        el.style.top = (s.rect[1] * 100) + '%';
+        el.style.width = (s.rect[2] * 100) + '%';
+        el.style.height = (s.rect[3] * 100) + '%';
+        const f = this.app.schema.byId[s.field];
+        el.title = f ? f.label : s.field;
+        el.addEventListener('click', ev => {
+          ev.stopPropagation();
+          this.jumpTo(s.field);
+        });
+        host.appendChild(el);
+      }
+    }
+
+    /** 指定の項目を右側で表示・選択する。絞り込み中なら解除して探す。 */
+    jumpTo(fieldId) {
+      let el = this.fieldsEl.querySelector(`.field[data-field="${fieldId}"]`);
+      if (!el && this.onlyLow) {
+        this.onlyLow = false;
+        document.getElementById('only-low').checked = false;
+        this.renderFields();
+        el = this.fieldsEl.querySelector(`.field[data-field="${fieldId}"]`);
+      }
+      if (el) {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        this.focusField(fieldId, el);
+        const input = el.querySelector('input,textarea');
+        if (input) setTimeout(() => input.focus({ preventScroll: true }), 320);
+      } else {
+        this.focusField(fieldId, null);
+      }
+    }
+
     showPage(n) {
       this.currentPage = n;
       const src = (this.record.images || {})[n];
@@ -58,6 +123,7 @@
       this.imgEl.src = src || '';
       this.imgEl.style.visibility = src ? 'visible' : 'hidden';
       this.marker.hidden = true;
+      this.renderHotspots();
     }
 
     renderWarnings() {
@@ -104,6 +170,46 @@
       return s;
     }
 
+    /** 様式上の位置（ページ→上から下→左から右）を項目ごとに求める。 */
+    positionIndex() {
+      if (this._posIndex && this._posTpl === this.record.templateId) return this._posIndex;
+      const idx = {};
+      const tpl = this.app.pipeline.templates[this.record.templateId];
+      if (tpl) {
+        for (const p of tpl.pages) {
+          for (const t of p.texts) {
+            const [x, y] = t.rect;
+            idx[t.field] = [p.index, y, x];
+          }
+          const byField = {};
+          for (const b of p.boxes) {
+            const cur = byField[b.field];
+            const [x, y] = b.rect;
+            if (!cur || y < cur[1] || (y === cur[1] && x < cur[2])) {
+              byField[b.field] = [p.index, y, x];
+            }
+          }
+          for (const [f, v] of Object.entries(byField)) if (!idx[f]) idx[f] = v;
+        }
+      }
+      this._posIndex = idx;
+      this._posTpl = this.record.templateId;
+      return idx;
+    }
+
+    /** 様式上の並び順に項目を並べ替える。 */
+    orderedFields(fields) {
+      const idx = this.positionIndex();
+      const withPos = fields.map((f, i) => ({ f, i, p: idx[f.id] }));
+      withPos.sort((a, b) => {
+        if (!a.p && !b.p) return a.i - b.i;
+        if (!a.p) return 1;
+        if (!b.p) return -1;
+        return (a.p[0] - b.p[0]) || (a.p[1] - b.p[1]) || (a.p[2] - b.p[2]);
+      });
+      return withPos.map(w => w.f);
+    }
+
     renderFields() {
       if (!this.record) return;
       const schema = this.app.schema;
@@ -123,7 +229,7 @@
 
       for (const sec of schema.sections) {
         const rows = [];
-        for (const f of sec.fields) {
+        for (const f of this.orderedFields(sec.fields)) {
           const e = this.record.fields[f.id];
           if (!e) continue;
           if (this.onlyLow && !this.needsCheck(e)) continue;
@@ -334,6 +440,11 @@
       if (loc.page !== this.currentPage) this.showPage(loc.page);
       const [x, y, w, h] = loc.rect;
       this.marker.hidden = false;
+      const sc = document.getElementById('scroller');
+      if (sc && this.imgEl.naturalHeight) {
+        const target = (y + h / 2) * this.imgEl.clientHeight - sc.clientHeight / 2;
+        sc.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+      }
       this.marker.style.left = (x * 100) + '%';
       this.marker.style.top = (y * 100) + '%';
       this.marker.style.width = (w * 100) + '%';

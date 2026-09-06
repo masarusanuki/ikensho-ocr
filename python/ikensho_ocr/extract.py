@@ -245,7 +245,9 @@ def extract_record(paths: List[str],
         rec.fields[f.id] = entry
 
     # 匿名化加工済みデータの扱い（氏名欄が白抜きなら「匿名化済み」）
-    if anonymized or anonymize.looks_anonymized(rec.fields, schema):
+    # OCR を使っていない場合はテキスト欄が全て空になるので、自動判定はしない
+    can_detect = ocr_engine.name != "none"
+    if anonymized or (can_detect and anonymize.looks_anonymized(rec.fields, schema)):
         anonymize.apply(rec.fields, schema, force=anonymized)
         rec.anonymized = True   # type: ignore[attr-defined]
         if anonymized:

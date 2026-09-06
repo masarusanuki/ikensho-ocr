@@ -109,16 +109,19 @@
           <button class="btn sm" data-page="1">1ページ目</button>
           <button class="btn sm" data-page="2">2ページ目</button>
         </div>
-        <div class="frame" id="frame">
-          <img id="page-img" alt="読み取り元のページ画像">
-          <div class="marker" id="marker" hidden></div>
+        <div class="scroller" id="scroller">
+          <div class="frame" id="frame">
+            <img id="page-img" alt="読み取り元のページ画像">
+            <div class="marker" id="marker" hidden></div>
+            <div id="hotspots"></div>
+          </div>
         </div>
-        <div class="zoomcap" id="zoomcap">項目を選ぶと、その部分を拡大表示します</div>
+        <div class="zoomcap" id="zoomcap">画像の記入箇所をクリックすると、右の該当項目に移動します</div>
         <div class="zoom" id="zoom"></div>
       </div>
     </div>
 
-    <div>
+    <div class="fieldpane">
       <div id="warnings"></div>
       <div id="fields"></div>
     </div>

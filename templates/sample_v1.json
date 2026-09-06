@@ -769,52 +769,66 @@
      "field": "entry_date",
      "type": "text",
      "rect": [
-      0.599878,
-      0.125801,
-      0.400122,
-      0.061194
+      0.72,
+      0.027,
+      0.235,
+      0.0165
      ],
      "options": null,
      "charset": "wareki",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "applicant_furigana",
      "type": "text",
      "rect": [
-      0.351242,
-      0.212622,
-      0.14708,
-      0.053894
+      0.16,
+      0.054,
+      0.34,
+      0.0165
      ],
      "options": null,
      "charset": "kana",
      "pii": "name",
-     "transferred": true
+     "placement": "実測"
+    },
+    {
+     "field": "postal_code",
+     "type": "text",
+     "rect": [
+      0.65,
+      0.054,
+      0.13,
+      0.0165
+     ],
+     "options": null,
+     "charset": "postal",
+     "pii": "mask",
+     "placement": "実測"
     },
     {
      "field": "applicant_name",
      "type": "text",
      "rect": [
-      0.26172,
-      0.270109,
-      0.236602,
-      0.086232
+      0.093,
+      0.0735,
+      0.3,
+      0.0225
      ],
      "options": null,
      "charset": "",
      "pii": "name",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "applicant_sex",
      "type": "circle",
      "rect": [
-      0.491705,
-      0.237772,
-      0.022588,
-      0.154501
+      0.532,
+      0.0735,
+      0.058,
+      0.0225
      ],
      "options": [
       "男",
@@ -822,16 +836,30 @@
      ],
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
+    },
+    {
+     "field": "applicant_address",
+     "type": "text",
+     "rect": [
+      0.608,
+      0.0735,
+      0.29,
+      0.0225
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "mask",
+     "placement": "実測"
     },
     {
      "field": "birth_era",
      "type": "circle",
      "rect": [
-      0.259667,
-      0.359935,
-      0.054416,
-      0.040393
+      0.062,
+      0.0995,
+      0.075,
+      0.0195
      ],
      "options": [
       "明",
@@ -840,114 +868,170 @@
      ],
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "birth_date",
      "type": "text",
      "rect": [
-      0.314083,
-      0.359935,
-      0.101645,
-      0.040393
+      0.15,
+      0.0995,
+      0.222,
+      0.0195
      ],
      "options": null,
      "charset": "wareki",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "age",
      "type": "text",
      "rect": [
-      0.439342,
-      0.359935,
-      0.031828,
-      0.040393
+      0.337,
+      0.0995,
+      0.04,
+      0.0195
      ],
      "options": null,
      "charset": "digits",
      "pii": "",
-     "transferred": true
-    },
-    {
-     "field": "postal_code",
-     "type": "text",
-     "rect": [
-      0.528964,
-      0.212622,
-      0.086672,
-      0.053894
-     ],
-     "options": null,
-     "charset": "postal",
-     "pii": "mask",
-     "transferred": true
-    },
-    {
-     "field": "applicant_address",
-     "type": "text",
-     "rect": [
-      0.517582,
-      0.266516,
-      0.214374,
-      0.086232
-     ],
-     "options": null,
-     "charset": "",
-     "pii": "mask",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "applicant_phone",
      "type": "text",
      "rect": [
-      0.567682,
-      0.356341,
-      0.164275,
-      0.043986
+      0.672,
+      0.0995,
+      0.16,
+      0.0195
      ],
      "options": null,
      "charset": "phone",
      "pii": "mask",
-     "transferred": true
+     "placement": "実測"
+    },
+    {
+     "field": "doctor_name",
+     "type": "text",
+     "rect": [
+      0.188,
+      0.165,
+      0.23,
+      0.018
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "name",
+     "placement": "実測"
+    },
+    {
+     "field": "clinic_name",
+     "type": "text",
+     "rect": [
+      0.188,
+      0.1856,
+      0.3,
+      0.018
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "mask",
+     "placement": "実測"
+    },
+    {
+     "field": "clinic_phone",
+     "type": "text",
+     "rect": [
+      0.612,
+      0.1856,
+      0.15,
+      0.018
+     ],
+     "options": null,
+     "charset": "phone",
+     "pii": "mask",
+     "placement": "実測"
+    },
+    {
+     "field": "clinic_address",
+     "type": "text",
+     "rect": [
+      0.188,
+      0.2061,
+      0.32,
+      0.018
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "mask",
+     "placement": "実測"
+    },
+    {
+     "field": "clinic_fax",
+     "type": "text",
+     "rect": [
+      0.612,
+      0.2061,
+      0.15,
+      0.018
+     ],
+     "options": null,
+     "charset": "phone",
+     "pii": "mask",
+     "placement": "実測"
+    },
+    {
+     "field": "last_exam_date",
+     "type": "text",
+     "rect": [
+      0.225,
+      0.2345,
+      0.215,
+      0.0175
+     ],
+     "options": null,
+     "charset": "wareki",
+     "pii": "",
+     "placement": "実測"
     },
     {
      "field": "other_dept_other_text",
      "type": "text",
      "rect": [
-      0.479924,
-      0.400328,
-      0.128865,
-      0.003686
+      0.58508,
+      0.307875,
+      0.1545,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "diagnosis1_name",
      "type": "text",
      "rect": [
-      0.012371,
-      0.425912,
-      0.242828,
-      0.008657
+      0.083,
+      0.373,
+      0.27,
+      0.0195
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "diagnosis1_era",
      "type": "circle",
      "rect": [
-      0.300471,
-      0.425912,
-      0.096407,
-      0.008657
+      0.515,
+      0.373,
+      0.105,
+      0.0195
      ],
      "options": [
       "昭和",
@@ -956,44 +1040,44 @@
      ],
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "diagnosis1_date",
      "type": "text",
      "rect": [
-      0.393295,
-      0.425912,
-      0.16613,
-      0.008657
+      0.625,
+      0.373,
+      0.17,
+      0.0195
      ],
      "options": null,
      "charset": "wareki",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "diagnosis2_name",
      "type": "text",
      "rect": [
-      0.047492,
-      0.436097,
-      0.219294,
-      0.008657
+      0.083,
+      0.396,
+      0.27,
+      0.0195
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "diagnosis2_era",
      "type": "circle",
      "rect": [
-      0.30942,
-      0.436097,
-      0.087649,
-      0.008657
+      0.515,
+      0.396,
+      0.105,
+      0.0195
      ],
      "options": [
       "昭和",
@@ -1002,44 +1086,44 @@
      ],
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "diagnosis2_date",
      "type": "text",
      "rect": [
-      0.391469,
-      0.436097,
-      0.153383,
-      0.008657
+      0.625,
+      0.396,
+      0.17,
+      0.0195
      ],
      "options": null,
      "charset": "wareki",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "diagnosis3_name",
      "type": "text",
      "rect": [
-      0.066628,
-      0.446282,
-      0.200158,
-      0.008657
+      0.083,
+      0.419,
+      0.27,
+      0.0195
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "diagnosis3_era",
      "type": "circle",
      "rect": [
-      0.31139,
-      0.446282,
-      0.081905,
-      0.008657
+      0.515,
+      0.419,
+      0.105,
+      0.0195
      ],
      "options": [
       "昭和",
@@ -1048,63 +1132,63 @@
      ],
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "diagnosis3_date",
      "type": "text",
      "rect": [
-      0.391469,
-      0.446282,
-      0.139922,
-      0.008657
+      0.625,
+      0.419,
+      0.17,
+      0.0195
      ],
      "options": null,
      "charset": "wareki",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "stability_detail",
      "type": "text",
      "rect": [
-      0.171555,
-      0.464459,
-      0.38787,
-      0.013753
+      0.055,
+      0.4555,
+      0.76,
+      0.0195
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "treatment_course",
      "type": "textarea",
      "rect": [
-      0.117243,
-      0.508296,
-      0.474113,
-      0.099708
+      0.055,
+      0.523,
+      0.89,
+      0.052
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "bpsd_other_text",
      "type": "text",
      "rect": [
-      0.443959,
-      0.866347,
-      0.112394,
-      0.020089
+      0.461003,
+      0.872219,
+      0.1781,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     }
    ]
   },
@@ -2228,102 +2312,130 @@
    ],
    "texts": [
     {
+     "field": "other_psych_symptom_name",
+     "type": "text",
+     "rect": [
+      0.418521,
+      0.040239,
+      0.11433,
+      0.014006
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "placement": "チェックボックス基準"
+    },
+    {
+     "field": "specialist_consult_detail",
+     "type": "text",
+     "rect": [
+      0.712683,
+      0.040359,
+      0.121813,
+      0.01334
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "placement": "チェックボックス基準"
+    },
+    {
      "field": "height_cm",
      "type": "text",
      "rect": [
-      0.220166,
-      0.069873,
-      0.191196,
-      0.009603
+      0.35,
+      0.064,
+      0.042,
+      0.018
      ],
      "options": null,
      "charset": "decimal",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "weight_kg",
      "type": "text",
      "rect": [
-      0.320644,
-      0.069873,
-      0.181713,
-      0.009603
+      0.483,
+      0.064,
+      0.04,
+      0.018
      ],
      "options": null,
      "charset": "decimal",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "limb_defect_site",
      "type": "text",
      "rect": [
-      0.203988,
-      0.077116,
-      0.338492,
-      0.017705
+      0.275289,
+      0.08,
+      0.4048,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "paralysis_other_site",
      "type": "text",
      "rect": [
-      0.21852,
-      0.129348,
-      0.05646,
-      0.017469
+      0.209935,
+      0.131304,
+      0.082712,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "muscle_weakness_site",
      "type": "text",
      "rect": [
-      0.17189,
-      0.146818,
-      0.203142,
-      0.018032
+      0.27604,
+      0.149688,
+      0.05661,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "joint_contracture_site",
      "type": "text",
      "rect": [
-      0.216911,
-      0.16485,
-      0.158121,
-      0.017188
+      0.278538,
+      0.166909,
+      0.052312,
+      0.01334
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "joint_pain_site",
      "type": "text",
      "rect": [
-      0.214945,
-      0.182039,
-      0.157299,
-      0.017074
+      0.277289,
+      0.18389,
+      0.055361,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "pressure_ulcer_site",
@@ -2337,189 +2449,190 @@
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "transferred": true,
+     "placement": "暫定"
     },
     {
      "field": "other_skin_disease_site",
      "type": "text",
      "rect": [
-      0.185134,
-      0.233245,
-      0.182896,
-      0.017171
+      0.277289,
+      0.235314,
+      0.091637,
+      0.01334
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "nutrition_note",
      "type": "text",
      "rect": [
-      0.227706,
-      0.376617,
-      0.312023,
-      0.018626
+      0.352,
+      0.362,
+      0.42,
+      0.021
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "risk_other_text",
      "type": "text",
      "rect": [
-      0.542726,
-      0.424106,
-      0.121069,
-      0.01223
+      0.567854,
+      0.425447,
+      0.1697,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "risk_policy",
      "type": "text",
      "rect": [
-      0.129176,
-      0.435789,
-      0.550635,
-      0.008762
+      0.152,
+      0.4345,
+      0.56,
+      0.0185
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     },
     {
      "field": "medical_management_other_text",
      "type": "text",
      "rect": [
-      0.841227,
-      0.519274,
-      0.150628,
-      0.01571
+      0.844635,
+      0.521214,
+      0.1361,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "caution_bp_text",
      "type": "text",
      "rect": [
-      0.111217,
-      0.562706,
-      0.239357,
-      0.017328
+      0.115427,
+      0.564395,
+      0.2184,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "caution_eating_text",
      "type": "text",
      "rect": [
-      0.423143,
-      0.562706,
-      0.220305,
-      0.017328
+      0.41591,
+      0.564395,
+      0.2016,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "caution_swallow_text",
      "type": "text",
      "rect": [
-      0.713418,
-      0.562706,
-      0.278734,
-      0.017328
+      0.717038,
+      0.564395,
+      0.252,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "caution_move_text",
      "type": "text",
      "rect": [
-      0.111394,
-      0.577725,
-      0.282299,
-      0.014189
+      0.115427,
+      0.579359,
+      0.2184,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "caution_exercise_text",
      "type": "text",
      "rect": [
-      0.421449,
-      0.577725,
-      0.218861,
-      0.014189
+      0.41591,
+      0.579359,
+      0.2016,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "caution_other_text",
      "type": "text",
      "rect": [
-      0.695672,
-      0.577725,
-      0.29117,
-      0.014189
+      0.733274,
+      0.579359,
+      0.2352,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "infection_detail",
      "type": "text",
      "rect": [
-      0.309459,
-      0.610372,
-      0.426491,
-      0.011075
+      0.519721,
+      0.608858,
+      0.157117,
+      0.014006
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "チェックボックス基準"
     },
     {
      "field": "special_notes",
      "type": "textarea",
      "rect": [
-      0.138863,
-      0.672391,
-      0.77816,
-      0.076047
+      0.055,
+      0.69,
+      0.7,
+      0.21
      ],
      "options": null,
      "charset": "",
      "pii": "",
-     "transferred": true
+     "placement": "実測"
     }
    ]
   }

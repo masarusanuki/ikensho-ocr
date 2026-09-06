@@ -349,7 +349,9 @@
                        anonymized: false };
       // 匿名化加工済みデータの扱い（氏名欄が白抜きなら「匿名化済み」）
       const A = global.IkenshoAnonymize;
-      if (opts.anonymized || A.looksAnonymized(record, this.schema)) {
+      // OCR を使っていない場合はテキスト欄が全て空になるので、自動判定はしない
+      const canDetect = this.ocrReady;
+      if (opts.anonymized || (canDetect && A.looksAnonymized(record, this.schema))) {
         A.apply(record, this.schema, !!opts.anonymized);
         if (opts.anonymized) {
           warnings.push('匿名化加工済みデータとして処理しました（住所・連絡先はマスク済み）');

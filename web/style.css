@@ -105,12 +105,28 @@ progress { width: 100%; height: 8px; }
 .review { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 16px; align-items: start; }
 @media (max-width: 1080px) { .review { grid-template-columns: 1fr; } }
 
-.imagepane { position: sticky; top: 72px; }
+/* 左右それぞれが独立して縦スクロールする。画面が低くても下部まで見られる。 */
+.review { align-items: stretch; }
+.imagepane { position: sticky; top: 72px; max-height: calc(100vh - 92px);
+             display: flex; flex-direction: column; }
+.imagepane > .panel { display: flex; flex-direction: column; min-height: 0;
+                      max-height: 100%; margin-bottom: 0; }
+.imagepane .scroller { flex: 1; min-height: 160px; overflow: auto;
+                       border-radius: 8px; background: #333; }
 .imagepane .frame {
-  position: relative; background: #333; border-radius: 10px; overflow: hidden;
-  border: 1px solid var(--border);
+  position: relative; background: #333; border-radius: 10px;
+  border: 1px solid var(--border); cursor: crosshair;
 }
 .imagepane img { display: block; width: 100%; }
+.imagepane .hot { position: absolute; background: transparent; cursor: pointer; }
+.imagepane .hot:hover { background: rgba(30, 90, 168, .18);
+                        outline: 1px solid rgba(30, 90, 168, .55); }
+.fieldpane { max-height: calc(100vh - 92px); overflow: auto; padding-right: 4px; }
+@media (max-width: 1080px) {
+  .imagepane { position: static; max-height: none; }
+  .imagepane .scroller { max-height: 70vh; }
+  .fieldpane { max-height: none; overflow: visible; }
+}
 .imagepane .marker {
   position: absolute; border: 2px solid #ff9f0a; border-radius: 3px;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, .42); pointer-events: none; transition: .18s;
