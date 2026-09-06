@@ -341,7 +341,8 @@
         const { t, f, w } = textJobs[i];
         onProgress({ phase: 'ocr', current: i + 1, total: textJobs.length,
                      message: `テキスト欄を読み取っています（${f.label}）` });
-        textResults[t.field] = await this.readText(w.mat, t, f);
+        textResults[t.field] = await this.readText(
+          w.mat, t, f, this.blanks[`${templateId}:${w.tplPage.index}`]);
       }
 
       // --- 4.5) 日付欄は年・月・日に分けておく（確認画面で数字だけ直せるように）
@@ -404,8 +405,10 @@
       return record;
     }
 
-    async readText(warped, t, f) {
-      const rect = t.rect;
+    async readText(warped, t, f, blank) {
+      // 測った左端が記入の先頭に食い込んでいることがあるので、
+      // 印刷内容にぶつからない範囲で左へ広げてから読む
+      const rect = blank ? E.widenLeft(blank, t.rect) : t.rect;
       if (!this.hasInk(warped, rect)) {
         return { value: '', confidence: 0.95, raw: '', empty: true, candidates: [] };
       }
@@ -438,9 +441,22 @@
       }
       if (f.type !== 'textarea') text = text.split(/\s+/).filter(Boolean).join(' ');
       text = filterCharset(text, charset);
-      const c = this.dicts.correct(f.id, text, conf);
+      // 罫線やカッコ由来の記号が端に残っていたら落とす（辞書を引く前に）
+      const trimmed = E.trimEdges(text);
+      const c = this.dicts.correct(f.id, trimmed.text, conf);
       const entry = { value: c.value, confidence: c.confidence, raw: text,
                       empty: false, candidates: c.candidates };
+      if (trimmed.notes.length) {
+        entry.corrections = (entry.corrections || []).concat(
+          trimmed.notes.map(n => ({ before: '', after: '', reason: n })));
+      }
+      // 書かれている量・端の接し方と、読めた文字列を突き合わせる
+      const chk = E.checkText(entry.value || '', warped, blank, rect, charset);
+      entry.expected_chars = chk.expected;
+      if (chk.notes.length) {
+        entry.confidence = Math.round(entry.confidence * chk.penalty * 1000) / 1000;
+        entry.note = [entry.note, ...chk.notes].filter(Boolean).join('／');
+      }
       if (t.transferred) {
         // 別様式から機械的に写した暫定位置。枠がずれている可能性がある
         entry.confidence *= 0.5;

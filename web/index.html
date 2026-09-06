@@ -253,8 +253,10 @@
   <div class="panel" id="panel-models" hidden>
     <h2>LLMモデル（読み取り候補の提示）</h2>
     <p class="hint">
-      辞書で決めきれなかった欄に候補を出すために使います。<strong>候補を出すだけで、
-      値は自動で確定しません。</strong>モデルを置くと自動で有効になります。
+      辞書で決めきれなかった欄に候補を出すために使います。短い欄では
+      <strong>候補を出すだけで、値は自動で確定しません。</strong>
+      記述欄（経過及び治療内容・特記すべき事項）だけは校正結果を自動で反映し、
+      反映前の読みを「OCR生読み」として候補に残します。モデルを置くと自動で有効になります。
       比較は<a href="docs/developer.html#h20" target="_blank" rel="noopener">技術者向けページ</a>にあります。
     </p>
     <div id="model-state" class="status"></div>

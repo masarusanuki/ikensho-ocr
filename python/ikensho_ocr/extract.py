@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 
 from . import (align, anonymize, checkbox, dates as dates_mod, imaging,
-               llm as llm_mod, ocr as ocr_mod, proofread)
+               llm as llm_mod, ocr as ocr_mod, proofread, text_check, textbox)
 from .dictionaries import Dictionaries, DEFAULT_DICTIONARIES
 from .schema import Schema, load_schema
 from .templates import Template, load_templates
@@ -56,6 +56,16 @@ class Record:
             warnings=self.warnings,
             fields=self.fields,
         )
+
+
+def _add_note(entry: dict, msg: str) -> None:
+    """確認画面に出す注記を足す。既にある注記は消さない。"""
+    if not msg:
+        return
+    cur = entry.get("note")
+    if cur and msg in cur:
+        return
+    entry["note"] = f"{cur}／{msg}" if cur else msg
 
 
 def _mark_provisional(entry: dict, t: dict) -> None:
@@ -269,18 +279,26 @@ def extract_record(paths: List[str],
                 _mark_provisional(entry, t)
                 text_results[f.id] = entry
                 continue
-            if not ocr_mod.has_ink(warped, t["rect"]):
+            # 測った左端が記入の先頭に食い込んでいることがあるので、
+            # 印刷内容にぶつからない範囲で左へ広げてから読む
+            rect = textbox.widen_left(blank, t["rect"])
+            if not ocr_mod.has_ink(warped, rect):
                 text_results[f.id] = dict(value="", confidence=0.95, raw="", empty=True,
                                           candidates=[])
                 continue
-            roi = ocr_mod.prepare_roi(warped, t["rect"], pad=0.02)
+            roi = ocr_mod.prepare_roi(warped, rect, pad=0.02)
             charset = t.get("charset") or getattr(f, "charset", "")
             multiline = f.type == "textarea"
 
             def _prepare(raw_text):
                 """辞書を引く前に、字体と誤字を直しておく。
-                こうしないと『褥創』が辞書の『褥瘡』に当たらない。"""
-                pr = proofread.proofread_text(raw_text or "", multiline=multiline)
+                こうしないと『褥創』が辞書の『褥瘡』に当たらない。
+                罫線やカッコ由来の記号は先に端から落とす。"""
+                trimmed, cut = text_check.trim_edges(raw_text or "")
+                pr = proofread.proofread_text(trimmed, multiline=multiline)
+                if cut:
+                    pr.corrections.extend(
+                        proofread.Correction(before="", after="", reason=c) for c in cut)
                 return pr
             if isinstance(ocr_engine, ocr_mod.EnsembleOcr):
                 # 複数エンジンの結果を辞書照合まで通し、最も確からしいものを採る
@@ -309,6 +327,14 @@ def extract_record(paths: List[str],
                     entry.setdefault("corrections", []).append(
                         dict(before=note.before, after=note.after, reason=note.reason))
 
+            # 書かれている量・端の接し方と、読めた文字列を突き合わせる
+            chk = text_check.check(entry.get("value") or "", warped, blank, rect, charset)
+            if chk["notes"]:
+                entry["confidence"] = round(entry["confidence"] * chk["penalty"], 3)
+                for n in chk["notes"]:
+                    _add_note(entry, n)
+            entry["expected_chars"] = chk["expected"]
+
             # 日本語チェックの結果を記録する（訂正は辞書照合の前に済ませている）
             if pr.corrections:
                 entry["corrections"] = [dict(before=c.before, after=c.after,
@@ -316,7 +342,7 @@ def extract_record(paths: List[str],
             entry["japanese_score"] = pr.japanese_score
             if pr.japanese_score < 0.6:
                 entry["confidence"] = round(entry["confidence"] * 0.6, 3)
-                entry["note"] = pr.note
+                _add_note(entry, pr.note)
 
             # 自由記述はLLMに校正させ、結果は候補として並べる（自動採用はしない）
             if assist and llm_left > 0 and multiline and len(entry["value"]) >= 20:
@@ -328,7 +354,7 @@ def extract_record(paths: List[str],
                                 note="LLM補正前の読み取り"))
                     entry["value"] = lp.text
                     entry["llm_applied"] = True
-                    entry["note"] = lp.note
+                    _add_note(entry, lp.note)
 
             # 辞書で決めきれなかった欄だけ、小型LLMに候補を選ばせる（自動採用はしない）
             if assist and llm_left > 0 and _llm_worth_asking(entry):

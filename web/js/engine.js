@@ -404,11 +404,189 @@
     return { value: options[top], confidence: Math.min(1, 0.30 + margin / 0.05 * 0.70), detail };
   }
 
+  // ------------------------------------------------ テキスト欄の切り出しと検算
+  // Python 版の textbox.py / text_check.py と同じ規則。片方だけ直さないこと。
+  const WIDEN_MAX_PAD = 0.030;   // 左へ広げてよい上限（ページ幅に対する割合）
+  const WIDEN_GAP_RATIO = 0.35;  // 印刷内容との間に空ける余白（行の高さに対する割合）
+  const WIDEN_GAP_MIN = 3;
+  const WIDEN_INK_MIN = 2;
+
+  /** 白紙様式の指定範囲について、列ごとの印刷インクの画素数を数える。 */
+  function columnInk(blank, x, y, w, h) {
+    if (w <= 0 || h <= 0) return [];
+    const band = blank.roi(new cv.Rect(x, y, w, h));
+    const bw = binarize(band);
+    const k = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+    cv.dilate(bw, bw, k);
+    // roi は連続領域とは限らないので、写して素の配列として見る
+    const flat = bw.isContinuous() ? bw : bw.clone();
+    const d = flat.data, cols = flat.cols, rows = flat.rows;
+    const out = new Array(cols).fill(0);
+    for (let r = 0; r < rows; r++) {
+      const base = r * cols;
+      for (let c = 0; c < cols; c++) if (d[base + c]) out[c]++;
+    }
+    if (flat !== bw) flat.delete();
+    band.delete(); bw.delete(); k.delete();
+    return out;
+  }
+
+  /**
+   * 測った左端が記入の先頭に食い込んでいることがあるので、
+   * 白紙様式の印刷内容にぶつからない範囲だけ左へ広げる。
+   */
+  function widenLeft(blank, rect) {
+    if (!blank) return rect;
+    const W = blank.cols, H = blank.rows;
+    const x0 = Math.round(rect[0] * W);
+    const y0 = Math.max(0, Math.round(rect[1] * H));
+    const y1 = Math.min(H, Math.round((rect[1] + rect[3]) * H));
+    if (x0 <= 1 || y1 - y0 < 4) return rect;
+    const gap = Math.max(WIDEN_GAP_MIN, Math.round((y1 - y0) * WIDEN_GAP_RATIO));
+    // 欄の左端のすぐ内側に印刷（「（」など）がある場合は、
+    // もともと印刷の際まで測れているので広げない
+    const inside = columnInk(blank, x0, y0, Math.min(W - x0, gap), y1 - y0);
+    if (inside.some(n => n >= WIDEN_INK_MIN)) return rect;   // すぐ内側に印刷がある
+
+    const limit = Math.max(0, x0 - Math.round(WIDEN_MAX_PAD * W));
+    if (x0 - limit < 2) return rect;
+
+    const col = columnInk(blank, limit, y0, x0 - limit, y1 - y0);
+    let newX0 = x0;
+    for (let i = col.length - 1; i >= 0; i--) {
+      if (col[i] >= WIDEN_INK_MIN) break;
+      newX0 = limit + i;
+    }
+    newX0 = Math.min(x0, newX0 + gap);
+    if (newX0 >= x0) return rect;
+    const nx = newX0 / W;
+    return [nx, rect[1], rect[2] + (rect[0] - nx), rect[3]];
+  }
+
+  const LEAD_JUNK = '（(｜|[]{}「」『』:：;；,，、。・･_＿=＝~〜/／\\＊*+＋"\'`^ 　>＞→ー―—–-';
+  const TAIL_JUNK = '｜|[]{}「『:；;,，_＿=＝~〜/／\\＊*+＋"\'`^ 　>＞→';
+
+  /** 罫線やカッコ由来の記号が先頭・末尾に残っていたら落とす。 */
+  function trimEdges(text) {
+    if (!text) return { text: text || '', notes: [] };
+    const notes = [];
+    let out = text.trim();
+    let i = 0;
+    while (i < out.length && LEAD_JUNK.includes(out[i])) i++;
+    if (i > 0) { notes.push(`先頭の記号「${out.slice(0, i)}」を削除`); out = out.slice(i); }
+    let j = out.length;
+    while (j > 0 && TAIL_JUNK.includes(out[j - 1])) j--;
+    if (j < out.length) { notes.push(`末尾の記号「${out.slice(j)}」を削除`); out = out.slice(0, j); }
+    while (/[）)]$/.test(out) &&
+           (out.split('（').length + out.split('(').length) <
+           (out.split('）').length + out.split(')').length)) {
+      notes.push('末尾の閉じカッコを削除');
+      out = out.slice(0, -1).trim();
+    }
+    return { text: out.trim(), notes };
+  }
+
+  // 1文字あたりの「インクのある列数 ÷ 行の高さ」。実測で 0.24〜1.70 とばらつくため、
+  // 幅を持たせて明らかな食い違いだけを拾う（Python の text_check.py と同じ値）。
+  const DENSITY_MAX = 1.70;
+  const DENSITY_MIN = 0.35;
+  const SHORT_RATIO = 0.8;
+  const LONG_MARGIN = 2;
+  const MIN_EXPECT = 3;
+  const EDGE_PX = 2;
+
+  /** 欄の中の書き込みから、行数・おおよその文字数・端に接しているかを出す。 */
+  function writtenShape(warped, blank, rect) {
+    const diff = markLayer(warped, blank);
+    if (!diff) return null;
+    const W = diff.cols, H = diff.rows;
+    const x0 = Math.max(0, Math.round(rect[0] * W)), y0 = Math.max(0, Math.round(rect[1] * H));
+    const x1 = Math.min(W, Math.round((rect[0] + rect[2]) * W));
+    const y1 = Math.min(H, Math.round((rect[1] + rect[3]) * H));
+    if (x1 - x0 < 8 || y1 - y0 < 6) { diff.delete(); return null; }
+    const roi = diff.roi(new cv.Rect(x0, y0, x1 - x0, y1 - y0));
+    const win = roi.isContinuous() ? roi : roi.clone();
+    const rows = win.rows, cols = win.cols, d = win.data;
+    const rowInk = new Int32Array(rows), colInk = new Int32Array(cols);
+    for (let r = 0; r < rows; r++) {
+      const base = r * cols;
+      for (let c = 0; c < cols; c++) {
+        if (d[base + c]) { rowInk[r]++; colInk[c]++; }
+      }
+    }
+    // 行のかたまりを拾う
+    const lines = [];
+    let start = null;
+    for (let r = 0; r <= rows; r++) {
+      const on = r < rows && rowInk[r] >= 2;
+      if (on && start === null) start = r;
+      else if (!on && start !== null) { if (r - start >= 3) lines.push([start, r]); start = null; }
+    }
+    // 行ごとに「インクのある列数 ÷ 行の高さ」を足す。
+    // 端から端までの幅ではなく列数を数えるのは、
+    // 欄の中の空きや罫線の残りで水増しされないようにするため。
+    let density = 0;
+    for (const [top, bottom] of (lines.length ? lines : [[0, rows]])) {
+      const lh = Math.max(bottom - top, 1);
+      if (lh < 6) continue;
+      let n = 0;
+      for (let c = 0; c < cols; c++) {
+        for (let r = top; r < bottom; r++) if (d[r * cols + c]) { n++; break; }
+      }
+      if (n) density += n / lh;
+    }
+    let firstCol = -1, lastCol = -1;
+    for (let c = 0; c < cols; c++) {
+      if (colInk[c] >= 2) { if (firstCol < 0) firstCol = c; lastCol = c; }
+    }
+    if (win !== roi) win.delete();
+    roi.delete(); diff.delete();
+    return { density,
+             minChars: Math.round(density / DENSITY_MAX),
+             maxChars: Math.round(density / DENSITY_MIN),
+             lines: lines.length,
+             cutLeft: firstCol >= 0 && firstCol <= EDGE_PX,
+             cutRight: lastCol >= 0 && lastCol >= cols - 1 - EDGE_PX };
+  }
+
+  /**
+   * 読めた文字列と書き込みの見た目を突き合わせる。
+   * charset のある欄（数字・電話など）は半角が混ざり幅が揃わないので、
+   * 文字数の判定はしない。
+   */
+  function checkText(text, warped, blank, rect, charset) {
+    const out = { penalty: 1, notes: [], expected: null,
+                  read: (text || '').replace(/\s/g, '').length };
+    const shape = writtenShape(warped, blank, rect);
+    if (!shape) return out;
+    out.expected = shape.minChars;
+    const lo = shape.minChars, hi = shape.maxChars, read = out.read;
+    if (!charset) {
+      if (lo >= MIN_EXPECT && read < lo * SHORT_RATIO) {
+        out.notes.push(`書かれている量に対して読めた文字が少ない（${lo}文字以上あるはずが${read}文字）`);
+        out.penalty *= 0.8;
+      } else if (hi >= 1 && read > hi + LONG_MARGIN) {
+        out.notes.push(`書かれている量より読めた文字が多い（多くても${hi}文字のはずが${read}文字）`);
+        out.penalty *= 0.8;
+      }
+    }
+    if (shape.cutLeft) {
+      out.notes.push('記入が欄の左端に接しています（先頭が切れている可能性）');
+      out.penalty *= 0.9;
+    }
+    if (shape.cutRight) {
+      out.notes.push('記入が欄の右端に接しています（末尾が切れている可能性）');
+      out.penalty *= 0.9;
+    }
+    return out;
+  }
+
   global.IkenshoEngine = {
     thresholds, setThresholds, confidenceLevel, waitFor,
     canvasToGrayMat, matToCanvas, flattenIllumination, dewarpPaper,
     registerToRef, matchScore, readBoxes, resolveGroups, readCircle, markLayer,
     detectCircled,
-    binarize, TARGET_WIDTH
+    binarize, TARGET_WIDTH,
+    widenLeft, trimEdges, checkText, writtenShape
   };
 })(window);
