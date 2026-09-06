@@ -68,9 +68,14 @@
     return String(y);
   }
 
-  function enrich(value, era) {
+  /**
+   * fixedEra=true のときは、本文中に元号らしき文字があっても無視して
+   * 渡された元号を使う（様式に印刷されている場合）。
+   */
+  function enrich(value, era, fixedEra) {
     const parts = parse(value);
-    if (era && !parts.era) parts.era = canonicalEra(era);
+    if (fixedEra && era) parts.era = canonicalEra(era);
+    else if (era && !parts.era) parts.era = canonicalEra(era);
     return {
       parts: { year: parts.year, month: parts.month, day: parts.day },
       era: parts.era,

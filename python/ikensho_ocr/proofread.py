@@ -31,7 +31,6 @@ JP = HIRAGANA + KATAKANA + KANJI
 # 文脈を見ずに一律置換すると別の誤りを生むため、必ず前後条件を付ける。
 CONTEXT_FIXES: List[Tuple[str, str, str]] = [
     # (説明, 正規表現, 置換後)
-    ("全角ローマ数字の誤認", rf"(?<=[{JP}])[Il|]{{1}}(?=[{JP}])", "l"),
     ("カタカナのカを漢字の力と誤認", rf"(?<=[{KATAKANA}])力(?=[{KATAKANA}])", "カ"),
     ("カタカナのロを漢字の口と誤認", rf"(?<=[{KATAKANA}])口(?=[{KATAKANA}])", "ロ"),
     ("カタカナのニを漢字の二と誤認", rf"(?<=[{KATAKANA}])二(?=[{KATAKANA}])", "ニ"),

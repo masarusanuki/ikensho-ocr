@@ -103,15 +103,6 @@ def _mark_ratio(diff: np.ndarray, x: int, y: int, w: int, h: int) -> float:
     return float((win > 0).mean())
 
 
-def _mark_confidence(mark: float) -> float:
-    if mark <= MARK_EMPTY_MAX:
-        return round(min(1.0, 0.60 + (MARK_EMPTY_MAX - mark) / MARK_EMPTY_MAX * 0.40), 3)
-    if mark >= MARK_FILLED_MIN:
-        return round(min(1.0, 0.60 + (mark - MARK_FILLED_MIN) / 0.10 * 0.40), 3)
-    mid = (MARK_EMPTY_MAX + MARK_FILLED_MIN) / 2
-    span = (MARK_FILLED_MIN - MARK_EMPTY_MAX) / 2
-    return round(0.18 + abs(mark - mid) / span * 0.34, 3)
-
 
 def _unit(value: float, lo: float, hi: float) -> float:
     """lo で 0、hi で 1 になるように 0..1 へ写す。"""

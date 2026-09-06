@@ -5,7 +5,8 @@
 (function (global) {
   'use strict';
 
-  const LEVEL_LABEL = { high: '高', medium: '中', low: '低', edited: '修正', anon: '匿名化' };
+  const LEVEL_LABEL = { high: '高', medium: '中', low: '低',
+                        edited: '修正', anon: '匿名化', done: '確定' };
 
   class Review {
     constructor(app) {
@@ -158,16 +159,45 @@
     }
 
     stats() {
-      const s = { high: 0, medium: 0, low: 0, edited: 0, filled: 0, total: 0 };
+      const s = { high: 0, medium: 0, low: 0, edited: 0, done: 0, filled: 0, total: 0 };
       for (const id of this.app.schema.order) {
         const e = this.record.fields[id];
         if (!e) continue;
         s.total++;
-        if (e.edited) s.edited++;
-        else s[e.level]++;
+        const lv = this.levelOf(e);
+        if (lv in s) s[lv]++;          // levelOf が 'done' を返すので二重に数えない
         if (!isEmptyValue(e.value)) s.filled++;
       }
       return s;
+    }
+
+    /** 上部の集計を貼り替える。 */
+    updateStats() {
+      const st = this.stats();
+      const host = this.fieldsEl.querySelector('.statrow');
+      if (!host) return;
+      host.innerHTML = `<span>読み取り ${st.filled} / ${st.total} 項目</span>
+        <span class="conf done"><span class="dot"></span>確定 ${st.done}</span>
+        <span class="conf high"><span class="dot"></span>高 ${st.high}</span>
+        <span class="conf medium"><span class="dot"></span>中 ${st.medium}</span>
+        <span class="conf low"><span class="dot"></span>低 ${st.low}</span>
+        <span class="conf edited"><span class="dot"></span>修正 ${st.edited}</span>
+        <button class="btn sm" id="btn-confirm-all">表示中をすべて確定</button>`;
+      const all = host.querySelector('#btn-confirm-all');
+      if (all) all.addEventListener('click', () => this.confirmAllVisible());
+    }
+
+    /** いま表示されている項目をまとめて確定にする。 */
+    confirmAllVisible() {
+      const ids = [...this.fieldsEl.querySelectorAll('.field')].map(el => el.dataset.field);
+      let n = 0;
+      for (const id of ids) {
+        const e = this.record.fields[id];
+        if (e && !e.confirmed) { e.confirmed = true; n++; }
+      }
+      this.app.toast(`${n} 項目を確定しました`);
+      this.app.touch();
+      this.renderFields();
     }
 
     /** 様式上の位置（ページ→上から下→左から右）を項目ごとに求める。 */
@@ -219,12 +249,7 @@
       const head = document.createElement('div');
       head.className = 'panel';
       head.style.padding = '10px 14px';
-      head.innerHTML = `<div class="row" style="font-size:12.5px">
-        <span>読み取り ${st.filled} / ${st.total} 項目</span>
-        <span class="conf high"><span class="dot"></span>高 ${st.high}</span>
-        <span class="conf medium"><span class="dot"></span>中 ${st.medium}</span>
-        <span class="conf low"><span class="dot"></span>低 ${st.low}</span>
-        <span class="conf edited"><span class="dot"></span>修正 ${st.edited}</span></div>`;
+      head.innerHTML = '<div class="row statrow" style="font-size:12.5px"></div>';
       frag.appendChild(head);
 
       for (const sec of schema.sections) {
@@ -245,28 +270,60 @@
         frag.appendChild(box);
       }
       this.fieldsEl.replaceChildren(frag);
+      this.updateStats();
     }
 
     needsCheck(e) {
-      if (e.anonymized) return false;
+      if (e.anonymized || e.confirmed) return false;
       return !e.edited && (e.level === 'low' || e.level === 'medium');
     }
 
     // ------------------------------------------------------- 1項目の描画
+    /** その項目をどう表示するか（確定 > 匿名化 > 修正 > 確信度）。 */
+    levelOf(e) {
+      if (e.confirmed) return 'done';
+      if (e.anonymized) return 'anon';
+      if (e.edited) return 'edited';
+      return e.level;
+    }
+
     fieldRow(f, e) {
       const el = document.createElement('div');
-      const level = e.anonymized ? 'anon' : (e.edited ? 'edited' : e.level);
+      const level = this.levelOf(e);
       el.className = `field lv-${level}`;
       el.dataset.field = f.id;
 
       const head = document.createElement('div');
       head.className = 'head';
-      head.innerHTML = e.anonymized
-        ? `<span class="lbl">${esc(f.label)}</span>
-           <span class="conf anon"><span class="dot"></span>匿名化</span>`
-        : `<span class="lbl">${esc(f.label)}</span>
-           <span class="conf ${level}"><span class="dot"></span>${LEVEL_LABEL[level]} ${
+      const badge = (level === 'anon' || level === 'done')
+        ? `<span class="conf ${level}"><span class="dot"></span>${LEVEL_LABEL[level]}</span>`
+        : `<span class="conf ${level}"><span class="dot"></span>${LEVEL_LABEL[level]} ${
              (e.confidence * 100).toFixed(0)}%</span>`;
+      head.innerHTML = `<span class="lbl">${esc(f.label)}</span>${badge}`;
+
+      // 内容を見て問題なければ「確定」にする。確認済みかどうかが一目で分かる。
+      const check = document.createElement('button');
+      check.type = 'button';
+      check.className = 'confirm' + (e.confirmed ? ' on' : '');
+      check.textContent = e.confirmed ? '確定済み' : '確定';
+      check.title = e.confirmed ? 'クリックで確定を解除します'
+                                : '内容を確認したら押してください';
+      check.addEventListener('click', ev => {
+        ev.stopPropagation();
+        e.confirmed = !e.confirmed;
+        const lv = this.levelOf(e);
+        el.className = `field lv-${lv} active`;
+        const bd = el.querySelector('.conf');
+        bd.className = `conf ${lv}`;
+        bd.innerHTML = (lv === 'anon' || lv === 'done')
+          ? `<span class="dot"></span>${LEVEL_LABEL[lv]}`
+          : `<span class="dot"></span>${LEVEL_LABEL[lv]} ${(e.confidence * 100).toFixed(0)}%`;
+        check.classList.toggle('on', !!e.confirmed);
+        check.textContent = e.confirmed ? '確定済み' : '確定';
+        this.app.touch();
+        this.updateStats();
+      });
+      head.appendChild(check);
       el.appendChild(head);
 
       el.appendChild(this.control(f, e, el));
@@ -551,6 +608,9 @@
 
       let items = [];
       const q = input.value.trim();
+      // OCRの生読みも意外に当たっているので候補に入れる
+      const rawItem = (e.raw && String(e.raw).trim() && String(e.raw).trim() !== q)
+        ? { value: String(e.raw).trim(), source: 'raw' } : null;
       if (q) {
         items = dicts.suggest(f.id, q, 8).map(x => ({
           value: x.name, icd10: x.icd10 || '', tokutei: !!x.tokutei
@@ -564,6 +624,7 @@
           value: x.name, icd10: x.icd10 || '', tokutei: !!x.tokutei
         }));
       }
+      if (rawItem && !items.some(x => x.value === rawItem.value)) items.unshift(rawItem);
       items = items.filter(x => x.value !== q);
       if (!items.length) return;
 
@@ -575,8 +636,13 @@
         b.className = 'cand';
         b.innerHTML = esc(it.value) +
           (it.source === 'llm' ? '<span class="llm">LLM候補</span>' : '') +
+          (it.source === 'raw' ? '<span class="rawtag">OCR生読み</span>' : '') +
           (it.tokutei ? '<span class="tok">特定疾病</span>' : '') +
           (it.icd10 ? `<span class="icd">${esc(it.icd10)}</span>` : '');
+        if (it.source === 'raw') {
+          b.classList.add('rawcand');
+          b.title = 'OCRがそのまま読み取った文字列です。辞書に無い語のときに使えます。';
+        }
         if (it.source === 'llm') {
           b.classList.add('llmcand');
           b.title = 'LLMが提示した候補です。内容を確認してから採用してください。';

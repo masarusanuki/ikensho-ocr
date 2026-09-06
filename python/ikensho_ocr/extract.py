@@ -45,6 +45,7 @@ class Record:
     warnings: List[str] = dc_field(default_factory=list)
     ocr_engine: str = "none"
     anonymized: bool = False
+    read_at: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return dict(
@@ -57,7 +58,15 @@ class Record:
         )
 
 
-def _read_date_slots(warped: np.ndarray, t: dict, f) -> dict:
+def _mark_provisional(entry: dict, t: dict) -> None:
+    """別様式から機械的に写した暫定位置の欄は、確信度を下げて注記を付ける。"""
+    if not t.get("transferred"):
+        return
+    entry["confidence"] = round(entry.get("confidence", 0.0) * 0.5, 3)
+    entry["note"] = "欄の位置が暫定です（管理画面のテンプレート編集で調整できます）"
+
+
+def _read_date_slots(warped: np.ndarray, t: dict) -> dict:
     """日付欄を小枠ごとに読み、年・月・日を組み立てる。"""
     reader = ocr_mod.get_digit_reader()
     slots = t.get("slots") or {}
@@ -81,6 +90,16 @@ def _read_date_slots(warped: np.ndarray, t: dict, f) -> dict:
     filled = [v for v in parts.values() if v is not None]
     conf = round(sum(confs) / len(confs), 3) if confs else 0.0
     if not filled:
+        # 本当に空欄なのか、書いてあるのに読めなかったのかを区別する。
+        # 読めなかった場合に「空欄・高確信」と出すと、確認画面の
+        # 「要確認のみ表示」から漏れてしまう。
+        has_any_ink = any(
+            ocr_mod.has_ink(warped, r, threshold=0.004)
+            for r in (slots.get(k) for k in ("year", "month", "day")) if r)
+        if has_any_ink:
+            return dict(value="", confidence=min(conf, 0.3), raw="", empty=False,
+                        candidates=[], date=parts, slots_used=True,
+                        note="日付を読み取れませんでした。数字を入力してください。")
         return dict(value="", confidence=0.9, raw="", empty=True, candidates=[],
                     date=parts, slots_used=True)
     return dict(value=dates_mod.format_wareki(parts), confidence=conf,
@@ -183,7 +202,9 @@ def extract_record(paths: List[str],
     llm_left = llm_budget
 
     src_pages: List[imaging.SourcePage] = []
-    rec = Record(ocr_engine=ocr_engine.name)
+    import datetime as _dt
+    rec = Record(ocr_engine=ocr_engine.name,
+                 read_at=_dt.datetime.now().astimezone().isoformat())
     if use_llm and assist is None:
         rec.warnings.append(
             "LLM候補は使えません（llama-cpp-python とGGUFモデルを用意してください）")
@@ -237,12 +258,16 @@ def extract_record(paths: List[str],
             # 日付欄は「年」「月」「日」で区切った小枠ごとに数字だけを読む。
             # 各枠に1〜2桁の数字しか入らないので、そのまま読むより格段に正確になる。
             if f.is_date:
-                text_results[f.id] = _read_date_slots(warped, t, f)
+                entry = _read_date_slots(warped, t)
+                _mark_provisional(entry, t)
+                text_results[f.id] = entry
                 continue
             if f.type == "circle":
-                text_results[f.id] = _read_circle(
+                entry = _read_circle(
                     warped, t["rect"], t.get("options") or f.options or [],
                     always_pick=bool(t.get("always_pick") or f.always_pick))
+                _mark_provisional(entry, t)
+                text_results[f.id] = entry
                 continue
             if not ocr_mod.has_ink(warped, t["rect"]):
                 text_results[f.id] = dict(value="", confidence=0.95, raw="", empty=True,
@@ -251,27 +276,33 @@ def extract_record(paths: List[str],
             roi = ocr_mod.prepare_roi(warped, t["rect"], pad=0.02)
             charset = t.get("charset") or getattr(f, "charset", "")
             multiline = f.type == "textarea"
+
+            def _prepare(raw_text):
+                """辞書を引く前に、字体と誤字を直しておく。
+                こうしないと『褥創』が辞書の『褥瘡』に当たらない。"""
+                pr = proofread.proofread_text(raw_text or "", multiline=multiline)
+                return pr
             if isinstance(ocr_engine, ocr_mod.EnsembleOcr):
                 # 複数エンジンの結果を辞書照合まで通し、最も確からしいものを採る
                 best = None
                 for res in ocr_engine.read_all(roi, multiline, charset):
-                    cv, cc, cands = dicts.correct(f, res.text, res.confidence)
+                    pr = _prepare(res.text)
+                    cv, cc, cands = dicts.correct(f, pr.text, res.confidence)
                     if best is None or cc > best[1]:
-                        best = (cv, cc, cands, res.text, res.engine)
-                corrected, conf, cands, raw_text, used = best
+                        best = (cv, cc, cands, res.text, res.engine, pr)
+                corrected, conf, cands, raw_text, used, pr = best
                 entry = dict(value=corrected, confidence=round(conf, 3),
                              raw=raw_text, candidates=cands, empty=False,
                              engine=used)
             else:
                 res = ocr_engine.read(roi, multiline=multiline, charset=charset)
-                corrected, conf, cands = dicts.correct(f, res.text, res.confidence)
+                pr = _prepare(res.text)
+                corrected, conf, cands = dicts.correct(f, pr.text, res.confidence)
                 entry = dict(value=corrected, confidence=round(conf, 3),
                              raw=res.text, candidates=cands, empty=False,
                              engine=res.engine)
-            # 日本語として妥当か調べ、誤字を直す（規則ベース・常時）
-            pr = proofread.proofread_text(entry["value"], multiline=multiline)
+            # 日本語チェックの結果を記録する（訂正は辞書照合の前に済ませている）
             if pr.corrections:
-                entry["value"] = pr.text
                 entry["corrections"] = [dict(before=c.before, after=c.after,
                                              reason=c.reason) for c in pr.corrections]
             entry["japanese_score"] = pr.japanese_score
@@ -304,7 +335,9 @@ def extract_record(paths: List[str],
                 entry["note"] = "欄の位置が暫定です（管理画面のテンプレート編集で調整できます）"
             text_results[f.id] = entry
 
-    missing = [i for i in (1, 2) if i not in warped_pages]
+    expected_pages = ([p.index for p in templates[rec.template_id].pages]
+                      if rec.template_id in templates else [1, 2])
+    missing = [i for i in expected_pages if i not in warped_pages]
     if missing:
         rec.warnings.append(
             "未取得のページ: " + "、".join(f"{i}ページ目" for i in missing))

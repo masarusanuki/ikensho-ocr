@@ -10,6 +10,8 @@
                               (_, i) => String.fromCharCode(0x30A1 + i)).join('');
   const CHARSETS = {
     digits:  '0123456789',
+    // 元号は様式で決まっているので、日付欄では数字だけを読む
+    date_digits: '0123456789年月日頃 ',
     decimal: '0123456789.',
     wareki:  '0123456789年月日頃明治大正昭和平成令和 ',
     postal:  '0123456789-〒 ',
@@ -44,8 +46,12 @@
   }
 
   function filterCharset(text, name) {
+    if (!name || !text) return text;
     const allowed = CHARSETS[name];
-    if (!allowed || !text) return text;
+    if (!allowed) {
+      console.warn('未知の文字種です:', name);   // 素通りさせると Python 版とずれる
+      return text;
+    }
     if (name === 'phone') return normalizePhone(text);
     if (name === 'postal') {
       const d = String(text).replace(/[^0-9]/g, '');
@@ -344,11 +350,15 @@
         if (f.kind !== 'date_wareki') continue;
         const entry = textResults[f.id];
         if (!entry) continue;
+        // 様式に印刷されている元号は動かさない。本文中に元号らしき文字が
+        // 読めても無視する（誤読で30年ずれるのを防ぐ）。
         let era = f.default_era || '';
+        let fixed = !!f.default_era;
         if (f.era_field && textResults[f.era_field] && textResults[f.era_field].value) {
           era = textResults[f.era_field].value;
+          fixed = false;
         }
-        const info = D.enrich(entry.value || '', era);
+        const info = D.enrich(entry.value || '', era, fixed);
         entry.date = info.parts;
         entry.era = info.era;
         entry.gregorian = info.gregorian;

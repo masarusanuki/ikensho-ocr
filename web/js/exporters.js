@@ -99,7 +99,7 @@
       meta[id] = {
         label: e.label, type: e.type, section: e.section, page: e.page,
         confidence: e.confidence, level: e.level,
-        edited: !!e.edited, anonymized: !!e.anonymized,
+        edited: !!e.edited, confirmed: !!e.confirmed, anonymized: !!e.anonymized,
         raw: e.raw === undefined ? null : e.raw,
         date: e.date || null, era: e.era || '', gregorian: e.gregorian || null,
       };
@@ -188,7 +188,8 @@
         fields[id] = {
           value: (r.values || {})[id] === undefined ? null : r.values[id],
           confidence: m.confidence || 0, level: m.level || 'low',
-          edited: !!m.edited, anonymized: !!m.anonymized, raw: m.raw || '',
+          edited: !!m.edited, confirmed: !!m.confirmed,
+          anonymized: !!m.anonymized, raw: m.raw || '',
           date: m.date || null, era: m.era || '', gregorian: m.gregorian || null,
           kind: f.kind || '',
           label: f.label, type: f.type, section: f.sectionTitle, page: f.page,

@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import unicodedata
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
@@ -394,13 +395,24 @@ class DigitReader:
 
     @staticmethod
     def _items(token: "Token"):
-        """トークンを1文字ずつ、位置つきに展開する。"""
-        n = len(token.text)
+        """トークンを1文字ずつ、位置つきに展開する。
+
+        丸数字（④）や全角数字（４）も混ざるので、ここで半角数字に正規化する。
+        str.isdigit() は ④ にも True を返すが int() は失敗するため、
+        正規化しないと落ちる。
+        """
+        text = unicodedata.normalize("NFKC", token.text or "")
+        n = len(text)
         if n == 0:
             return []
         span = (token.x1 - token.x0) / n
         return [(ch, token.x0 + span * i, token.x0 + span * (i + 1))
-                for i, ch in enumerate(token.text)]
+                for i, ch in enumerate(text)]
+
+    @staticmethod
+    def _is_digit(ch: str) -> bool:
+        """半角数字だけを数字として扱う（丸数字などは除く）。"""
+        return len(ch) == 1 and "0" <= ch <= "9"
 
     def _assign(self, chars, slots_px):
         """左から順に見て、数字を年・月・日に振り分ける。"""
@@ -411,13 +423,20 @@ class DigitReader:
         used_marks = False
 
         def commit(key, text, x):
+            """数字を割り当てる。桁数が合わないものは捨てる。
+
+            切り詰めると「2024年」が「20年」になり、もっともらしい別の
+            日付が出来上がってしまう。読めなかったものとして扱う方が安全。
+            """
             if not text or key is None:
                 return
+            if len(text) > 2 or not all("0" <= c <= "9" for c in text):
+                return
             if parts.get(key) is None:
-                parts[key] = int(text[:2])
+                parts[key] = int(text)
 
         for ch, cx0, cx1 in chars:
-            if ch.isdigit():
+            if self._is_digit(ch):
                 if not cur:
                     cur_x = cx0
                 cur += ch

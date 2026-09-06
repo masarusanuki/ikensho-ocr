@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """ページ画像をテンプレート座標系に位置合わせし、様式とページ番号を判定する。"""
+import os
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -8,8 +9,9 @@ import numpy as np
 
 from .templates import Template, TemplatePage
 
-MIN_INLIERS = 25
-MIN_INLIER_RATIO = 0.30
+# 管理画面のしきい値と対応させるため、環境変数で上書きできるようにする
+MIN_INLIERS = int(os.environ.get("IKENSHO_MIN_INLIERS", "25"))
+MIN_INLIER_RATIO = float(os.environ.get("IKENSHO_MIN_INLIER_RATIO", "0.30"))
 
 
 @dataclass
@@ -46,7 +48,9 @@ def _register(src: np.ndarray, ref: np.ndarray,
         return None, 0, 0
     bf = cv2.BFMatcher(cv2.NORM_HAMMING)
     pairs = bf.knnMatch(d1, d2, k=2)
-    good = [m for m, n in pairs if len(pairs[0]) == 2 and m.distance < 0.75 * n.distance]
+    # 対応候補が1つしか返らない組があるので、組ごとに長さを確かめる
+    good = [p[0] for p in pairs
+            if len(p) == 2 and p[0].distance < 0.75 * p[1].distance]
     if len(good) < 12:
         return None, len(good), 0
     sp = np.float32([k1[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)

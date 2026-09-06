@@ -206,12 +206,6 @@
     return n / (ww * hh);
   }
 
-  function boxConfidence(fill) {
-    if (fill <= thresholds.EMPTY_MAX) return Math.min(1, 0.55 + (thresholds.EMPTY_MAX - fill) / thresholds.EMPTY_MAX * 0.45);
-    if (fill >= thresholds.FILLED_MIN) return Math.min(1, 0.55 + (fill - thresholds.FILLED_MIN) / 0.35 * 0.45);
-    const mid = (thresholds.EMPTY_MAX + thresholds.FILLED_MIN) / 2, span = (thresholds.FILLED_MIN - thresholds.EMPTY_MAX) / 2;
-    return 0.15 + Math.abs(fill - mid) / span * 0.35;
-  }
 
   const MARK_MARGIN = 0.45;   // 枠の外側どこまでを見るか。はみ出したレ点を拾う
 
@@ -263,6 +257,44 @@
 
   const scoreConfidence = s => Math.min(1, 0.45 + Math.abs(s - 0.5) * 1.10);
 
+  /** 枠のすぐ外側のインク率。枠を丸で囲む記入を拾うために使う。 */
+  function haloRatio(bw, x, y, w, h) {
+    const mx = Math.round(w * 0.55), my = Math.round(h * 0.55);
+    const x0 = Math.max(0, x - mx), y0 = Math.max(0, y - my);
+    const x1 = Math.min(bw.cols, x + w + mx), y1 = Math.min(bw.rows, y + h + my);
+    if (x1 - x0 < 2 || y1 - y0 < 2) return 0;
+    const outer = bw.roi(new cv.Rect(x0, y0, x1 - x0, y1 - y0));
+    const inner = bw.roi(new cv.Rect(x, y, w, h));
+    const total = cv.countNonZero(outer) - cv.countNonZero(inner);
+    const area = (x1 - x0) * (y1 - y0) - w * h;
+    outer.delete(); inner.delete();
+    return area > 0 ? Math.max(0, total) / area : 0;
+  }
+
+  /**
+   * 枠を丸で囲む記入を検出する。
+   * 枠の内側が薄くても、同じ項目の他の選択肢より枠の外周が明らかに濃ければ
+   * 「丸で囲まれた」とみなす。ラベル文字は全選択肢に等しく乗るので、
+   * 中央値との差を見ることで文字の影響を打ち消せる。
+   */
+  function detectCircled(rs) {
+    if (rs.length < 2) return;
+    if (rs.some(r => r.checked)) return;
+    const halos = rs.map(r => r.halo || 0).sort((a, b) => a - b);
+    const base = halos[Math.floor(halos.length / 2)];
+    const best = rs.reduce((a, b) => ((b.halo || 0) > (a.halo || 0) ? b : a));
+    const others = rs.filter(r => r !== best).map(r => r.halo || 0).sort((a, b) => b - a);
+    const runnerUp = others[0] || 0;
+    const HALO_EXCESS_MIN = 0.06;
+    if ((best.halo || 0) - base < HALO_EXCESS_MIN ||
+        (best.halo || 0) - runnerUp < HALO_EXCESS_MIN / 2) return;
+    const excess = (best.halo || 0) - Math.max(base, runnerUp);
+    best.circled = true;
+    best.checked = true;
+    best.confidence = Math.min(0.85, 0.40 + excess / 0.12 * 0.45);
+    best.score = Math.max(best.score, 0.55);
+  }
+
   function readBoxes(warped, boxes, blank) {
     const bw = binarize(warped);
     const diff = markLayer(warped, blank);
@@ -275,9 +307,11 @@
       x = Math.max(0, Math.min(x, W - w)); y = Math.max(0, Math.min(y, H - h));
       const fill = fillRatio(bw, x, y, w, h);
       const mark = diff ? markRatio(diff, x, y, w, h) : 0;
+      const halo = haloRatio(bw, x, y, w, h);
       const score = combinedScore(fill, mark, !!diff);
-      out.push({ field: b.field, opt: b.opt, fill, mark, score, rect: b.rect,
-                 checked: score >= 0.5, confidence: scoreConfidence(score) });
+      out.push({ field: b.field, opt: b.opt, fill, mark, halo, score, rect: b.rect,
+                 circled: false, checked: score >= 0.5,
+                 confidence: scoreConfidence(score) });
     }
     bw.delete();
     if (diff) diff.delete();
@@ -292,7 +326,9 @@
       const f = schema.byId[fid];
       if (!f) continue;
       rs.sort((a, b) => a.opt - b.opt);
+      detectCircled(rs);
       const detail = rs.map(r => ({ opt: r.opt, fill: +r.fill.toFixed(4),
+                                    halo: +(r.halo || 0).toFixed(4), circled: !!r.circled,
                                     mark: +(r.mark || 0).toFixed(4),
                                     score: +r.score.toFixed(4), checked: r.checked }));
       if (f.type === 'flag') {
@@ -349,8 +385,12 @@
       r.delete();
     }
     roi.delete(); bw.delete();
+    // 中央値。要素数が偶数のときは中央2つの平均を採る。
+    // Math.floor(n/2) だけだと n=2 で最大値になり、どの選択肢も
+    // 「印なし」と判定されてしまう（男・女の欄がこれに当たる）。
     const sorted = [...scores].sort((a, b) => a - b);
-    const base = sorted[Math.floor(n / 2)];
+    const mid = Math.floor(sorted.length / 2);
+    const base = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
     const excess = scores.map(s => s - base);
     const top = excess.indexOf(Math.max(...excess));
     const rank = [...excess].sort((a, b) => b - a);
@@ -368,6 +408,7 @@
     thresholds, setThresholds, confidenceLevel, waitFor,
     canvasToGrayMat, matToCanvas, flattenIllumination, dewarpPaper,
     registerToRef, matchScore, readBoxes, resolveGroups, readCircle, markLayer,
+    detectCircled,
     binarize, TARGET_WIDTH
   };
 })(window);

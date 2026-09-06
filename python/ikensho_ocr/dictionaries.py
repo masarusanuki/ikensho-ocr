@@ -61,21 +61,31 @@ def _levenshtein(a: str, b: str) -> int:
 
 
 def _partial_similarity(query: str, term: str) -> float:
-    """辞書語が読み取り結果のどこかに現れているとみなして照合する。
+    """辞書語と読み取り結果を、位置をずらしながら照合する。
 
     OCR 結果には「（保存期）」のような余分な文字が付くことが多いので、
-    全体一致ではなく、辞書語と同じ長さの窓を滑らせて最も近い位置で評価する。
+    全体一致ではなく、短い方と同じ長さの窓を滑らせて最も近い位置で評価する。
+
+    向きによって扱いを変える。
+      - 辞書語が読み取り結果に含まれる（読み取り側に飾りが付いている）… そのまま
+      - 読み取り結果が辞書語の一部でしかない（辞書語の方が限定的）… 上限をかける
     """
     if not query or not term:
         return 0.0
+    if len(term) > len(query):
+        # 辞書語の方が長い＝読み取れた内容は辞書語の一部でしかない。
+        # 窓をずらして一致させると「骨折」が「圧迫骨折」に化けるので、
+        # 全体の編集距離で見て「足りない文字がどれだけあるか」を評価する。
+        #   骨粗症 → 骨粗鬆症  : 1文字不足 / 4文字 = 0.75（採用しうる）
+        #   骨折   → 圧迫骨折  : 2文字不足 / 4文字 = 0.50（候補どまり）
+        #   糖尿病 → 糖尿病性腎症: 3文字不足 / 6文字 = 0.50（候補どまり）
+        d = _levenshtein(query, term)
+        return max(0.0, 1.0 - d / len(term))
+
+    # 読み取り側の方が長い（「（保存期）」のような飾りが付いている）場合は、
+    # 辞書語と同じ長さの窓を滑らせて最も近い位置で評価する。
     n, m = len(query), len(term)
-    if m > n:
-        query, term = term, query
-        n, m = m, n
-    if m == 0:
-        return 0.0
     best = 0.0
-    # 窓は辞書語の長さ ±2 文字ぶん動かす
     for start in range(0, n - m + 1):
         for width in {m, min(m + 2, n - start)}:
             window = query[start:start + width]
@@ -99,15 +109,12 @@ def similarity(a: str, b: str) -> float:
         return 1.0
     ga, gb = _bigrams(na), _bigrams(nb)
     dice = 2 * len(ga & gb) / (len(ga) + len(gb)) if (ga or gb) else 0.0
-    # OCR は文字が欠けやすいので、包含関係には加点する
-    if na in nb or nb in na:
-        dice = max(dice, 0.55 + 0.35 * min(len(na), len(nb)) / max(len(na), len(nb)))
+    # 辞書語が読み取り結果に含まれている場合だけ加点する。
+    # 逆（読み取りが辞書語の一部）は、書かれていない診断を作り出す恐れがあるので加点しない。
+    if nb in na:
+        dice = max(dice, 0.55 + 0.35 * len(nb) / max(len(na), 1))
     # 1文字違いを拾うための編集距離ベースの部分一致
     partial = _partial_similarity(na, nb)
-    # 長さが違いすぎる場合は部分一致を割り引く（短い語が長文に埋もれる誤検出を防ぐ）
-    ratio = min(len(na), len(nb)) / max(len(na), len(nb))
-    if ratio < 0.5:
-        partial *= 0.5 + ratio
     return round(max(dice, partial), 4)
 
 
@@ -174,27 +181,39 @@ class Dictionaries:
             self.lexicons[key] = Lexicon(key=key, label=raw.get("label", key),
                                          entries=entries)
 
-    def strip_boilerplate(self, text: str, threshold: float = 0.62) -> str:
+    def strip_boilerplate(self, text: str, threshold: float = 0.80) -> str:
         """様式に印刷されている文言を読み取り結果から取り除く。
 
         テキスト欄の枠が説明文に食い込むと OCR がそれを拾ってしまうため、
-        行ごとに定型文と照合して十分似ていれば捨てる。
+        行ごとに定型文と照合して、**その定型文とほぼ同じ長さで十分似ている**
+        場合だけ捨てる。
+
+        以前は「定型文のどこかに含まれていれば捨てる」としていたが、
+        それでは『認知症』『骨折』『がん』のような正しい記入内容まで
+        消えてしまった（定型文の中にその語が出てくるため）。
+        いまは長さの近さも条件に入れ、部分一致では捨てない。
         """
         lex = self.lexicons.get("boilerplate")
         if lex is None or not text:
             return text
+        entries = [(e, normalize(e.name)) for e in lex.entries]
         kept = []
         for line in text.splitlines():
             n = normalize(line)
             if not n:
                 continue
-            if len(n) < 4:
-                # 「記入）」のような短い切れ端も定型文の一部なら捨てる
-                if any(n in normalize(e.name) for e in lex.entries):
+            drop = False
+            for e, en in entries:
+                if not en:
                     continue
-                kept.append(line)
-                continue
-            if not lex.search(line, limit=1, min_score=threshold):
+                # 定型文と同程度の長さでなければ、記入内容とみなして残す
+                ratio = min(len(n), len(en)) / max(len(n), len(en))
+                if ratio < 0.70:
+                    continue
+                if n == en or similarity(line, e.name) >= threshold:
+                    drop = True
+                    break
+            if not drop:
                 kept.append(line)
         return "\n".join(kept).strip()
 
@@ -218,7 +237,7 @@ class Dictionaries:
             return text, round(base_confidence * 0.7, 3), []
 
         best, score = hits[0]
-        if score >= 0.999:
+        if normalize(best.name) == normalize(text):
             return best.name, round(min(1.0, base_confidence + 0.20), 3), candidates
         if score >= AUTO_ADOPT:
             # 辞書の正式表記を採用し、確信度は一致度との折衷にする

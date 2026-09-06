@@ -30,7 +30,8 @@ def record_to_json(rec, schema: Schema) -> Dict[str, Any]:
         meta[f.id] = dict(label=e.get("label"), type=e.get("type"),
                           section=e.get("section"), page=e.get("page"),
                           confidence=e.get("confidence"), level=e.get("level"),
-                          edited=bool(e.get("edited")), raw=e.get("raw"),
+                          edited=bool(e.get("edited")),
+                          confirmed=bool(e.get("confirmed")), raw=e.get("raw"),
                           engine=e.get("engine"), llm_candidate=e.get("llm_candidate"),
                           anonymized=bool(e.get("anonymized")),
                           date=e.get("date"), era=e.get("era"),
@@ -41,7 +42,8 @@ def record_to_json(rec, schema: Schema) -> Dict[str, Any]:
         template_id=rec.template_id,
         ocr_engine=rec.ocr_engine,
         anonymized=getattr(rec, "anonymized", False),
-        read_at=datetime.datetime.now().astimezone().isoformat(),
+        read_at=getattr(rec, "read_at", None) or
+                datetime.datetime.now().astimezone().isoformat(),
         sources=[dict(source=p.source, source_page=p.source_page,
                       page_index=p.page_index, matched=p.matched,
                       score=p.score, dewarped=p.dewarped) for p in rec.pages],
@@ -79,10 +81,11 @@ def csv_text(records: List[Any], schema: Schema) -> str:
     labels += [dlabels.get(k, k) for k in dkeys]
     w.writerow(head)
     w.writerow(labels)
-    now = datetime.datetime.now().astimezone().isoformat()
     for i, rec in enumerate(records, 1):
         srcs = "；".join(dict.fromkeys(p.source for p in rec.pages))
-        row = [i, rec.template_id or "", now,
+        read_at = getattr(rec, "read_at", None) or \
+            datetime.datetime.now().astimezone().isoformat()
+        row = [i, rec.template_id or "", read_at,
                "はい" if getattr(rec, "anonymized", False) else "いいえ",
                srcs, "；".join(rec.warnings)]
         for f in schema:

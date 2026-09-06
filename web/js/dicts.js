@@ -36,16 +36,17 @@
     return out;
   }
 
+  /** Python 側の unicodedata.normalize("NFKC", …) と揃える。 */
   function toHalfWidth(s) {
-    return s.replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
-            .replace(/　/g, ' ');
+    const t = String(s == null ? '' : s);
+    return (t.normalize ? t.normalize('NFKC') : t).replace(/　/g, ' ');
   }
 
   function normalize(s) {
     if (!s) return '';
     let t = toHalfWidth(normalizeVariants(s));
     t = t.replace(/ヶ/g, 'ケ').replace(/ヵ/g, 'カ');
-    t = t.replace(/[\s・･,、。.\-‐－―—_/\\()（）\[\]「」【】:：;；'"]+/g, '');
+    t = t.replace(/[\s・･,、。.\-‐－―—ー_/\\()（）\[\]「」【】:：;；'"]+/g, '');
     return t.toLowerCase();
   }
 
@@ -81,15 +82,19 @@
    */
   function partialSimilarity(query, term) {
     if (!query || !term) return 0;
-    let q = query, t = term;
-    if (t.length > q.length) { const tmp = q; q = t; t = tmp; }
-    const m = t.length;
+    if (term.length > query.length) {
+      // 辞書語の方が長い＝読み取れた内容は辞書語の一部でしかない。
+      // 窓をずらして一致させると「骨折」が「圧迫骨折」に化けるので、
+      // 全体の編集距離で「足りない文字がどれだけあるか」を評価する。
+      return Math.max(0, 1 - levenshtein(query, term) / term.length);
+    }
+    const m = term.length;
     if (!m) return 0;
     let best = 0;
-    for (let start = 0; start + m <= q.length; start++) {
-      for (const width of new Set([m, Math.min(m + 2, q.length - start)])) {
-        const win = q.substr(start, width);
-        const d = levenshtein(win, t);
+    for (let start = 0; start + m <= query.length; start++) {
+      for (const width of new Set([m, Math.min(m + 2, query.length - start)])) {
+        const win = query.substr(start, width);
+        const d = levenshtein(win, term);
         best = Math.max(best, 1 - d / Math.max(win.length, m));
         if (best >= 1) return 1;
       }
@@ -110,13 +115,9 @@
     let inter = 0;
     for (const g of ga) if (gb.has(g)) inter++;
     let dice = (ga.size + gb.size) ? (2 * inter) / (ga.size + gb.size) : 0;
-    if (na.includes(nb) || nb.includes(na)) {
-      dice = Math.max(dice, 0.55 + 0.35 * Math.min(na.length, nb.length) / Math.max(na.length, nb.length));
-    }
-    let partial = partialSimilarity(na, nb);
-    const ratio = Math.min(na.length, nb.length) / Math.max(na.length, nb.length);
-    if (ratio < 0.5) partial *= 0.5 + ratio;
-    return Math.max(dice, partial);
+    // 辞書語が読み取り結果に含まれている場合だけ加点する。逆は加点しない。
+    if (na.includes(nb)) dice = Math.max(dice, 0.55 + 0.35 * nb.length / Math.max(na.length, 1));
+    return Math.max(dice, partialSimilarity(na, nb));
   }
 
   // OCR がよく取り違える字の訂正。前後の文字種を見て「こちらしかあり得ない」場合だけ直す。
@@ -242,19 +243,24 @@
     }
 
     /** 様式に印刷されている文言を読み取り結果から取り除く。 */
-    stripBoilerplate(text, threshold = 0.62) {
+    stripBoilerplate(text, threshold = 0.80) {
       const lex = this.lexicons.boilerplate;
       if (!lex || !text) return text;
+      // 「定型文のどこかに含まれていれば捨てる」では『認知症』『骨折』のような
+      // 正しい記入内容まで消えてしまう。長さの近さも条件に入れる。
+      const entries = lex.entries.map(e => [e, normalize(e.name)]);
       const kept = [];
       for (const line of String(text).split('\n')) {
         const n = normalize(line);
         if (!n) continue;
-        if (n.length < 4) {
-          if (lex.entries.some(e => normalize(e.name).includes(n))) continue;
-          kept.push(line); continue;
+        let drop = false;
+        for (const [e, en] of entries) {
+          if (!en) continue;
+          const ratio = Math.min(n.length, en.length) / Math.max(n.length, en.length);
+          if (ratio < 0.70) continue;
+          if (n === en || similarity(line, e.name) >= threshold) { drop = true; break; }
         }
-        const hit = lex.entries.some(e => similarity(line, e.name) >= threshold);
-        if (!hit) kept.push(line);
+        if (!drop) kept.push(line);
       }
       return kept.join('\n').trim();
     }
@@ -279,7 +285,7 @@
       }));
       if (!hits.length) return { value: t, confidence: baseConfidence * 0.7, candidates: [] };
       const best = hits[0];
-      if (best.score >= 0.999) {
+      if (normalize(best.entry.name) === normalize(t)) {
         return Object.assign({ value: best.entry.name, confidence: Math.min(1, baseConfidence + 0.2), candidates }, extra);
       }
       if (best.score >= AUTO_ADOPT) {
