@@ -35,6 +35,7 @@
     kana_fix: 'ふりがなを自動変換',
     llm_apply: 'LLMの候補を自動適用',
     anonymize: '匿名化表示',
+    drop_images: '元画像を破棄',
     export: '書き出し',
     import: '取り込み',
     settings: '設定変更',

@@ -16,7 +16,9 @@
     <button role="tab" data-view="upload" aria-selected="true">1. 読み取り</button>
     <button role="tab" data-view="review" aria-selected="false">2. 確認・編集</button>
     <button role="tab" data-view="records" aria-selected="false">3. 保存・出力</button>
+    <span class="sep" aria-hidden="true"></span>
     <button role="tab" data-view="admin" aria-selected="false">管理</button>
+    <button role="tab" data-view="docs" aria-selected="false">開発メモ</button>
   </nav>
 </header>
 
@@ -114,6 +116,9 @@
           <span class="spacer"></span>
           <button class="btn sm" data-page="1">1ページ目</button>
           <button class="btn sm" data-page="2">2ページ目</button>
+          <button class="btn sm" id="btn-drop-images"
+                  title="この件の元画像を画面から破棄します。読み取った内容は残ります">
+            画像を消す</button>
         </div>
         <div class="scroller" id="scroller">
           <div class="frame" id="frame">
@@ -167,7 +172,39 @@
       <button class="btn" id="btn-import">保存したJSONを読み込む</button>
       <input type="file" id="import-input" accept="application/json" hidden>
     </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="btn-drop-all-images" hidden></button>
+      <span class="hint">元画像はブラウザに保存していません（開いている間だけ画面が抱えています）。
+        席を離れるときや、続けて何件も読み取るときに破棄できます。</span>
+    </div>
     <div class="status" id="export-status"></div>
+  </div>
+</section>
+
+<!-- ============================================================ 開発メモ -->
+<section class="view" id="view-docs" hidden>
+  <div class="panel">
+    <h2>開発メモ・ドキュメント</h2>
+    <p class="hint">
+      設計の経緯、実装を触るための手順書、導入手順です。それぞれ別ページで開きます。
+      様式テンプレートや辞書の編集は「管理」にあります。
+    </p>
+    <div class="doclinks">
+      <a href="docs/index.html" target="_blank" rel="noopener">
+        <strong>使い方</strong><span>何ができるか、画面の流れ、出力形式</span></a>
+      <a href="docs/developer.html" target="_blank" rel="noopener">
+        <strong>技術者向け</strong><span>構成、全コマンド、新しい様式の追加手順</span></a>
+      <a href="docs/devnotes.html" target="_blank" rel="noopener">
+        <strong>開発メモ</strong><span>設計の経緯、試して駄目だった方法、既知の限界</span></a>
+      <a href="docs/install.html" target="_blank" rel="noopener">
+        <strong>インストール</strong><span>Rocky / Ubuntu / macOS / Windows / Docker</span></a>
+      <a href="docs/%E4%B8%BB%E6%B2%BB%E5%8C%BB%E6%84%8F%E8%A6%8B%E6%9B%B8%E8%AA%AD%E3%81%BF%E5%8F%96%E3%82%8A_%E6%A6%82%E8%A6%81.pptx" download>
+        <strong>概要スライド（PPTX）</strong><span>構成・ベンチマーク・記録</span></a>
+    </div>
+    <div class="status" id="docs-missing" hidden>
+      このファイルからはドキュメントを開けません（ファイルを直接開いた場合）。
+      サーバに置いた版、または GitHub のリポジトリをご覧ください。
+    </div>
   </div>
 </section>
 
@@ -231,23 +268,6 @@
       <input type="file" id="dict-import-input" accept="application/json" hidden>
     </div>
     <div class="tplfields" style="max-height:380px"><table id="dict-table"><tbody></tbody></table></div>
-  </div>
-
-  <div class="panel">
-    <h2>ドキュメント</h2>
-    <p class="hint">
-      設計の経緯・実装を触るための手順書・導入手順です。別ページで開きます。
-    </p>
-    <div class="doclinks">
-      <a href="docs/index.html" target="_blank" rel="noopener">
-        <strong>使い方</strong><span>何ができるか、画面の流れ、出力形式</span></a>
-      <a href="docs/developer.html" target="_blank" rel="noopener">
-        <strong>技術者向け</strong><span>構成、全コマンド、新しい様式の追加手順</span></a>
-      <a href="docs/devnotes.html" target="_blank" rel="noopener">
-        <strong>開発メモ</strong><span>設計の経緯、試して駄目だった方法、既知の限界</span></a>
-      <a href="docs/install.html" target="_blank" rel="noopener">
-        <strong>インストール</strong><span>Rocky / Ubuntu / macOS / Windows / Docker</span></a>
-    </div>
   </div>
 
   <div class="panel" id="panel-models" hidden>

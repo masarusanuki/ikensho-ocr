@@ -37,6 +37,7 @@
       this.schema = this.pipeline.schema;
       this.applyOcrAvailability();
       this.checkSamples();
+      this.checkDocs();
       this.review = new global.IkenshoReview(this);
       this.admin = new global.IkenshoAdmin(this);
       this.restore();
@@ -90,6 +91,8 @@
       });
       document.getElementById('btn-import').addEventListener('click',
         () => document.getElementById('import-input').click());
+      document.getElementById('btn-drop-all-images').addEventListener('click',
+        () => this.dropAllImages());
       document.getElementById('import-input').addEventListener('change', e => this.importJson(e));
     }
 
@@ -119,6 +122,19 @@
       this.renderFiles();
       this.showView('upload');
       await this.run();
+    }
+
+    /** ドキュメントが開けない環境（ファイルを直接開いた場合）では説明を出す。 */
+    async checkDocs() {
+      const note = document.getElementById('docs-missing');
+      if (!note) return;
+      if (location.protocol === 'file:') { note.hidden = false; return; }
+      try {
+        const res = await fetch('docs/index.html', { method: 'HEAD' });
+        note.hidden = res.ok;
+      } catch (e) {
+        note.hidden = false;
+      }
     }
 
     /** 配信環境に動作確認用サンプルが置いてあればリンクを出す。 */
@@ -319,8 +335,31 @@
       sel.value = String(this.current);
     }
 
+    /** すべての件の元画像を破棄する（画面が抱えているぶん）。 */
+    dropAllImages() {
+      const total = this.records.reduce(
+        (a, r) => a + (this.review ? this.review.imageBytes(r) : 0), 0);
+      if (!total) return this.toast('破棄する元画像はありません');
+      const mb = (total / 1024 / 1024).toFixed(1);
+      if (!confirm(`${this.records.length} 件の元画像（約 ${mb} MB）を画面から破棄します。\n`
+        + '読み取った内容はそのまま残りますが、元画像との見比べはできなくなります。\n\n'
+        + 'よろしいですか？')) return;
+      for (const r of this.records) this.review.dropImages(r);
+      this.review.show(this.records[this.current] || null);
+      this.renderRecords();
+      this.setExportStatus(`元画像（約 ${mb} MB）を破棄しました`);
+    }
+
     renderRecords() {
       const tbody = document.querySelector('#records-table tbody');
+      // 画面が抱えている元画像の量を出す（破棄できるように）
+      const drop = document.getElementById('btn-drop-all-images');
+      if (drop) {
+        const total = this.records.reduce(
+          (a, r) => a + (this.review ? this.review.imageBytes(r) : 0), 0);
+        drop.hidden = !total;
+        drop.textContent = `すべての元画像を破棄（約 ${(total / 1024 / 1024).toFixed(1)} MB）`;
+      }
       if (!this.records.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="muted">まだ読み取り結果がありません。</td></tr>';
         return;

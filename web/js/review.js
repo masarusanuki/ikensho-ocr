@@ -47,6 +47,8 @@
         document.getElementById('frame').classList.toggle('plain', !e.target.checked);
       });
       document.getElementById('btn-anon').addEventListener('click', () => this.toggleAnonymize());
+      document.getElementById('btn-drop-images').addEventListener('click',
+        () => this.confirmDropImages());
       document.getElementById('btn-next-low').addEventListener('click', () => this.jumpLow(1));
       document.getElementById('btn-prev-low').addEventListener('click', () => this.jumpLow(-1));
     }
@@ -147,12 +149,16 @@
     showPage(n) {
       this.currentPage = n;
       const src = (this.record.images || {})[n];
-      document.getElementById('page-title').textContent =
-        src ? `元画像（${n}ページ目）` : `${n}ページ目は取り込まれていません`;
+      const dropped = this.record.imagesDropped;
+      document.getElementById('page-title').textContent = src
+        ? `元画像（${n}ページ目）`
+        : (dropped ? '元画像は破棄しました（読み取った内容は残っています）'
+                   : `${n}ページ目は取り込まれていません`);
       this.imgEl.src = src || '';
       this.imgEl.style.visibility = src ? 'visible' : 'hidden';
       this.marker.hidden = true;
       this.renderHotspots();
+      this.updateDropButton();
     }
 
     renderWarnings() {
@@ -161,6 +167,73 @@
       this.warnEl.innerHTML =
         `<div class="warnbox"><strong>確認してください</strong><ul>${
           w.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    }
+
+    /** この件が抱えている元画像の大きさ（おおよそのバイト数）。 */
+    imageBytes(record) {
+      const imgs = (record || {}).images || {};
+      let n = 0;
+      for (const src of Object.values(imgs)) {
+        if (typeof src !== 'string') continue;
+        // data URL は base64 なので、実体は 3/4 くらい
+        n += Math.round((src.length - (src.indexOf(',') + 1)) * 0.75);
+      }
+      return n;
+    }
+
+    /**
+     * 画面が抱えている元画像を捨てる。
+     *
+     * 元画像は**保存はしていない**（ブラウザに残すのは読み取った内容だけ）が、
+     * 開いている間はメモリに載っている。他の人がいる場所で画面を離れるときや、
+     * 何件も続けて読み取ってメモリが苦しいときに捨てられるようにする。
+     * 読み取った内容と確信度・注記はそのまま残る。
+     */
+    dropImages(record) {
+      const target = record || this.record;
+      if (!target) return 0;
+      const bytes = this.imageBytes(target);
+      target.images = {};
+      target.imagesDropped = true;
+      if (target === this.record) {
+        this._lastLoc = null;
+        this.zoom.replaceChildren();
+        this.zoomcap.textContent = '元画像は破棄されています';
+        if (this.zoomHint) this.zoomHint.hidden = true;
+        this.marker.hidden = true;
+        this.showPage(this.currentPage);
+      }
+      this.op('drop_images', {
+        note: `${(bytes / 1024 / 1024).toFixed(1)} MB を破棄`,
+      });
+      this.app.touch();
+      return bytes;
+    }
+
+    /** 「画像を消す」ボタン。 */
+    confirmDropImages() {
+      if (!this.record) return;
+      if (this.record.imagesDropped || !Object.keys(this.record.images || {}).length) {
+        return this.app.toast('この件の元画像は、すでに画面上にありません');
+      }
+      const mb = (this.imageBytes(this.record) / 1024 / 1024).toFixed(1);
+      if (!confirm(`この件の元画像（約 ${mb} MB）を画面から破棄します。\n`
+        + '読み取った内容・確信度・注記はそのまま残りますが、\n'
+        + '元画像との見比べはできなくなります（もう一度読み込めば戻ります）。\n\n'
+        + 'よろしいですか？')) return;
+      this.dropImages(this.record);
+      this.app.toast(`元画像（約 ${mb} MB）を破棄しました`);
+      this.updateDropButton();
+    }
+
+    /** 「画像を消す」ボタンの見え方を更新する。 */
+    updateDropButton() {
+      const btn = document.getElementById('btn-drop-images');
+      if (!btn) return;
+      const bytes = this.record ? this.imageBytes(this.record) : 0;
+      btn.disabled = !bytes;
+      btn.textContent = bytes
+        ? `画像を消す（${(bytes / 1024 / 1024).toFixed(1)} MB）` : '画像を消す';
     }
 
     /** 操作ログに1件残す。対象の件名は自動で付ける。 */

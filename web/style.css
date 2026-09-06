@@ -46,6 +46,8 @@ nav.tabs button {
   border: 1px solid transparent; background: transparent; padding: 7px 14px;
   border-radius: 8px; cursor: pointer; color: var(--muted); font-weight: 600;
 }
+nav.tabs .sep { width: 1px; align-self: stretch; margin: 4px 6px;
+                background: var(--border); }
 nav.tabs button[aria-selected="true"] { background: var(--accent-weak); color: var(--accent); }
 nav.tabs button:hover:not([aria-selected="true"]) { background: #eef0f4; }
 
