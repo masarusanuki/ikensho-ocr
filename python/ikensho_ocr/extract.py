@@ -276,10 +276,12 @@ def extract_record(paths: List[str],
             continue
         entry = text_results[f.id]
         era = f.default_era
+        fixed = bool(f.default_era)          # 様式に印刷されている元号は動かさない
         if f.era_field:
             picked = text_results.get(f.era_field, {}).get("value")
             era = picked or era
-        info = dates_mod.enrich(entry.get("value") or "", era)
+            fixed = False
+        info = dates_mod.enrich(entry.get("value") or "", era, fixed_era=fixed)
         entry["date"] = info["parts"]
         entry["era"] = info["era"]
         entry["gregorian"] = info["gregorian"]

@@ -155,8 +155,26 @@ class RapidOcr(OcrEngine):
             return OcrResult("", 0.0, self.name)
         if not res:
             return OcrResult("", 0.0, self.name)
-        lines = [r[1] for r in res]
-        confs = [float(r[2]) for r in res if len(r) > 2]
+        # RapidOCR は検出した順に返すため、そのままだと語順が入れ替わる。
+        # 実測で「4 年 1 月 24 日」が「年1 月24 4 日」になった。
+        # 位置（上から下、左から右）に並べ直す。
+        items = []
+        for r in res:
+            xs = [float(p[0]) for p in r[0]]
+            ys = [float(p[1]) for p in r[0]]
+            items.append(dict(top=min(ys), left=min(xs), height=max(ys) - min(ys),
+                              text=r[1], conf=float(r[2]) if len(r) > 2 else 0.5))
+        if items:
+            heights = sorted(i["height"] for i in items)
+            med = heights[len(heights) // 2] or 1.0
+            spread = max(i["top"] for i in items) - min(i["top"] for i in items)
+            if spread < med * 0.6:
+                # 1行の切り抜き。行を分けると語順が壊れるので横位置だけで並べる
+                items.sort(key=lambda i: i["left"])
+            else:
+                items.sort(key=lambda i: (round(i["top"] / (med * 0.7)), i["left"]))
+        lines = [i["text"] for i in items]
+        confs = [i["conf"] for i in items]
         text = join_japanese(("\n" if multiline else " ").join(lines).strip())
         conf = round(sum(confs) / len(confs), 3) if confs else 0.5
         return OcrResult(filter_text(text, charset), conf, self.name)

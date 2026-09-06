@@ -97,10 +97,16 @@ def to_gregorian(era: str, year: Optional[int], month: Optional[int],
     return f"{y:04d}"
 
 
-def enrich(value: str, era: Optional[str] = None) -> Dict:
-    """読み取り値から、部品・整形済み文字列・西暦をまとめて作る。"""
+def enrich(value: str, era: Optional[str] = None, fixed_era: bool = False) -> Dict:
+    """読み取り値から、部品・整形済み文字列・西暦をまとめて作る。
+
+    fixed_era=True のときは、本文中に元号らしき文字があっても無視して
+    渡された元号を使う（様式に印刷されている場合など）。
+    """
     parts = parse(value)
-    if era and not parts["era"]:
+    if fixed_era and era:
+        parts["era"] = canonical_era(era)
+    elif era and not parts["era"]:
         parts["era"] = canonical_era(era)
     return dict(
         parts={k: parts[k] for k in ("year", "month", "day")},

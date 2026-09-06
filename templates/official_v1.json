@@ -768,13 +768,13 @@
      "field": "entry_date",
      "type": "text",
      "rect": [
-      0.759256,
+      0.809649,
       0.052261,
-      0.191494,
+      0.141101,
       0.019004
      ],
      "options": null,
-     "charset": "wareki",
+     "charset": "date_digits",
      "pii": "",
      "kind": "date_wareki",
      "era_field": "",
@@ -917,7 +917,7 @@
       0.017816
      ],
      "options": null,
-     "charset": "wareki",
+     "charset": "date_digits",
      "pii": "",
      "kind": "date_wareki",
      "era_field": "birth_era",
@@ -1036,7 +1036,7 @@
       0.019004
      ],
      "options": null,
-     "charset": "wareki",
+     "charset": "date_digits",
      "pii": "",
      "kind": "date_wareki",
      "era_field": "",
@@ -1108,7 +1108,7 @@
       0.020192
      ],
      "options": null,
-     "charset": "wareki",
+     "charset": "date_digits",
      "pii": "",
      "kind": "date_wareki",
      "era_field": "diagnosis1_era",
@@ -1163,7 +1163,7 @@
       0.020192
      ],
      "options": null,
-     "charset": "wareki",
+     "charset": "date_digits",
      "pii": "",
      "kind": "date_wareki",
      "era_field": "diagnosis2_era",
@@ -1218,7 +1218,7 @@
       0.020192
      ],
      "options": null,
-     "charset": "wareki",
+     "charset": "date_digits",
      "pii": "",
      "kind": "date_wareki",
      "era_field": "diagnosis3_era",

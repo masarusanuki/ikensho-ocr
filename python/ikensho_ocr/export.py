@@ -6,6 +6,7 @@ import io
 import json
 from typing import Any, Dict, List
 
+from . import derive
 from .schema import Schema
 
 
@@ -45,7 +46,10 @@ def record_to_json(rec, schema: Schema) -> Dict[str, Any]:
                       page_index=p.page_index, matched=p.matched,
                       score=p.score, dewarped=p.dewarped) for p in rec.pages],
         warnings=rec.warnings,
-        values=values, meta=meta,
+        values=values,
+        # 機械学習や集計に使いやすい形（西暦に直した日付など）
+        derived=derive.build(rec.fields, schema),
+        meta=meta,
     )
 
 
@@ -63,11 +67,16 @@ def write_json(records: List[Any], schema: Schema, path: str) -> None:
 def csv_text(records: List[Any], schema: Schema) -> str:
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator="\r\n")
+    dkeys = derive.derived_keys(schema)
+    dlabels = derive.derived_labels(schema)
     head = ["record_no", "template_id", "read_at", "anonymized", "sources", "warnings"]
     labels = ["#", "様式", "読取日時", "匿名化", "元ファイル", "警告"]
     for f in schema:
         head += [f.id, f"{f.id}__confidence"]
         labels += [f.label, "確信度"]
+    # 西暦に直した日付などをまとめて末尾に置く（機械学習で使いやすいように）
+    head += dkeys
+    labels += [dlabels.get(k, k) for k in dkeys]
     w.writerow(head)
     w.writerow(labels)
     now = datetime.datetime.now().astimezone().isoformat()
@@ -79,6 +88,11 @@ def csv_text(records: List[Any], schema: Schema) -> str:
         for f in schema:
             e = rec.fields.get(f.id) or {}
             row += [_flat(e.get("value")), e.get("confidence", "")]
+        d = derive.build(rec.fields, schema)
+        for k in dkeys:
+            v = d.get(k)
+            row.append("" if v is None else ("1" if v is True else
+                                             ("0" if v is False else v)))
         w.writerow(row)
     return buf.getvalue()
 

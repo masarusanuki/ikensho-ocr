@@ -11,7 +11,7 @@
      "label": "記入日",
      "type": "text",
      "page": 1,
-     "charset": "wareki",
+     "charset": "date_digits",
      "kind": "date_wareki",
      "default_era": "令和",
      "hint": "令和○年○月○日"
@@ -57,7 +57,7 @@
      "label": "生年月日",
      "type": "text",
      "page": 1,
-     "charset": "wareki",
+     "charset": "date_digits",
      "kind": "date_wareki",
      "era_field": "birth_era",
      "hint": "○年○月○日"
@@ -144,7 +144,7 @@
      "label": "(1) 最終診察日",
      "type": "text",
      "page": 1,
-     "charset": "wareki",
+     "charset": "date_digits",
      "kind": "date_wareki",
      "default_era": "令和",
      "hint": "令和○年○月○日"
@@ -224,7 +224,7 @@
      "label": "(1) 診断名1 発症年月日",
      "type": "text",
      "page": 1,
-     "charset": "wareki",
+     "charset": "date_digits",
      "kind": "date_wareki",
      "era_field": "diagnosis1_era",
      "hint": "○年○月○日頃"
@@ -251,7 +251,7 @@
      "label": "(1) 診断名2 発症年月日",
      "type": "text",
      "page": 1,
-     "charset": "wareki",
+     "charset": "date_digits",
      "kind": "date_wareki",
      "era_field": "diagnosis2_era",
      "hint": "○年○月○日頃"
@@ -278,7 +278,7 @@
      "label": "(1) 診断名3 発症年月日",
      "type": "text",
      "page": 1,
-     "charset": "wareki",
+     "charset": "date_digits",
      "kind": "date_wareki",
      "era_field": "diagnosis3_era",
      "hint": "○年○月○日頃"
