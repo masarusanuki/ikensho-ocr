@@ -76,6 +76,7 @@ def main():
     with open(os.path.join(tpl_out, "index.json"), "w", encoding="utf-8") as fp:
         json.dump({"templates": ids}, fp, ensure_ascii=False, indent=1)
 
+    # 医療機関一覧は大きいので、都道府県ごとに分けたまま置く（画面から必要な分だけ読む）
     copytree(os.path.join(ROOT, "dict"), os.path.join(data, "dict"))
 
     # ドキュメントは別ページとして生成する（画面内で切り替えない）

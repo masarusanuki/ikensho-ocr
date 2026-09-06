@@ -138,10 +138,18 @@ progress { width: 100%; height: 8px; }
 .imagepane .legendrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
                         margin-top: 8px; font-size: 11.5px; color: var(--muted); }
 .fieldpane { max-height: calc(100vh - 92px); overflow: auto; padding-right: 4px; }
+/* 集計はスクロールしても上に残す。いま何項目が要確認かを常に見えるようにする。 */
+.fieldpane .statpanel {
+  position: sticky; top: 0; z-index: 12; margin-bottom: 12px;
+  backdrop-filter: blur(6px); background: rgba(255, 255, 255, .96);
+  box-shadow: 0 2px 8px rgba(16, 24, 40, .10);
+}
+.statrow { gap: 8px 10px; }
 @media (max-width: 1080px) {
   .imagepane { position: static; max-height: none; }
   .imagepane .scroller { max-height: 70vh; }
   .fieldpane { max-height: none; overflow: visible; }
+  .fieldpane .statpanel { top: 56px; }   /* 画面が狭いときはヘッダの下に付ける */
 }
 .imagepane .marker {
   position: absolute; border: 2px solid #ff9f0a; border-radius: 3px;
@@ -163,6 +171,14 @@ progress { width: 100%; height: 8px; }
   margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--accent);
   padding-bottom: 5px; border-bottom: 2px solid var(--accent-weak);
 }
+/* まとめて扱う項目のカード（有無のチェックとその内容など） */
+.group { border: 1px solid var(--border); border-radius: 11px; background: #fbfcfd;
+         padding: 8px 10px 6px; margin-bottom: 9px; }
+.grouphead { display: flex; align-items: center; gap: 8px; margin: 0 2px 7px; }
+.grouphead .gtitle { font-weight: 700; font-size: 12.5px; flex: 1; color: var(--accent); }
+.group .field { margin-bottom: 6px; }
+.group .field:last-child { margin-bottom: 2px; }
+
 .field {
   border: 1px solid var(--border); border-left-width: 4px; border-radius: 9px;
   padding: 9px 12px; margin-bottom: 7px; background: var(--panel); cursor: pointer;
@@ -234,6 +250,17 @@ progress { width: 100%; height: 8px; }
 .seireki { font-size: 12px; color: var(--high); background: var(--high-bg);
            border-radius: 999px; padding: 2px 10px; margin-left: 4px; }
 .seireki.none { display: none; }
+
+/* 医療機関名を一覧から選ぶ */
+.hosppick { position: relative; display: flex; gap: 6px; margin-top: 6px; }
+.hosppick select { border: 1px solid var(--border); border-radius: 7px; padding: 5px 8px;
+                   font-size: 12.5px; background: #fff; }
+.hosppick input { flex: 1; min-width: 120px; border: 1px dashed var(--border);
+                  border-radius: 7px; padding: 5px 9px; font-size: 12.5px; background: #fbfcfd; }
+.hosppick input:focus { outline: 2px solid var(--accent-weak); border-style: solid;
+                        border-color: var(--accent); background: #fff; }
+.hosppick input:disabled { opacity: .6; }
+.hosppick .dictlist { left: 0; right: 0; }
 
 /* 記述欄の音声入力 */
 .dictate { display: flex; align-items: center; gap: 8px; margin-top: 6px; }

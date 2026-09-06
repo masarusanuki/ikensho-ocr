@@ -168,7 +168,9 @@
      "options": [
       "有",
       "無"
-     ]
+     ],
+     "group": "other_dept",
+     "group_label": "(3) 他科受診"
     },
     {
      "id": "other_dept",
@@ -189,13 +191,17 @@
       "リハビリテーション科",
       "歯科",
       "その他"
-     ]
+     ],
+     "group": "other_dept",
+     "group_label": "(3) 他科受診"
     },
     {
      "id": "other_dept_other_text",
      "label": "(3) 他科受診 その他",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "group": "other_dept",
+     "group_label": "(3) 他科受診"
     }
    ]
   },
@@ -293,13 +299,17 @@
       "安定",
       "不安定",
       "不明"
-     ]
+     ],
+     "group": "stability",
+     "group_label": "(2) 症状としての安定性"
     },
     {
      "id": "stability_detail",
      "label": "(2) 不安定の場合の具体的な状況",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "group": "stability",
+     "group_label": "(2) 症状としての安定性"
     },
     {
      "id": "treatment_course",
@@ -430,7 +440,9 @@
      "options": [
       "無",
       "有"
-     ]
+     ],
+     "group": "bpsd",
+     "group_label": "(3) 認知症の行動・心理症状（BPSD）"
     },
     {
      "id": "bpsd_items",
@@ -450,13 +462,17 @@
       "異食行動",
       "性的問題行動",
       "その他"
-     ]
+     ],
+     "group": "bpsd",
+     "group_label": "(3) 認知症の行動・心理症状（BPSD）"
     },
     {
      "id": "bpsd_other_text",
      "label": "(3) BPSD その他",
      "type": "text",
-     "page": 1
+     "page": 1,
+     "group": "bpsd",
+     "group_label": "(3) 認知症の行動・心理症状（BPSD）"
     },
     {
      "id": "other_psych_presence",
@@ -466,13 +482,17 @@
      "options": [
       "無",
       "有"
-     ]
+     ],
+     "group": "other_psych",
+     "group_label": "(4) その他の精神・神経症状"
     },
     {
      "id": "other_psych_symptom_name",
      "label": "(4) 症状名",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "other_psych",
+     "group_label": "(4) その他の精神・神経症状"
     },
     {
      "id": "specialist_consult",
@@ -482,13 +502,17 @@
      "options": [
       "有",
       "無"
-     ]
+     ],
+     "group": "other_psych",
+     "group_label": "(4) その他の精神・神経症状"
     },
     {
      "id": "specialist_consult_detail",
      "label": "(4) 専門医受診 内容",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "other_psych",
+     "group_label": "(4) その他の精神・神経症状"
     },
     {
      "id": "dominant_hand",
@@ -530,27 +554,35 @@
      "label": "(5) 四肢欠損",
      "type": "flag",
      "page": 2,
-     "match": "四肢欠損"
+     "match": "四肢欠損",
+     "group": "body_limb",
+     "group_label": "(5) 四肢欠損"
     },
     {
      "id": "limb_defect_site",
      "label": "(5) 四肢欠損 部位",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "body_limb",
+     "group_label": "(5) 四肢欠損"
     },
     {
      "id": "paralysis",
      "label": "(5) 麻痺",
      "type": "flag",
      "page": 2,
-     "match": "麻痺"
+     "match": "麻痺",
+     "group": "body_paralysis",
+     "group_label": "(5) 麻痺"
     },
     {
      "id": "paralysis_right_upper",
      "label": "(5) 麻痺 右上肢",
      "type": "flag",
      "page": 2,
-     "match": "右上肢"
+     "match": "右上肢",
+     "group": "body_paralysis",
+     "group_label": "(5) 麻痺"
     },
     {
      "id": "paralysis_right_upper_degree",
@@ -561,14 +593,18 @@
       "軽",
       "中",
       "重"
-     ]
+     ],
+     "group": "body_paralysis",
+     "group_label": "(5) 麻痺"
     },
     {
      "id": "paralysis_left_upper",
      "label": "(5) 麻痺 左上肢",
      "type": "flag",
      "page": 2,
-     "match": "左上肢"
+     "match": "左上肢",
+     "group": "body_paralysis",
+     "group_label": "(5) 麻痺"
     },
     {
      "id": "paralysis_left_upper_degree",
@@ -579,14 +615,18 @@
       "軽",
       "中",
       "重"
-     ]
+     ],
+     "group": "body_paralysis",
+     "group_label": "(5) 麻痺"
     },
     {
      "id": "paralysis_right_lower",
      "label": "(5) 麻痺 右下肢",
      "type": "flag",
      "page": 2,
-     "match": "右下肢"
+     "match": "右下肢",
+     "group": "body_paralysis",
+     "group_label": "(5) 麻痺"
     },
     {
      "id": "paralysis_right_lower_degree",
@@ -597,14 +637,18 @@
       "軽",
       "中",
       "重"
-     ]
+     ],
+     "group": "body_paralysis",
+     "group_label": "(5) 麻痺"
     },
     {
      "id": "paralysis_left_lower",
      "label": "(5) 麻痺 左下肢",
      "type": "flag",
      "page": 2,
-     "match": "左下肢"
+     "match": "左下肢",
+     "group": "body_paralysis",
+     "group_label": "(5) 麻痺"
     },
     {
      "id": "paralysis_left_lower_degree",
@@ -615,20 +659,26 @@
       "軽",
       "中",
       "重"
-     ]
+     ],
+     "group": "body_paralysis",
+     "group_label": "(5) 麻痺"
     },
     {
      "id": "paralysis_other",
      "label": "(5) 麻痺 その他",
      "type": "flag",
      "page": 2,
-     "match": "その他"
+     "match": "その他",
+     "group": "body_paralysis",
+     "group_label": "(5) 麻痺"
     },
     {
      "id": "paralysis_other_site",
      "label": "(5) 麻痺 その他 部位",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "body_paralysis",
+     "group_label": "(5) 麻痺"
     },
     {
      "id": "paralysis_other_degree",
@@ -639,20 +689,26 @@
       "軽",
       "中",
       "重"
-     ]
+     ],
+     "group": "body_paralysis",
+     "group_label": "(5) 麻痺"
     },
     {
      "id": "muscle_weakness",
      "label": "(5) 筋力の低下",
      "type": "flag",
      "page": 2,
-     "match": "筋力の低下"
+     "match": "筋力の低下",
+     "group": "body_muscle",
+     "group_label": "(5) 筋力の低下"
     },
     {
      "id": "muscle_weakness_site",
      "label": "(5) 筋力の低下 部位",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "body_muscle",
+     "group_label": "(5) 筋力の低下"
     },
     {
      "id": "muscle_weakness_degree",
@@ -663,20 +719,26 @@
       "軽",
       "中",
       "重"
-     ]
+     ],
+     "group": "body_muscle",
+     "group_label": "(5) 筋力の低下"
     },
     {
      "id": "joint_contracture",
      "label": "(5) 関節の拘縮",
      "type": "flag",
      "page": 2,
-     "match": "関節の拘縮"
+     "match": "関節の拘縮",
+     "group": "body_contracture",
+     "group_label": "(5) 関節の拘縮"
     },
     {
      "id": "joint_contracture_site",
      "label": "(5) 関節の拘縮 部位",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "body_contracture",
+     "group_label": "(5) 関節の拘縮"
     },
     {
      "id": "joint_contracture_degree",
@@ -687,20 +749,26 @@
       "軽",
       "中",
       "重"
-     ]
+     ],
+     "group": "body_contracture",
+     "group_label": "(5) 関節の拘縮"
     },
     {
      "id": "joint_pain",
      "label": "(5) 関節の痛み",
      "type": "flag",
      "page": 2,
-     "match": "関節の痛み"
+     "match": "関節の痛み",
+     "group": "body_jointpain",
+     "group_label": "(5) 関節の痛み"
     },
     {
      "id": "joint_pain_site",
      "label": "(5) 関節の痛み 部位",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "body_jointpain",
+     "group_label": "(5) 関節の痛み"
     },
     {
      "id": "joint_pain_degree",
@@ -711,14 +779,18 @@
       "軽",
       "中",
       "重"
-     ]
+     ],
+     "group": "body_jointpain",
+     "group_label": "(5) 関節の痛み"
     },
     {
      "id": "ataxia",
      "label": "(5) 失調・不随意運動",
      "type": "flag",
      "page": 2,
-     "match": "失調・不随意運動"
+     "match": "失調・不随意運動",
+     "group": "body_ataxia",
+     "group_label": "(5) 失調・不随意運動"
     },
     {
      "id": "ataxia_upper",
@@ -728,7 +800,9 @@
      "options": [
       "右",
       "左"
-     ]
+     ],
+     "group": "body_ataxia",
+     "group_label": "(5) 失調・不随意運動"
     },
     {
      "id": "ataxia_lower",
@@ -738,7 +812,9 @@
      "options": [
       "右",
       "左"
-     ]
+     ],
+     "group": "body_ataxia",
+     "group_label": "(5) 失調・不随意運動"
     },
     {
      "id": "ataxia_trunk",
@@ -748,20 +824,26 @@
      "options": [
       "右",
       "左"
-     ]
+     ],
+     "group": "body_ataxia",
+     "group_label": "(5) 失調・不随意運動"
     },
     {
      "id": "pressure_ulcer",
      "label": "(5) 褥瘡",
      "type": "flag",
      "page": 2,
-     "match": "褥瘡"
+     "match": "褥瘡",
+     "group": "body_ulcer",
+     "group_label": "(5) 褥瘡"
     },
     {
      "id": "pressure_ulcer_site",
      "label": "(5) 褥瘡 部位",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "body_ulcer",
+     "group_label": "(5) 褥瘡"
     },
     {
      "id": "pressure_ulcer_degree",
@@ -772,20 +854,26 @@
       "軽",
       "中",
       "重"
-     ]
+     ],
+     "group": "body_ulcer",
+     "group_label": "(5) 褥瘡"
     },
     {
      "id": "other_skin_disease",
      "label": "(5) その他の皮膚疾患",
      "type": "flag",
      "page": 2,
-     "match": "その他の皮膚疾患"
+     "match": "その他の皮膚疾患",
+     "group": "body_skin",
+     "group_label": "(5) その他の皮膚疾患"
     },
     {
      "id": "other_skin_disease_site",
      "label": "(5) その他の皮膚疾患 部位",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "body_skin",
+     "group_label": "(5) その他の皮膚疾患"
     },
     {
      "id": "other_skin_disease_degree",
@@ -796,7 +884,9 @@
       "軽",
       "中",
       "重"
-     ]
+     ],
+     "group": "body_skin",
+     "group_label": "(5) その他の皮膚疾患"
     }
    ]
   },
@@ -845,7 +935,9 @@
      "options": [
       "自立ないし何とか自分で食べられる",
       "全面介助"
-     ]
+     ],
+     "group": "nutrition",
+     "group_label": "(2) 栄養・食生活"
     },
     {
      "id": "nutrition_status",
@@ -855,13 +947,17 @@
      "options": [
       "良好",
       "不良"
-     ]
+     ],
+     "group": "nutrition",
+     "group_label": "(2) 栄養・食生活"
     },
     {
      "id": "nutrition_note",
      "label": "(2) 栄養・食生活上の留意点",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "nutrition",
+     "group_label": "(2) 栄養・食生活"
     },
     {
      "id": "risk_conditions",
@@ -883,19 +979,25 @@
       "易感染性",
       "がん等による疼痛",
       "その他"
-     ]
+     ],
+     "group": "risk",
+     "group_label": "(3) 発生の可能性の高い状態と対処方針"
     },
     {
      "id": "risk_other_text",
      "label": "(3) その他の状態",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "risk",
+     "group_label": "(3) 発生の可能性の高い状態と対処方針"
     },
     {
      "id": "risk_policy",
      "label": "(3) 対処方針",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "risk",
+     "group_label": "(3) 発生の可能性の高い状態と対処方針"
     },
     {
      "id": "service_outlook",
@@ -927,13 +1029,17 @@
       "介護医療院",
       "その他の医療系サービス",
       "特記すべき項目なし"
-     ]
+     ],
+     "group": "medmgmt",
+     "group_label": "(5) 医学的管理の必要性"
     },
     {
      "id": "medical_management_other_text",
      "label": "(5) その他の医療系サービス 内容",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "medmgmt",
+     "group_label": "(5) 医学的管理の必要性"
     },
     {
      "id": "service_caution",
@@ -948,43 +1054,57 @@
       "運動",
       "その他",
       "特記すべき項目なし"
-     ]
+     ],
+     "group": "caution",
+     "group_label": "(6) サービス提供時の留意事項"
     },
     {
      "id": "caution_bp_text",
      "label": "(6) 血圧 内容",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "caution",
+     "group_label": "(6) サービス提供時の留意事項"
     },
     {
      "id": "caution_eating_text",
      "label": "(6) 摂食 内容",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "caution",
+     "group_label": "(6) サービス提供時の留意事項"
     },
     {
      "id": "caution_swallow_text",
      "label": "(6) 嚥下 内容",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "caution",
+     "group_label": "(6) サービス提供時の留意事項"
     },
     {
      "id": "caution_move_text",
      "label": "(6) 移動 内容",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "caution",
+     "group_label": "(6) サービス提供時の留意事項"
     },
     {
      "id": "caution_exercise_text",
      "label": "(6) 運動 内容",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "caution",
+     "group_label": "(6) サービス提供時の留意事項"
     },
     {
      "id": "caution_other_text",
      "label": "(6) その他 内容",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "caution",
+     "group_label": "(6) サービス提供時の留意事項"
     },
     {
      "id": "infection",
@@ -995,13 +1115,17 @@
       "無",
       "有",
       "不明"
-     ]
+     ],
+     "group": "infection",
+     "group_label": "(7) 感染症の有無"
     },
     {
      "id": "infection_detail",
      "label": "(7) 感染症 内容",
      "type": "text",
-     "page": 2
+     "page": 2,
+     "group": "infection",
+     "group_label": "(7) 感染症の有無"
     }
    ]
   },

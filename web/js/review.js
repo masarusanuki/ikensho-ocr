@@ -248,6 +248,42 @@
       return rows.map(r => r.sort((a, b) => a.x - b.x).map(i => i.opt));
     }
 
+    /**
+     * まとめて扱う項目を1枚のカードにする。
+     * 「有無のチェック」と「その内容」のように、様式では一体になっているものを
+     * 画面でも一体にして、原本と見比べやすくする。
+     */
+    groupCard(title, members) {
+      const box = document.createElement('div');
+      box.className = 'group';
+      const head = document.createElement('div');
+      head.className = 'grouphead';
+      const worst = members.reduce((a, x) => {
+        const lv = this.levelOf(this.record.fields[x.id]);
+        const rank = { low: 0, medium: 1, edited: 2, high: 3, anon: 4, done: 5 };
+        return (rank[lv] < rank[a] ? lv : a);
+      }, 'done');
+      head.innerHTML = `<span class="gtitle">${esc(title)}</span>` +
+        `<span class="conf ${worst}"><span class="dot"></span>${
+          LEVEL_LABEL[worst] || worst}</span>`;
+      const all = document.createElement('button');
+      all.type = 'button';
+      all.className = 'confirm';
+      all.textContent = 'まとめて確定';
+      all.addEventListener('click', ev => {
+        ev.stopPropagation();
+        for (const m of members) this.record.fields[m.id].confirmed = true;
+        this.app.touch();
+        this.renderFields();
+      });
+      head.appendChild(all);
+      box.appendChild(head);
+      for (const m of members) {
+        box.appendChild(this.fieldRow(m, this.record.fields[m.id]));
+      }
+      return box;
+    }
+
     /** 様式上の位置（ページ→上から下→左から右）を項目ごとに求める。 */
     positionIndex() {
       if (this._posIndex && this._posTpl === this.record.templateId) return this._posIndex;
@@ -297,16 +333,29 @@
 
       const st = this.stats();
       const head = document.createElement('div');
-      head.className = 'panel';
-      head.style.padding = '10px 14px';
+      head.className = 'panel statpanel';
+      head.style.padding = '9px 14px';
       head.innerHTML = '<div class="row statrow" style="font-size:12.5px"></div>';
       frag.appendChild(head);
 
       for (const sec of schema.sections) {
         const rows = [];
+        const doneGroups = new Set();
         for (const f of this.orderedFields(sec.fields)) {
           const e = this.record.fields[f.id];
           if (!e) continue;
+          // 同じグループの項目（有無＋内容など）は1枚にまとめて出す
+          if (f.group) {
+            if (doneGroups.has(f.group)) continue;
+            const members = sec.fields.filter(x => x.group === f.group &&
+                                                   this.record.fields[x.id]);
+            const visible = members.filter(
+              x => !this.onlyLow || this.needsCheck(this.record.fields[x.id]));
+            if (!visible.length) { doneGroups.add(f.group); continue; }
+            doneGroups.add(f.group);
+            rows.push(this.groupCard(f.group_label || f.label, visible));
+            continue;
+          }
           if (this.onlyLow && !this.needsCheck(e)) continue;
           rows.push(this.fieldRow(f, e));
         }
@@ -552,6 +601,8 @@
         });
       }
       wrap.appendChild(input);
+      // 医療機関名は一覧から選べるようにする。選ぶと所在地と電話も埋まる。
+      if (f.id === 'clinic_name') this.renderHospitalPicker(f, e, wrap, input, mark);
       // 記述欄は打ち込みが大変なので、音声でも入れられるようにする
       if (isArea) this.renderDictation(f, e, wrap, input, mark);
       this.renderCandidates(f, e, wrap, input);
@@ -654,6 +705,110 @@
       }
       apply(true);
       return wrap;
+    }
+
+    /**
+     * 医療機関名を一覧から選ぶ。厚生労働省の保険医療機関一覧を使う。
+     * 選ぶと所在地と電話番号も一緒に埋まるので、打ち直さずに済む。
+     */
+    async renderHospitalPicker(f, e, wrap, input, mark) {
+      const base = this.app.pipeline.base;
+      if (!this._hospIndex) {
+        try {
+          this._hospIndex = await fetch(`${base}/dict/hospitals/index.json`).then(r => r.json());
+        } catch (err) { this._hospIndex = { prefectures: [] }; }
+      }
+      const idx = this._hospIndex;
+      if (!idx.prefectures || !idx.prefectures.length) return;
+
+      const box = document.createElement('div');
+      box.className = 'hosppick';
+      const pref = document.createElement('select');
+      pref.innerHTML = '<option value="">都道府県</option>' +
+        idx.prefectures.map(p => `<option value="${esc(p.pref)}">${esc(p.pref)}（${p.count}）</option>`).join('');
+      const q = document.createElement('input');
+      q.type = 'search';
+      q.placeholder = '医療機関名で探す';
+      q.disabled = true;
+      const list = document.createElement('div');
+      list.className = 'dictlist';
+      list.hidden = true;
+      box.appendChild(pref); box.appendChild(q); box.appendChild(list);
+      wrap.appendChild(box);
+
+      // 住所から都道府県が分かれば最初から選んでおく
+      const addr = (this.record.fields.clinic_address || {}).value || '';
+      const guess = idx.prefectures.find(p => String(addr).startsWith(p.pref));
+      let entries = null;
+
+      const load = async name => {
+        if (!name) { entries = null; q.disabled = true; return; }
+        q.disabled = true;
+        q.placeholder = `${name} を読み込んでいます…`;
+        try {
+          const d = await fetch(`${base}/dict/hospitals/${encodeURIComponent(name)}.json`)
+            .then(r => r.json());
+          entries = d.entries || [];
+          q.placeholder = `${name}の医療機関から探す（${entries.length}件）`;
+          q.disabled = false;
+        } catch (err) {
+          entries = null;
+          q.placeholder = '一覧を読み込めませんでした';
+        }
+      };
+      const draw = () => {
+        if (!entries) { list.hidden = true; return; }
+        const N = global.IkenshoDicts.normalize;
+        const key = N(q.value || input.value || '');
+        let hits = key
+          ? entries.filter(h => N(h.name).includes(key)).slice(0, 40)
+          : entries.slice(0, 40);
+        if (key && hits.length < 8) {
+          const more = entries
+            .map(h => ({ h, s: global.IkenshoDicts.similarity(key, h.name) }))
+            .filter(x => x.s >= 0.5).sort((a, b) => b.s - a.s).slice(0, 20).map(x => x.h);
+          for (const h of more) if (!hits.includes(h)) hits.push(h);
+        }
+        list.hidden = false;
+        if (!hits.length) { list.innerHTML = '<div class="none">該当なし</div>'; return; }
+        list.replaceChildren();
+        for (const h of hits) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'dictitem';
+          b.innerHTML = `${esc(h.name)}<span class="icd">${esc(h.address || '')}</span>`;
+          b.addEventListener('click', () => {
+            input.value = h.name;
+            input.dispatchEvent(new Event('input'));
+            this.applyHospital(h);
+            list.hidden = true;
+          });
+          list.appendChild(b);
+        }
+      };
+      pref.addEventListener('change', async () => { await load(pref.value); draw(); });
+      q.addEventListener('focus', draw);
+      q.addEventListener('input', draw);
+      q.addEventListener('blur', () => setTimeout(() => { list.hidden = true; }, 200));
+      if (guess) { pref.value = guess.pref; await load(guess.pref); }
+    }
+
+    /** 選んだ医療機関の所在地・電話を、対応する欄に入れる。 */
+    applyHospital(h) {
+      const set = (id, value) => {
+        const e = this.record.fields[id];
+        if (!e || !value) return;
+        e.value = value;
+        e.edited = true;
+        e.level = 'edited';
+      };
+      set('clinic_address', h.address);
+      set('clinic_phone', h.phone);
+      this.app.toast(`${h.name} の所在地と電話番号を入れました`);
+      this.app.touch();
+      this.renderFields();
+      const el = this.fieldsEl.querySelector('.field[data-field="clinic_name"]');
+      if (el) this.focusField('clinic_name', el);
     }
 
     /**
