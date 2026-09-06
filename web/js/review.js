@@ -156,6 +156,13 @@
           w.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
     }
 
+    /** 操作ログに1件残す。対象の件名は自動で付ける。 */
+    op(action, detail) {
+      const L = global.IkenshoOpLog;
+      if (!L) return;
+      L.add(action, Object.assign({ record: L.recordLabel(this.record) }, detail || {}));
+    }
+
     /** 「匿名化加工済みデータ」ボタン。氏名は匿名化済み、住所などはマスク済みにする。 */
     toggleAnonymize() {
       if (!this.record) return;
@@ -167,6 +174,10 @@
         const n = A.apply(this.record, this.app.schema, true);
         this.app.toast(`${n} 項目を匿名化加工済みデータとして扱います`);
       }
+      this.op('anonymize', {
+        note: this.record.anonymized ? '適用' : '解除',
+        count: this.record.anonymized ? undefined : undefined,
+      });
       this.app.touch();
       this.renderFields();
       this.updateAnonButton();
@@ -217,6 +228,7 @@
         if (e && !e.confirmed) { e.confirmed = true; n++; }
       }
       this.app.toast(`${n} 項目を確定しました`);
+      this.op('confirm_visible', { count: n });
       this.app.touch();
       this.renderFields();
     }
@@ -273,13 +285,14 @@
       all.addEventListener('click', ev => {
         ev.stopPropagation();
         for (const m of members) this.record.fields[m.id].confirmed = true;
+        this.op('confirm_group', { label: title, count: members.length });
         this.app.touch();
         this.renderFields();
       });
       head.appendChild(all);
       box.appendChild(head);
       for (const m of members) {
-        box.appendChild(this.fieldRow(m, this.record.fields[m.id]));
+        box.appendChild(this.fieldRow(m, this.record.fields[m.id], title));
       }
       return box;
     }
@@ -373,6 +386,21 @@
       this.renderHotspots();
     }
 
+    /**
+     * グループの中では、見出しと重なる部分を落として短く出す。
+     * 様式の「□褥瘡（部位：　　　　程度：□軽□中□重）」のように、
+     * ひとかたまりで書かれているものを画面でも1つに見せる。
+     */
+    shortLabel(f, groupTitle) {
+      if (!groupTitle) return f.label;
+      const t = String(groupTitle).trim();
+      let s = String(f.label).trim();
+      if (s.startsWith(t)) s = s.slice(t.length).trim();
+      if (s === f.label.trim()) return f.label;      // 前置きが違う場合はそのまま
+      if (!s) return f.type === 'flag' ? '有無' : f.label;
+      return s;
+    }
+
     needsCheck(e) {
       if (e.anonymized || e.confirmed) return false;
       return !e.edited && (e.level === 'low' || e.level === 'medium');
@@ -387,7 +415,7 @@
       return e.level;
     }
 
-    fieldRow(f, e) {
+    fieldRow(f, e, groupTitle) {
       const el = document.createElement('div');
       const level = this.levelOf(e);
       el.className = `field lv-${level}`;
@@ -399,7 +427,7 @@
         ? `<span class="conf ${level}"><span class="dot"></span>${LEVEL_LABEL[level]}</span>`
         : `<span class="conf ${level}"><span class="dot"></span>${LEVEL_LABEL[level]} ${
              (e.confidence * 100).toFixed(0)}%</span>`;
-      head.innerHTML = `<span class="lbl">${esc(f.label)}</span>${badge}`;
+      head.innerHTML = `<span class="lbl">${esc(this.shortLabel(f, groupTitle))}</span>${badge}`;
 
       // 内容を見て問題なければ「確定」にする。確認済みかどうかが一目で分かる。
       const check = document.createElement('button');
@@ -411,6 +439,10 @@
       check.addEventListener('click', ev => {
         ev.stopPropagation();
         e.confirmed = !e.confirmed;
+        this.op(e.confirmed ? 'confirm' : 'unconfirm', {
+          field: f.id, label: f.label,
+          conf: e.confidence == null ? null : Math.round(e.confidence * 100),
+        });
         const lv = this.levelOf(e);
         el.className = `field lv-${lv} active`;
         const bd = el.querySelector('.conf');
@@ -432,6 +464,12 @@
       clear.title = 'この欄を空にして確定します（記入が無い欄に文字が入った場合に使います）';
       clear.addEventListener('click', ev => {
         ev.stopPropagation();
+        const L = global.IkenshoOpLog;
+        this.op('clear_confirm', {
+          field: f.id, label: f.label,
+          before: L ? L.shape(e.date || e.value, f.pii) : '', after: '',
+          blen: L ? L.len(e.date || e.value) : null, alen: 0,
+        });
         e.value = (f.type === 'multi') ? [] : (f.type === 'flag' ? false : null);
         if (f.kind === 'date_wareki') e.date = { year: null, month: null, day: null };
         e.gregorian = null;
@@ -480,7 +518,12 @@
 
     control(f, e, rowEl) {
       const wrap = document.createElement('div');
+      const L = global.IkenshoOpLog;
+      const src = e.date || e.value;
+      const before = Array.isArray(src) ? src.slice()
+        : (src && typeof src === 'object' ? Object.assign({}, src) : src);
       const mark = () => {
+        if (L) L.edit(this.record, f, e, before);
         e.edited = true;
         e.level = 'edited';
         rowEl.className = 'field lv-edited active';
@@ -596,6 +639,7 @@
           if (fixed !== input.value) {
             input.value = fixed;
             input.dispatchEvent(new Event('input'));
+            this.op('kana_fix', { field: f.id, label: f.label });
             this.app.toast('ふりがなをひらがなに直しました');
           }
         });
@@ -804,6 +848,10 @@
       };
       set('clinic_address', h.address);
       set('clinic_phone', h.phone);
+      this.op('hospital', {
+        field: 'clinic_name', label: '医療機関名', after: h.name,
+        note: '所在地・電話も入力',
+      });
       this.app.toast(`${h.name} の所在地と電話番号を入れました`);
       this.app.touch();
       this.renderFields();
@@ -843,7 +891,10 @@
             : '<span class="mic"></span> 音声で入力';
           state.textContent = kind === 'listening' ? '話してください…' : (message || '');
           state.className = 'dictstate' + (kind === 'error' ? ' err' : '');
-          if (kind === 'stopped') mark();
+          if (kind === 'stopped') {
+            mark();
+            this.op('dictation', { field: f.id, label: f.label });
+          }
         },
       });
       btn.addEventListener('click', ev => {
@@ -955,6 +1006,14 @@
           b.title = 'LLMが提示した候補です。内容を確認してから採用してください。';
         }
         b.addEventListener('click', () => {
+          const L = global.IkenshoOpLog;
+          this.op('candidate', {
+            field: f.id, label: f.label,
+            before: L ? L.shape(e.value, f.pii) : '',
+            after: L ? L.shape(it.value, f.pii) : '',
+            blen: L ? L.len(e.value) : null, alen: L ? L.len(it.value) : null,
+            note: { llm: 'LLM候補', raw: 'OCR生読み' }[it.source] || '辞書候補',
+          });
           input.value = it.value;
           input.dispatchEvent(new Event('input'));
           input.focus();

@@ -2,8 +2,10 @@
 (function (global) {
   'use strict';
   const esc = s => global.IkenshoUtil.esc(s);
-  const STORAGE_KEY = 'ikensho.records.v1';
-  const SETTINGS_KEY = 'ikensho.settings.v1';
+  // 保存先は利用者のトークンごとに分ける（同じ端末を複数人が使っても履歴が混ざらない）
+  const S = () => global.IkenshoSession;
+  const STORAGE_KEY = () => S().key('ikensho.records.v1');
+  const SETTINGS_KEY = () => S().key('ikensho.settings.v1');
   const DEFAULT_SETTINGS = { EMPTY_MAX: 0.10, FILLED_MIN: 0.28, CONF_HIGH: 0.80, CONF_MID: 0.50, MIN_INLIERS: 25 };
 
   class App {
@@ -11,7 +13,7 @@
       this.files = [];
       this.records = [];
       this.current = 0;
-      this.settings = Object.assign({}, DEFAULT_SETTINGS, readJson(SETTINGS_KEY) || {});
+      this.settings = Object.assign({}, DEFAULT_SETTINGS, readJson(SETTINGS_KEY()) || {});
       this.pipeline = new global.IkenshoPipeline({ dataBase: 'data', vendorBase: 'vendor' });
       this.review = null;
       this.admin = null;
@@ -78,6 +80,8 @@
       document.getElementById('btn-export-json-one').addEventListener('click', () => {
         const r = this.records[this.current];
         if (!r) return this.toast('出力する件がありません', true);
+        if (global.IkenshoOpLog) global.IkenshoOpLog.flush();
+        this.op('export', { count: 1, note: 'JSON（1件）' });
         global.IkenshoExport.exportJson([r], this.schema,
           `ikensho_${this.recordTitle(r) || 'record'}.json`);
       });
@@ -180,11 +184,21 @@
       document.getElementById('btn-run').disabled = this.files.length === 0;
     }
 
+    /** 操作ログに1件残す。 */
+    op(action, detail) {
+      if (global.IkenshoOpLog) global.IkenshoOpLog.add(action, detail || {});
+    }
+
     // ------------------------------------------------------------ 実行
     async run() {
       const btn = document.getElementById('btn-run');
       const prog = document.getElementById('prog');
       btn.disabled = true; prog.hidden = false; prog.value = 0;
+      const started = Date.now();
+      this.op('read_start', {
+        count: this.files.length,
+        note: this.files.map(f => f.name).slice(0, 5).join('、'),
+      });
       this.pipeline.ocrEnabled = document.getElementById('opt-ocr').checked;
       const split = document.getElementById('opt-split').checked;
 
@@ -217,9 +231,14 @@
         this.review.show(this.records[this.current]);
         this.files = []; this.renderFiles();
         this.setStatus(`読み取りが完了しました（${groups.length} 件）。確認・編集に進んでください。`);
+        this.op('read_done', {
+          count: groups.length,
+          note: `${((Date.now() - started) / 1000).toFixed(1)}秒 / ${pages.length}ページ`,
+        });
         this.showView('review');
       } catch (e) {
         console.error(e);
+        this.op('read_error', { note: e.message });
         this.setStatus('読み取り中にエラーが発生しました: ' + e.message, true);
       } finally {
         btn.disabled = this.files.length === 0;
@@ -264,12 +283,12 @@
           delete c.images;
           return c;
         });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
+        localStorage.setItem(STORAGE_KEY(), JSON.stringify(slim));
       } catch (e) { /* 容量超過時は保存しない */ }
     }
 
     restore() {
-      const saved = readJson(STORAGE_KEY);
+      const saved = readJson(STORAGE_KEY());
       if (Array.isArray(saved) && saved.length) {
         this.records = saved.map(r => Object.assign({ images: {} }, r));
         this.current = 0;
@@ -282,7 +301,7 @@
 
     saveSettings() {
       global.IkenshoEngine.setThresholds(this.settings);
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(this.settings));
+      localStorage.setItem(SETTINGS_KEY(), JSON.stringify(this.settings));
     }
 
     // ------------------------------------------------------------ 一覧
@@ -342,6 +361,8 @@
 
     exportAll(kind) {
       if (!this.records.length) return this.setExportStatus('出力する件がありません', true);
+      if (global.IkenshoOpLog) global.IkenshoOpLog.flush();   // 打ちかけの修正も記録に残す
+      this.op('export', { count: this.records.length, note: kind.toUpperCase() });
       if (kind === 'json') global.IkenshoExport.exportJson(this.records, this.schema);
       else global.IkenshoExport.exportCsv(this.records, this.schema);
       this.setExportStatus(`${this.records.length} 件を${kind === 'json' ? 'JSON' : 'CSV'}で保存しました`);
@@ -355,6 +376,7 @@
         const recs = global.IkenshoExport.importJson(payload, this.schema);
         this.records = this.records.concat(recs);
         this.persist(); this.refreshRecordSelect(); this.renderRecords();
+        this.op('import', { count: recs.length, note: file.name });
         this.setExportStatus(`${recs.length} 件を読み込みました`);
       } catch (e) {
         this.setExportStatus('読み込みに失敗しました: ' + e.message, true);

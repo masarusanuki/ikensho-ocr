@@ -55,6 +55,36 @@
         this.app.saveSettings(); this.renderThresholds();
       });
 
+      // 利用者のトークン（保存先を人ごとに分ける）
+      document.getElementById('btn-token-copy').addEventListener('click', () => this.copyToken());
+      document.getElementById('btn-token-new').addEventListener('click', () => this.newToken());
+      document.getElementById('btn-token-use').addEventListener('click', () => this.useToken());
+
+      // 操作ログ
+      document.getElementById('oplog-values').addEventListener('change', e => {
+        global.IkenshoOpLog.keepValues = e.target.checked;
+        this.app.toast(e.target.checked
+          ? '以後の操作は値も記録します' : '以後の操作は値を記録しません（文字数のみ）');
+      });
+      document.getElementById('btn-oplog-json').addEventListener('click', () => {
+        global.IkenshoOpLog.flush();
+        global.IkenshoExport.download(`ikensho_oplog_${global.IkenshoSession.short()}.json`,
+          global.IkenshoOpLog.toJson(), 'application/json;charset=utf-8');
+        this.renderOpLog();
+      });
+      document.getElementById('btn-oplog-csv').addEventListener('click', () => {
+        global.IkenshoOpLog.flush();
+        global.IkenshoExport.download(`ikensho_oplog_${global.IkenshoSession.short()}.csv`,
+          global.IkenshoOpLog.toCsv(), 'text/csv;charset=utf-8');
+        this.renderOpLog();
+      });
+      document.getElementById('btn-oplog-clear').addEventListener('click', () => {
+        if (!confirm('この端末に残っている操作ログを消します。元に戻せません。よろしいですか？')) return;
+        global.IkenshoOpLog.clear();
+        this.renderOpLog();
+        this.app.toast('操作ログを消去しました');
+      });
+
       const canvas = document.getElementById('tpl-canvas');
       canvas.addEventListener('pointerdown', e => this.onDown(e));
       canvas.addEventListener('pointermove', e => this.onMove(e));
@@ -83,6 +113,91 @@
       this.renderTemplate();
       this.renderDict();
       this.renderThresholds();
+      this.renderToken();
+      this.renderOpLog();
+    }
+
+    // ------------------------------------------------------ 利用者トークン
+    renderToken() {
+      document.getElementById('token-view').textContent = global.IkenshoSession.token;
+      const others = global.IkenshoSession.known().length - 1;
+      this.setTokenStatus(others > 0
+        ? `この端末には、ほかに ${others} 人分の記録が残っています（トークンを入れないと見えません）`
+        : 'この端末の記録はこのトークンの分だけです');
+    }
+
+    setTokenStatus(msg, isError) {
+      const el = document.getElementById('token-status');
+      el.textContent = msg;
+      el.className = 'status' + (isError ? ' err' : '');
+    }
+
+    async copyToken() {
+      const t = global.IkenshoSession.token;
+      try {
+        await navigator.clipboard.writeText(t);
+        this.setTokenStatus('トークンをコピーしました');
+      } catch (e) {
+        this.setTokenStatus('コピーできませんでした。手で控えてください: ' + t, true);
+      }
+    }
+
+    newToken() {
+      if (!confirm('新しいトークンを発行します。\n'
+        + '今の読み取り結果と操作ログは、この画面からは見えなくなります。\n'
+        + '（消えるわけではなく、元のトークンを入れ直せば戻せます）\n\n'
+        + '今のトークン: ' + global.IkenshoSession.token)) return;
+      global.IkenshoSession.reissue();
+      location.reload();
+    }
+
+    useToken() {
+      const v = document.getElementById('token-input').value;
+      try {
+        global.IkenshoSession.use(v);
+      } catch (e) {
+        return this.setTokenStatus(e.message, true);
+      }
+      location.reload();
+    }
+
+    // ---------------------------------------------------------- 操作ログ
+    renderOpLog() {
+      const L = global.IkenshoOpLog;
+      document.getElementById('oplog-values').checked = L.keepValues;
+
+      const s = L.summary();
+      const dl = document.getElementById('oplog-summary');
+      const top = s.よく直した項目.map(([name, n]) => `${esc(name)}（${n}）`).join('、') || 'なし';
+      dl.innerHTML = [
+        ['記録件数', `${s.件数} 件`],
+        ['読み取った件数', `${s.読み取り} 件`],
+        ['修正した項目', `${s.修正} 回`],
+        ['確定した項目', `${s.確定} 件`],
+        ['削除して確定', `${s.削除して確定} 件`],
+        ['候補から採用', `${s.候補採用} 回`],
+        ['音声入力', `${s.音声入力} 回`],
+        ['書き出し', `${s.書き出し} 回`],
+        ['直した文字数（合計）', `${s.文字の増減} 文字`],
+        ['よく直した項目', top],
+      ].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v === top ? v : esc(v)}</dd>`).join('');
+
+      const tb = document.querySelector('#oplog-table tbody');
+      const rows = L.entries.slice(-200).reverse();
+      if (!rows.length) {
+        tb.innerHTML = '<tr><td class="hint">まだ記録がありません</td></tr>';
+        return;
+      }
+      tb.innerHTML = rows.map(e => {
+        const when = e.t.slice(0, 19).replace('T', ' ');
+        const what = [e.label || e.field || '', e.note || ''].filter(Boolean).join(' / ');
+        const diff = (e.before || e.after)
+          ? `${esc(e.before || '（空）')} → ${esc(e.after || '（空）')}` : '';
+        return `<tr><td style="white-space:nowrap">${esc(when)}</td>` +
+          `<td style="white-space:nowrap">${esc(L.label(e.action))}</td>` +
+          `<td>${esc(what)}${e.count ? `（${e.count}件）` : ''}</td>` +
+          `<td>${diff}</td></tr>`;
+      }).join('');
     }
 
     /**
