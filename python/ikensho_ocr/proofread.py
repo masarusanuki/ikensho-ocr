@@ -164,6 +164,34 @@ def japanese_score(text: str) -> float:
     return round(min(1.0, ratio_valid * 0.6 + min(ratio_jp * 2.0, 1.0) * 0.4), 3)
 
 
+def katakana_to_hiragana(text: str) -> str:
+    """カタカナをひらがなに直す。長音符や記号はそのまま残す。"""
+    out = []
+    for ch in text or "":
+        code = ord(ch)
+        if 0x30A1 <= code <= 0x30F6:      # ァ〜ヶ
+            out.append(chr(code - 0x60))
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def to_furigana(text: str) -> Tuple[str, Optional[Correction]]:
+    """ふりがな欄をひらがなに揃える。
+
+    様式は「（ふりがな）」なのでひらがなが正だが、カタカナで書かれることも多い。
+    直した場合は、何をしたか分かるように記録を返す。
+    """
+    t = (text or "").strip()
+    if not t:
+        return t, None
+    converted = katakana_to_hiragana(t)
+    if converted == t:
+        return t, None
+    return converted, Correction(t, converted,
+                                 "様式は「ふりがな」なので、カタカナをひらがなに直しました")
+
+
 def proofread_text(text: str, multiline: bool = False) -> ProofResult:
     """規則ベースの日本語チェックと誤字訂正。LLM は使わない。"""
     if not text or not text.strip():

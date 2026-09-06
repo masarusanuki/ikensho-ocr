@@ -301,6 +301,14 @@ def extract_record(paths: List[str],
                 entry = dict(value=corrected, confidence=round(conf, 3),
                              raw=res.text, candidates=cands, empty=False,
                              engine=res.engine)
+            # ふりがな欄はひらがなに揃える（様式が「ふりがな」のため）
+            if f.charset == "kana" and entry.get("value"):
+                fixed, note = proofread.to_furigana(entry["value"])
+                if note is not None:
+                    entry["value"] = fixed
+                    entry.setdefault("corrections", []).append(
+                        dict(before=note.before, after=note.after, reason=note.reason))
+
             # 日本語チェックの結果を記録する（訂正は辞書照合の前に済ませている）
             if pr.corrections:
                 entry["corrections"] = [dict(before=c.before, after=c.after,
@@ -316,7 +324,11 @@ def extract_record(paths: List[str],
                 lp = proofread.proofread_with_llm(assist, entry["value"], f.label)
                 if lp:
                     entry.setdefault("candidates", []).insert(
-                        0, dict(value=lp.text, score=None, source="llm", note=lp.note))
+                        0, dict(value=entry["value"], score=None, source="raw",
+                                note="LLM補正前の読み取り"))
+                    entry["value"] = lp.text
+                    entry["llm_applied"] = True
+                    entry["note"] = lp.note
 
             # 辞書で決めきれなかった欄だけ、小型LLMに候補を選ばせる（自動採用はしない）
             if assist and llm_left > 0 and _llm_worth_asking(entry):
@@ -329,6 +341,13 @@ def extract_record(paths: List[str],
                         0, dict(value=sug.value, score=None, source="llm",
                                 note=sug.note))
                     entry["llm_candidate"] = sug.value
+                    # LLM の結果を採用する。出力は辞書に載っている語に限っているので
+                    # 書かれていない病名を作り出すことはない。
+                    # 元の読み取りは raw に残し、画面には「LLMが補正」と出す。
+                    entry["value"] = sug.value
+                    entry["llm_applied"] = True
+                    entry["confidence"] = max(entry.get("confidence", 0.0), 0.55)
+                    entry["note"] = "LLMが補正しました。原文と見比べて確認してください。"
             if t.get("transferred"):
                 # 別様式から機械的に写した暫定位置。枠がずれている可能性がある
                 entry["confidence"] = round(entry["confidence"] * 0.5, 3)

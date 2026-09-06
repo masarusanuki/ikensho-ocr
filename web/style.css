@@ -17,8 +17,9 @@
   --edited-bg: #f1e9fd;
   --anon: #0f5f6e;
   --anon-bg: #e2f2f5;
-  --done: #0b6b34;
-  --done-bg: #dcf3e5;
+  /* 確定は黄緑。確信度「高」の緑と見分けがつくようにする */
+  --done: #5f8a09;
+  --done-bg: #f0f7dc;
   --shadow: 0 1px 3px rgba(16, 24, 40, .08), 0 1px 2px rgba(16, 24, 40, .06);
 }
 
@@ -121,9 +122,21 @@ progress { width: 100%; height: 8px; }
   border: 1px solid var(--border); cursor: crosshair;
 }
 .imagepane img { display: block; width: 100%; }
-.imagepane .hot { position: absolute; background: transparent; cursor: pointer; }
-.imagepane .hot:hover { background: rgba(30, 90, 168, .18);
-                        outline: 1px solid rgba(30, 90, 168, .55); }
+/* 画像側にも右と同じ判定色を付ける。どこが要確認か一目で分かるようにする。 */
+.imagepane .hot { position: absolute; cursor: pointer; border-radius: 2px;
+                  background: transparent; transition: background .12s; }
+.imagepane .hot.hv-high   { background: rgba(26, 127, 75, .13); }
+.imagepane .hot.hv-medium { background: rgba(200, 130, 10, .20); }
+.imagepane .hot.hv-low    { background: rgba(200, 40, 30, .20); }
+.imagepane .hot.hv-edited { background: rgba(91, 33, 182, .18); }
+.imagepane .hot.hv-anon   { background: rgba(15, 95, 110, .18); }
+.imagepane .hot.hv-done   { background: rgba(95, 138, 9, .16); }
+.imagepane .hot:hover { background: rgba(30, 90, 168, .30);
+                        outline: 1px solid rgba(30, 90, 168, .70); }
+.imagepane .hot.sel { outline: 2px solid #ff9f0a; background: rgba(255, 159, 10, .22); }
+.imagepane .frame.plain .hot { background: transparent; }
+.imagepane .legendrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+                        margin-top: 8px; font-size: 11.5px; color: var(--muted); }
 .fieldpane { max-height: calc(100vh - 92px); overflow: auto; padding-right: 4px; }
 @media (max-width: 1080px) {
   .imagepane { position: static; max-height: none; }
@@ -157,10 +170,14 @@ progress { width: 100%; height: 8px; }
 .field.lv-low    { border-left-color: var(--low);    background: #fef6f5; }
 .field.lv-edited { border-left-color: var(--edited); background: #f9f6fe; }
 .field.lv-anon   { border-left-color: var(--anon);   background: #f2fafb; }
-/* 確定した項目は、確認済みだと一目で分かるようにする */
-.field.lv-done   { border-left-color: var(--done);  background: #eef9f2;
-                   border-color: #bfe3cd; }
-.field.lv-done:hover { background: #e5f5ec; }
+/* 確定した項目は、確認済みだと一目で分かるようにする（確信度の緑とは別の黄緑） */
+.field.lv-done   { border-left-color: var(--done);  background: #fafcef;
+                   border-color: #dbe7b5; }
+.field.lv-done:hover { background: #f5f9e4; }
+.clearfix { border: 1px solid var(--border); background: #fff; color: var(--muted);
+            border-radius: 999px; padding: 2px 10px; font-size: 11.5px; font-weight: 600;
+            cursor: pointer; white-space: nowrap; }
+.clearfix:hover { background: var(--low-bg); color: var(--low); border-color: var(--low); }
 .confirm { border: 1px solid var(--border); background: #fff; color: var(--muted);
            border-radius: 999px; padding: 2px 11px; font-size: 11.5px; font-weight: 700;
            cursor: pointer; white-space: nowrap; }
@@ -185,6 +202,9 @@ progress { width: 100%; height: 8px; }
   outline: 2px solid var(--accent-weak); border-color: var(--accent);
 }
 .opts { display: flex; flex-wrap: wrap; gap: 5px; }
+/* 選択肢は様式と同じ行・列で並べる（原本と見比べやすくするため） */
+.opts.rows { flex-direction: column; align-items: flex-start; gap: 5px; }
+.optrow { display: flex; flex-wrap: wrap; gap: 5px; }
 .opt {
   display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border);
   border-radius: 999px; padding: 3px 11px; font-size: 12.5px; cursor: pointer; background: #fff;

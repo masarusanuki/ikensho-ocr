@@ -32,6 +32,9 @@
         this.onlyLow = e.target.checked;
         this.renderFields();
       });
+      document.getElementById('opt-overlay').addEventListener('change', e => {
+        document.getElementById('frame').classList.toggle('plain', !e.target.checked);
+      });
       document.getElementById('btn-anon').addEventListener('click', () => this.toggleAnonymize());
       document.getElementById('btn-next-low').addEventListener('click', () => this.jumpLow(1));
       document.getElementById('btn-prev-low').addEventListener('click', () => this.jumpLow(-1));
@@ -82,13 +85,21 @@
       spots.sort((a, b) => (b.rect[2] * b.rect[3]) - (a.rect[2] * a.rect[3]));
       for (const s of spots) {
         const el = document.createElement('div');
-        el.className = 'hot';
+        // 画像側にも右と同じ判定色を付けて、どこが要確認か一目で分かるようにする
+        const entry = this.record.fields[s.field];
+        el.className = 'hot' + (entry ? ' hv-' + this.levelOf(entry) : '');
         el.style.left = (s.rect[0] * 100) + '%';
         el.style.top = (s.rect[1] * 100) + '%';
         el.style.width = (s.rect[2] * 100) + '%';
         el.style.height = (s.rect[3] * 100) + '%';
         const f = this.app.schema.byId[s.field];
         el.title = f ? f.label : s.field;
+        if (entry) {
+          const lv = this.levelOf(entry);
+          el.title += `（${LEVEL_LABEL[lv] || lv}${
+            lv === 'done' || lv === 'anon' ? '' : ' ' + (entry.confidence * 100).toFixed(0) + '%'}）`;
+        }
+        el.dataset.field = s.field;
         el.addEventListener('click', ev => {
           ev.stopPropagation();
           this.jumpTo(s.field);
@@ -200,6 +211,33 @@
       this.renderFields();
     }
 
+    /**
+     * 選択肢を、様式の上での並び（行と順序）どおりに返す。
+     * 原本と見比べながら直せるよう、画面でも同じ形にする。
+     */
+    optionRows(f) {
+      const tpl = this.app.pipeline.templates[this.record.templateId];
+      if (!tpl) return null;
+      let boxes = null;
+      for (const p of tpl.pages) {
+        const bs = p.boxes.filter(b => b.field === f.id);
+        if (bs.length) { boxes = bs; break; }
+      }
+      if (!boxes || boxes.length !== (f.options || []).length) return null;
+      const items = boxes.map(b => ({ opt: b.opt, x: b.rect[0], y: b.rect[1],
+                                      h: b.rect[3] }));
+      items.sort((a, b) => a.y - b.y || a.x - b.x);
+      const rows = [];
+      let cur = [items[0]];
+      for (const it of items.slice(1)) {
+        const top = Math.min(...cur.map(c => c.y));
+        if (it.y - top > (it.h || 0.01) * 0.8) { rows.push(cur); cur = []; }
+        cur.push(it);
+      }
+      rows.push(cur);
+      return rows.map(r => r.sort((a, b) => a.x - b.x).map(i => i.opt));
+    }
+
     /** 様式上の位置（ページ→上から下→左から右）を項目ごとに求める。 */
     positionIndex() {
       if (this._posIndex && this._posTpl === this.record.templateId) return this._posIndex;
@@ -271,6 +309,7 @@
       }
       this.fieldsEl.replaceChildren(frag);
       this.updateStats();
+      this.renderHotspots();
     }
 
     needsCheck(e) {
@@ -323,6 +362,28 @@
         this.app.touch();
         this.updateStats();
       });
+      // 何も書かれていない欄にOCRが文字を入れてしまうことがあるので、
+      // 「消してから確定」を1操作でできるようにする。
+      const clear = document.createElement('button');
+      clear.type = 'button';
+      clear.className = 'clearfix';
+      clear.textContent = '削除して確定';
+      clear.title = 'この欄を空にして確定します（記入が無い欄に文字が入った場合に使います）';
+      clear.addEventListener('click', ev => {
+        ev.stopPropagation();
+        e.value = (f.type === 'multi') ? [] : (f.type === 'flag' ? false : null);
+        if (f.kind === 'date_wareki') e.date = { year: null, month: null, day: null };
+        e.gregorian = null;
+        e.raw = '';
+        e.candidates = [];
+        e.edited = true;
+        e.confirmed = true;
+        this.app.touch();
+        this.renderFields();
+        const again = this.fieldsEl.querySelector(`.field[data-field="${f.id}"]`);
+        if (again) this.focusField(f.id, again);
+      });
+      head.appendChild(clear);
       head.appendChild(check);
       el.appendChild(head);
 
@@ -369,10 +430,11 @@
       };
 
       if (f.type === 'choice' || f.type === 'circle') {
+        const rows = (f.type === 'choice') ? this.optionRows(f) : null;
         const opts = document.createElement('div');
-        opts.className = 'opts';
+        opts.className = rows ? 'opts rows' : 'opts';
         const detail = e.detail || [];
-        (f.options || []).forEach((o, i) => {
+        const makeBtn = (o, i) => {
           const d = detail.find(x => x.opt === i);
           const b = document.createElement('button');
           b.type = 'button';
@@ -385,18 +447,29 @@
             if (e.value === o) b.classList.add('on');
             mark();
           });
-          opts.appendChild(b);
-        });
+          return b;
+        };
+        if (rows) {
+          for (const row of rows) {
+            const line = document.createElement('div');
+            line.className = 'optrow';
+            for (const i of row) line.appendChild(makeBtn(f.options[i], i));
+            opts.appendChild(line);
+          }
+        } else {
+          (f.options || []).forEach((o, i) => opts.appendChild(makeBtn(o, i)));
+        }
         wrap.appendChild(opts);
         return wrap;
       }
 
       if (f.type === 'multi') {
+        const rows = this.optionRows(f);
         const opts = document.createElement('div');
-        opts.className = 'opts';
+        opts.className = rows ? 'opts rows' : 'opts';
         const detail = e.detail || [];
         const cur = new Set(Array.isArray(e.value) ? e.value : []);
-        (f.options || []).forEach((o, i) => {
+        const makeBtn = (o, i) => {
           const d = detail.find(x => x.opt === i);
           const b = document.createElement('button');
           b.type = 'button';
@@ -409,8 +482,18 @@
             e.value = (f.options || []).filter(x => cur.has(x));
             mark();
           });
-          opts.appendChild(b);
-        });
+          return b;
+        };
+        if (rows) {
+          for (const row of rows) {
+            const line = document.createElement('div');
+            line.className = 'optrow';
+            for (const i of row) line.appendChild(makeBtn(f.options[i], i));
+            opts.appendChild(line);
+          }
+        } else {
+          (f.options || []).forEach((o, i) => opts.appendChild(makeBtn(o, i)));
+        }
         wrap.appendChild(opts);
         return wrap;
       }
@@ -445,6 +528,17 @@
         mark();
         this.renderCandidates(f, e, wrap, input);
       });
+      if (f.charset === 'kana') {
+        // 様式は「ふりがな」なので、カタカナで入っていたらひらがなに直す
+        input.addEventListener('blur', () => {
+          const fixed = toHiragana(input.value);
+          if (fixed !== input.value) {
+            input.value = fixed;
+            input.dispatchEvent(new Event('input'));
+            this.app.toast('ふりがなをひらがなに直しました');
+          }
+        });
+      }
       wrap.appendChild(input);
       this.renderCandidates(f, e, wrap, input);
       if (!isArea) this.renderSearch(f, e, wrap, input);
@@ -660,6 +754,10 @@
     // ------------------------------------------------- 元画像との突き合わせ
     focusField(fieldId, el) {
       this.fieldsEl.querySelectorAll('.field.active').forEach(x => x.classList.remove('active'));
+      const host = document.getElementById('hotspots');
+      if (host) {
+        host.querySelectorAll('.hot.sel').forEach(x => x.classList.remove('sel'));
+      }
       if (el) el.classList.add('active');
       this.activeField = fieldId;
       const loc = this.locate(fieldId);
@@ -677,6 +775,11 @@
       this.marker.style.width = (w * 100) + '%';
       this.marker.style.height = (h * 100) + '%';
       this.renderZoom(loc);
+      if (host) {
+        host.querySelectorAll('.hot').forEach(h => {
+          if (h.dataset.field === fieldId) h.classList.add('sel');
+        });
+      }
     }
 
     /** テンプレートから、その項目が画像上のどこにあるかを求める。 */
@@ -737,6 +840,16 @@
       if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); this.focusField(id, el); }
       else this.focusField(id, null);
     }
+  }
+
+  /** カタカナをひらがなに直す。長音符や記号はそのまま。 */
+  function toHiragana(text) {
+    let out = '';
+    for (const ch of String(text || '')) {
+      const c = ch.codePointAt(0);
+      out += (c >= 0x30A1 && c <= 0x30F6) ? String.fromCodePoint(c - 0x60) : ch;
+    }
+    return out;
   }
 
   function isEmptyValue(v) {
