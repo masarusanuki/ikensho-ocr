@@ -267,6 +267,26 @@
     </div>
   </div>
 
+  <div class="panel" id="panel-hospitals" hidden>
+    <h2>医療機関一覧</h2>
+    <p class="hint">
+      確認画面で「医療機関名」を一覧から選ぶために使います。
+      出典は厚生労働省 地方厚生局の「コード内容別医療機関一覧表」で、毎月更新されます。
+      取得には十数分かかります（8つの厚生局から順に取ります）。
+    </p>
+    <dl class="kv" id="hosp-info"></dl>
+    <div class="row" style="margin:12px 0">
+      <button class="btn primary" id="btn-hosp-update">最新版に更新</button>
+      <span class="spacer"></span>
+      <span class="hint" id="hosp-updated"></span>
+    </div>
+    <div id="hosp-progress" hidden>
+      <progress id="hosp-bar" max="47" value="0"></progress>
+      <div class="status" id="hosp-msg"></div>
+    </div>
+    <div class="tplfields" style="max-height:220px"><table id="hosp-table"><tbody></tbody></table></div>
+  </div>
+
   <div class="panel">
     <h2>利用者（この端末のトークン）</h2>
     <p class="hint">

@@ -44,6 +44,90 @@ def _model_dir() -> str:
     return os.path.join(ROOT, "models")
 
 
+# 医療機関一覧の取得状況
+_hosp = dict(status="idle", message="", bureau="", prefs=0, total=0, updated="")
+_hosp_lock = threading.Lock()
+
+
+def _hospital_dir() -> str:
+    return os.path.join(ROOT, "dict", "hospitals")
+
+
+def _hospital_index() -> dict:
+    """今持っている医療機関一覧の状況。"""
+    path = os.path.join(_hospital_dir(), "index.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            idx = json.load(fh)
+    except Exception:
+        return dict(prefectures=[], total=0, updated="", as_of="")
+    prefs = idx.get("prefectures", [])
+    days = sorted({p.get("as_of", "") for p in prefs} - {""})
+    return dict(prefectures=prefs, total=sum(p.get("count", 0) for p in prefs),
+                updated=idx.get("updated", ""),
+                as_of=(days[-1] if days else ""),
+                errors=idx.get("errors", []))
+
+
+def _fetch_hospitals(bureaus=None):
+    """厚生労働省から医療機関一覧を取り直す。進捗は _hosp に書き込む。
+
+    `bureaus` を渡すと、その地方厚生局だけを取り直す。
+    """
+    import importlib.util
+    path = os.path.join(ROOT, "tools", "fetch_hospitals.py")
+    with _hosp_lock:
+        _hosp.update(status="running", message="取得を始めます", bureau="",
+                     prefs=0, total=0)
+    try:
+        spec = importlib.util.spec_from_file_location("fetch_hospitals", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        seen_prefs, total = set(), 0
+
+        def on_progress(info):
+            nonlocal total
+            if info.get("pref"):
+                seen_prefs.add(info["pref"])
+                total += int(info.get("count") or 0)
+            with _hosp_lock:
+                _hosp.update(bureau=info.get("bureau", ""),
+                             message=info.get("message", ""),
+                             prefs=len(seen_prefs), total=total)
+
+        result = mod.run(bureaus or None, out_dir=_hospital_dir(), verbose=False,
+                         progress=on_progress)
+        copied = _publish_hospitals()
+        idx = _hospital_index()
+        msg = f"{result['prefectures']} 都道府県 / {result['total']:,} 件を取得しました"
+        if result.get("errors"):
+            msg += f"（{len(result['errors'])} 件の警告あり）"
+        if not copied:
+            msg += "。配信フォルダには反映していません（ビルドし直してください）"
+        with _hosp_lock:
+            _hosp.update(status="done", message=msg,
+                         prefs=result["prefectures"], total=result["total"],
+                         updated=idx.get("updated", ""))
+    except Exception as exc:
+        with _hosp_lock:
+            _hosp.update(status="error", message=f"取得に失敗しました: {exc}")
+
+
+def _publish_hospitals() -> bool:
+    """取り直した一覧を、配信しているフォルダにも反映する。"""
+    dst = os.path.join(_web_root(), "data", "dict", "hospitals")
+    if not os.path.isdir(os.path.dirname(dst)):
+        return False
+    import shutil
+    os.makedirs(dst, exist_ok=True)
+    for name in os.listdir(_hospital_dir()):
+        if name.endswith(".json"):
+            shutil.copy2(os.path.join(_hospital_dir(), name),
+                         os.path.join(dst, name))
+    return True
+
+
 def _model_choices():
     """選べるモデルの一覧。tools/fetch_llm_model.py の定義を使う。"""
     import importlib.util
@@ -89,6 +173,11 @@ def _download_model(key: str):
             os.remove(tmp)
         with _download_lock:
             _download.update(status="error", message=f"取得に失敗しました: {exc}")
+
+
+def _bureau_names():
+    """取得元の地方厚生局の名前（画面の説明に使う）。"""
+    return ("北海道", "東北", "関東信越", "東海北陸", "近畿", "中国四国", "四国", "九州")
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -145,6 +234,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         for k, v in choices.items()],
                 progress=progress,
             ))
+        if path == "/api/hospitals":
+            with _hosp_lock:
+                progress = dict(_hosp)
+            idx = _hospital_index()
+            return self._json(dict(
+                prefectures=len(idx["prefectures"]),
+                total=idx["total"],
+                updated=idx["updated"],
+                as_of=idx["as_of"],
+                bureaus=list(_bureau_names()),
+                items=[dict(pref=p.get("pref"), count=p.get("count", 0),
+                            as_of=p.get("as_of", "")) for p in idx["prefectures"]],
+                progress=progress,
+            ))
         if path == "/api/suggest":
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self._json(dict(items=Handler.dicts.suggest(
@@ -162,6 +265,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             threading.Thread(target=_download_model, args=(body.get("key", ""),),
                              daemon=True).start()
             return self._json(dict(started=True))
+        if path == "/api/hospitals/update":
+            length = int(self.headers.get("Content-Length") or 0)
+            try:
+                body = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                body = {}
+            bureaus = [b for b in (body.get("bureaus") or []) if isinstance(b, str)]
+            with _hosp_lock:
+                if _hosp["status"] == "running":
+                    return self._json(dict(error="すでに取得中です"), 409)
+            threading.Thread(target=_fetch_hospitals, args=(bureaus,),
+                             daemon=True).start()
+            return self._json(dict(started=True, bureaus=bureaus or "すべて"))
         if path != "/api/extract":
             return self._json(dict(error="not found"), 404)
         length = int(self.headers.get("Content-Length") or 0)

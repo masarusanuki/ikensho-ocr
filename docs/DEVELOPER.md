@@ -467,6 +467,34 @@ htpasswd -D "$DEPLOY/.htpasswd" <ユーザー名>                # 削除
 
 ---
 
+## 9.1.1 医療機関一覧の更新（管理画面）
+
+管理画面の「医療機関一覧」に**最新版に更新**があります。
+押すと厚生労働省の地方厚生局から取り直します（**十数分**かかります。
+その間もほかの操作はできます）。
+
+- **サーバ版（`ikensho serve`）でのみ出ます。** 静的配信ではパネルごと隠れます
+- 取得後は配信フォルダ（`dist/web/data/dict/hospitals/`）にも自動で反映します
+- 取得中にもう一度押しても、二重には走りません（409 を返します）
+- 取れなかった都道府県は**前回の内容を残します**（更新の失敗で消えないように）
+
+コマンドから実行する場合、局を絞れます。
+
+```bash
+python3 tools/fetch_hospitals.py                          # 全国（47都道府県）
+python3 tools/fetch_hospitals.py --bureaus shikoku kyushu # 局を絞る
+```
+
+API で絞ることもできます（1局だけ落ちたときの取り直しに使えます）。
+
+```bash
+curl -X POST http://127.0.0.1:8765/api/hospitals/update \
+     -H 'Content-Type: application/json' -d '{"bureaus":["shikoku"]}'
+curl http://127.0.0.1:8765/api/hospitals    # 状況と進捗
+```
+
+---
+
 ## 9.2 操作ログと利用者トークン（運用）
 
 読み取り結果と操作ログは**ブラウザの中だけ**にあり、サーバには送られません。

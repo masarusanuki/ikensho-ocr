@@ -349,8 +349,17 @@ def harvest(url, default_pref="", verbose=True):
     return got
 
 
-def collect(bureau, conf, verbose=True):
-    """1つの局から、担当する都道府県ぶんを集める。"""
+def collect(bureau, conf, verbose=True, progress=None):
+    """1つの局から、担当する都道府県ぶんを集める。
+
+    `progress` を渡すと、どこまで進んだかを都度知らせる（画面に出すため）。
+    """
+    def notify(**kw):
+        if progress:
+            try:
+                progress(dict(bureau=bureau, **kw))
+            except Exception:
+                pass
     want = set(conf["prefs"])
     # 1県しか扱わない局（北海道）は、表に県名が書かれていないことがある
     only_pref = conf["prefs"][0] if len(conf["prefs"]) == 1 else ""
@@ -362,6 +371,7 @@ def collect(bureau, conf, verbose=True):
     def scan(page_list):
         nonlocal tried
         for page in page_list:
+            notify(message=f"{bureau}: 一覧ページを見ています")
             try:
                 html = fetch_text(page)
             except Exception as exc:
@@ -393,6 +403,8 @@ def collect(bureau, conf, verbose=True):
                         if verbose:
                             print(f"      {p:6s} {len(items):5d} 件  "
                                   f"{as_of or '日付不明'}  ← {os.path.basename(url)}")
+                        notify(pref=p, count=len(items), as_of=as_of,
+                               message=f"{p} {len(items):,} 件")
                 # 九州のように過去の月のファイルが同じページに並ぶ局がある。
                 # ほしい県が最新の基準日で揃っていて、しかも**今読んだものが
                 # 古い基準日だった**なら、以降は古いものしか無いので終わり。
@@ -430,7 +442,7 @@ def collect(bureau, conf, verbose=True):
     return found, errors
 
 
-def run(bureaus=None, out_dir=OUT_DIR, verbose=True):
+def run(bureaus=None, out_dir=OUT_DIR, verbose=True, progress=None):
     os.makedirs(out_dir, exist_ok=True)
     targets = bureaus or list(BUREAUS)
     by_pref, errors = {}, []
@@ -440,7 +452,12 @@ def run(bureaus=None, out_dir=OUT_DIR, verbose=True):
             continue
         if verbose:
             print(f"  {key}")
-        got, errs = collect(key, conf, verbose)
+        if progress:
+            try:
+                progress(dict(bureau=key, message=f"{key} を取得しています"))
+            except Exception:
+                pass
+        got, errs = collect(key, conf, verbose, progress)
         errors.extend(errs)
         for pref, items in got.items():
             by_pref.setdefault(pref, []).extend(items)

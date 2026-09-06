@@ -60,6 +60,8 @@
       document.getElementById('btn-token-new').addEventListener('click', () => this.newToken());
       document.getElementById('btn-token-use').addEventListener('click', () => this.useToken());
       document.getElementById('btn-token-purge').addEventListener('click', () => this.purgeOthers());
+      document.getElementById('btn-hosp-update').addEventListener('click',
+        () => this.updateHospitals());
 
       // 操作ログ
       document.getElementById('oplog-values').addEventListener('change', e => {
@@ -116,6 +118,105 @@
       this.renderThresholds();
       this.renderToken();
       this.renderOpLog();
+      this.renderHospitals();
+    }
+
+    // ------------------------------------------------------ 医療機関一覧
+    /**
+     * 医療機関一覧の状況と「最新版に更新」。
+     * 取得はサーバ側で行うため、`ikensho serve` で開いた場合だけ出す。
+     */
+    async renderHospitals() {
+      const panel = document.getElementById('panel-hospitals');
+      let info;
+      try {
+        const res = await fetch('api/hospitals');
+        if (!res.ok) throw new Error(String(res.status));
+        info = await res.json();
+      } catch (e) {
+        panel.hidden = true;              // 静的配信では更新できない
+        return;
+      }
+      panel.hidden = false;
+      this.hospInfo = info;
+
+      const dl = document.getElementById('hosp-info');
+      dl.innerHTML = [
+        ['収録', `${info.prefectures} / 47 都道府県`],
+        ['件数', `${(info.total || 0).toLocaleString()} 件`],
+        ['基準日', info.as_of || '（不明）'],
+        ['取得元', `厚生労働省 地方厚生局（${(info.bureaus || []).join('・')}）`],
+      ].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+      document.getElementById('hosp-updated').textContent =
+        info.updated ? `最終取得 ${info.updated.slice(0, 16).replace('T', ' ')}` : '';
+
+      const tb = document.querySelector('#hosp-table tbody');
+      const items = info.items || [];
+      tb.innerHTML = items.length
+        ? items.map(x => `<tr><td>${esc(x.pref)}</td>` +
+            `<td style="text-align:right">${(x.count || 0).toLocaleString()}</td>` +
+            `<td style="white-space:nowrap">${esc(x.as_of || '')}</td></tr>`).join('')
+        : '<tr><td class="hint">まだ取得していません</td></tr>';
+
+      const p = info.progress || {};
+      if (p.status === 'running') this.watchHospitals();
+      else if (p.status === 'error') this.setHospMsg(p.message, true);
+    }
+
+    setHospMsg(text, isError) {
+      const box = document.getElementById('hosp-progress');
+      const msg = document.getElementById('hosp-msg');
+      box.hidden = false;
+      msg.textContent = text || '';
+      msg.className = 'status' + (isError ? ' err' : '');
+    }
+
+    async updateHospitals() {
+      const btn = document.getElementById('btn-hosp-update');
+      if (!confirm('厚生労働省から医療機関一覧を取り直します。\n'
+        + '十数分かかります。その間もほかの操作はできます。\n\n続けますか？')) return;
+      btn.disabled = true;
+      btn.textContent = '取得中…';
+      try {
+        const res = await fetch('api/hospitals/update', { method: 'POST' });
+        const r = await res.json();
+        if (r.error) throw new Error(r.error);
+        this.setHospMsg('取得を始めました…');
+        this.watchHospitals();
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = '最新版に更新';
+        this.app.toast('取得を開始できませんでした: ' + e.message, true);
+      }
+    }
+
+    watchHospitals() {
+      const btn = document.getElementById('btn-hosp-update');
+      const bar = document.getElementById('hosp-bar');
+      btn.disabled = true;
+      btn.textContent = '取得中…';
+      clearInterval(this._hospTimer);
+      this._hospTimer = setInterval(async () => {
+        let info;
+        try { info = await fetch('api/hospitals').then(r => r.json()); }
+        catch (e) { return; }
+        const p = info.progress || {};
+        bar.value = p.prefs || 0;
+        this.setHospMsg(
+          `${p.prefs || 0} / 47 都道府県　${(p.total || 0).toLocaleString()} 件`
+          + (p.message ? `　${p.message}` : ''),
+          p.status === 'error');
+        if (p.status === 'running') return;
+        clearInterval(this._hospTimer);
+        btn.disabled = false;
+        btn.textContent = '最新版に更新';
+        if (p.status === 'done') {
+          // 確認画面が持っている読み込み済みの一覧を捨てて、新しいものを使う
+          if (this.app.review) this.app.review._hospIndex = null;
+          this.app.toast(p.message || '医療機関一覧を更新しました');
+        }
+        this.renderHospitals();
+      }, 2000);
     }
 
     // ------------------------------------------------------ 利用者トークン
