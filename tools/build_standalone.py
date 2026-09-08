@@ -46,6 +46,11 @@ def collect_assets():
                         n not in ("tesseract.worker.min.js", "tesseract-core-simd.wasm.js",
                                   "pdf.worker.min.mjs"):
                     continue    # 本体スクリプトは <script> として直接埋め込む
+                # 日本語OCRモデルと onnxruntime は入れない。
+                # `file://` では ORT が読み込みに使う動的 import が通らず、
+                # 入れても動かないのに 30MB 増えるだけになる（8.1 も参照）
+                if n.startswith("ort") or "/ocr/" in web_path:
+                    continue
                 assets.append((web_path, MIME.get(ext, "application/octet-stream"), b64(full)))
     return assets
 
