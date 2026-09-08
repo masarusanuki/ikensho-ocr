@@ -44,6 +44,104 @@ def _model_dir() -> str:
     return os.path.join(ROOT, "models")
 
 
+# 日本語OCRモデルの取得状況
+_ocr = dict(key="", status="idle", received=0, total=0, message="")
+_ocr_lock = threading.Lock()
+
+
+def _ocr_tool():
+    """tools/fetch_ocr_model.py を読み込む（選べるモデルの定義がある）。"""
+    import importlib.util
+    path = os.path.join(ROOT, "tools", "fetch_ocr_model.py")
+    spec = importlib.util.spec_from_file_location("fetch_ocr_model", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _publish_ocr_models() -> bool:
+    """取ったモデルを、ブラウザ版が読む場所にも置く。
+
+    ブラウザには**認識モデルと文字辞書だけ**を渡す（欄の位置は分かっているので
+    検出モデルは使わない）。大きい server 版は重すぎるので渡さない。
+    """
+    from .ocr import MODEL_PREFERENCE, installed_ocr_models
+    dst_root = os.path.join(_web_root(), "data", "ocr")
+    if not os.path.isdir(os.path.dirname(dst_root)):
+        return False
+    import shutil
+    os.makedirs(dst_root, exist_ok=True)
+    models = [m for m in installed_ocr_models() if "server" not in m["key"]]
+    order = {k: i for i, k in enumerate(MODEL_PREFERENCE)}
+    models.sort(key=lambda m: order.get(m["key"], 99))
+    models = models[:1]                     # いちばん良いものだけを配る
+    listed = []
+    for m in models:
+        base = os.path.join(dst_root, m["key"])
+        os.makedirs(base, exist_ok=True)
+        for src in (m["rec"], m["keys"]):
+            target = os.path.join(base, os.path.basename(src))
+            if not os.path.exists(target):
+                shutil.copy2(src, target)
+        listed.append(dict(key=m["key"], note=m["note"],
+                           rec=os.path.basename(m["rec"]),
+                           keys=os.path.basename(m["keys"]),
+                           bytes=os.path.getsize(m["rec"])))
+    with open(os.path.join(dst_root, "index.json"), "w", encoding="utf-8") as fh:
+        json.dump({"models": listed}, fh, ensure_ascii=False, indent=1)
+    return True
+
+
+def _download_ocr_model(key: str):
+    """日本語OCRモデルを取得する。進捗は _ocr に書き込む。"""
+    mod = _ocr_tool()
+    if key not in mod.CHOICES:
+        with _ocr_lock:
+            _ocr.update(status="error", message="そのモデルは選べません")
+        return
+    with _ocr_lock:
+        _ocr.update(key=key, status="running", received=0, total=0,
+                    message=mod.CHOICES[key]["note"])
+    try:
+        conf = mod.CHOICES[key]
+        base = os.path.join(mod.OUT_DIR, key)
+        os.makedirs(base, exist_ok=True)
+        for part in ("rec", "keys", "det"):
+            if part not in conf:
+                continue
+            repo, name = conf[part]
+            dst = os.path.join(base, name)
+            if os.path.exists(dst) and os.path.getsize(dst) > 1024:
+                continue
+            url = mod.url_for(repo, name)
+            req = urllib.request.Request(url, headers={"User-Agent": mod.UA})
+            tmp = dst + ".part"
+            with urllib.request.urlopen(req, timeout=180) as res, open(tmp, "wb") as fp:
+                total = int(res.headers.get("Content-Length") or 0)
+                with _ocr_lock:
+                    _ocr.update(total=total, received=0, message=f"{part}: {name}")
+                got = 0
+                while True:
+                    chunk = res.read(1024 * 256)
+                    if not chunk:
+                        break
+                    fp.write(chunk)
+                    got += len(chunk)
+                    with _ocr_lock:
+                        _ocr["received"] = got
+            os.replace(tmp, dst)
+        mod.fetch(key, mod.OUT_DIR, verbose=False)     # model.json を書く
+        published = _publish_ocr_models()
+        msg = "取得しました。次の読み取りから使われます。"
+        if published:
+            msg += "ブラウザ版は画面を再読み込みしてください。"
+        with _ocr_lock:
+            _ocr.update(status="done", message=msg)
+    except Exception as exc:
+        with _ocr_lock:
+            _ocr.update(status="error", message=f"取得に失敗しました: {exc}")
+
+
 # 医療機関一覧の取得状況
 _hosp = dict(status="idle", message="", bureau="", prefs=0, total=0, updated="")
 _hosp_lock = threading.Lock()
@@ -234,6 +332,23 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                         for k, v in choices.items()],
                 progress=progress,
             ))
+        if path == "/api/ocr-models":
+            from .ocr import MODEL_PREFERENCE, get_engine, installed_ocr_models
+            mod = _ocr_tool()
+            have = {m["key"]: m for m in installed_ocr_models()}
+            with _ocr_lock:
+                progress = dict(_ocr)
+            order = {k: i for i, k in enumerate(MODEL_PREFERENCE)}
+            models = [dict(key=k, note=v["note"], installed=k in have,
+                           bytes=(os.path.getsize(have[k]["rec"])
+                                  if k in have else 0))
+                      for k, v in mod.CHOICES.items()]
+            models.sort(key=lambda m: order.get(m["key"], 99))
+            return self._json(dict(
+                current=getattr(get_engine("auto"), "name", "none"),
+                models=models, progress=progress,
+                measured="docs/developer.html#h20",
+            ))
         if path == "/api/hospitals":
             with _hosp_lock:
                 progress = dict(_hosp)
@@ -264,6 +379,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     return self._json(dict(error="すでに取得中です"), 409)
             threading.Thread(target=_download_model, args=(body.get("key", ""),),
                              daemon=True).start()
+            return self._json(dict(started=True))
+        if path == "/api/ocr-models/download":
+            length = int(self.headers.get("Content-Length") or 0)
+            try:
+                body = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                body = {}
+            with _ocr_lock:
+                if _ocr["status"] == "running":
+                    return self._json(dict(error="すでに取得中です"), 409)
+            threading.Thread(target=_download_ocr_model,
+                             args=(body.get("key", ""),), daemon=True).start()
             return self._json(dict(started=True))
         if path == "/api/hospitals/update":
             length = int(self.headers.get("Content-Length") or 0)

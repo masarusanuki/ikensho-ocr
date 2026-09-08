@@ -4,12 +4,16 @@
 
 | | 対象 | 導入 | OCR精度 | 一括処理 |
 |---|---|---|---|---|
-| **A. ブラウザ版** | 誰でも | **不要** | 中（tesseract.js） | 画面から数十件 |
+| **A. ブラウザ版** | 誰でも | **不要** | 高（日本語モデルを同梱） | 画面から数十件 |
 | **B. Docker** | **Windows / macOS / Linux 共通** | Docker のみ | 高 | 数千件 |
-| **C. Python版** | Rocky / Ubuntu / macOS | pip + tesseract | 高 | 数千件 |
+| **C. Python版** | Rocky / Ubuntu / macOS | pip のみ | 高 | 数千件 |
 
 **OSごとに手順を分けたくない場合は B（Docker）が一番簡単です。**
-Python も tesseract もイメージに入っているため、利用者側の準備は Docker だけです。
+利用者側の準備は Docker だけです。
+
+> 文字を読むモデルは**日本語専用のもの**を使います（pip だけで入り、
+> システムへの導入は要りません）。ブラウザ版も同じモデルを使うため、
+> A と C で読み取り精度は揃います。
 
 > どの方法でも、**チェックボックス186個の読み取り精度は同じ**です（OCRを使わないため）。
 > 違いが出るのは氏名・病名などのテキスト欄だけです。
@@ -172,20 +176,33 @@ ikensho-ocr 0.1.0
 項目定義: v1.0.0 / 107 項目
 様式テンプレート:
   - official_v1: 主治医意見書（厚生労働省 標準様式） / 2ページ / チェックボックス186個 / テキスト欄52個
-利用可能なOCRエンジン: tesseract, rapidocr, none
+利用可能なOCRエンジン: rapidocr:japan_v4, tesseract, rapidocr, none
 ```
 
-`利用可能なOCRエンジン` に `tesseract` が出れば日本語OCRが使えています。
+`利用可能なOCRエンジン` に `rapidocr:japan_v4` が出れば、
+日本語専用のモデルで読める状態です（C-5 を参照）。
+`tesseract` だけの場合でも動きますが、日本語の精度は落ちます。
 
-### C-5. 追加のOCRエンジン（任意）
+### C-5. 日本語のOCRモデル（**これを入れると精度が大きく変わります**）
 
 ```bash
-pip install "ikensho-ocr[ocr] @ ./python"     # RapidOCR を追加
+pip install "ikensho-ocr[ocr] @ ./python"     # RapidOCR（onnxruntime）
+python3 tools/fetch_ocr_model.py              # 日本語専用の認識モデル（約11MB）
 ```
 
-tesseract と RapidOCR は得意分野が違います（tesseract は印刷された漢字と長文、
-RapidOCR は短い欄と数字）。両方入れて `--engine ensemble` を指定すると、
-項目ごとに良い方が自動で採用されます。処理時間は 1〜2 割増えます。
+正解データ72項目での実測。**入れるかどうかで精度がはっきり違います。**
+
+| 読むモデル | 文字正解率 | 完全一致 |
+|---|---:|---:|
+| 日本語専用（PP-OCRv4） | **87.1%** | 46.0% |
+| tesseract | 64.7% | 30.0% |
+
+置くだけで自動的に使われます（`ikensho info` の「利用可能なOCRエンジン」に
+`rapidocr:japan_v4` と出ます）。管理画面（`ikensho serve` の「OCR」）からも取得できます。
+
+tesseract は入れなくても動きます。入っている場合は
+`--engine ensemble` で両方使い、項目ごとに良い方を採ることもできます
+（処理時間は1〜2割増）。
 
 ### C-6. 読み取り候補の提示にLLMを使う（任意・CPUで動作）
 

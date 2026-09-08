@@ -310,6 +310,54 @@ OCR を挟むと結果がエンジンに左右されて比較になりません�
 
 ## 7. OCR エンジン
 
+### 7.0 認識モデル（日本語）
+
+**文字を読むモデルは差し替えられる。** 既定の rapidocr は中国語向けなので、
+日本語のモデルを入れると精度が大きく変わる。
+
+```bash
+python3 tools/fetch_ocr_model.py --list       # 選べるモデル
+python3 tools/fetch_ocr_model.py              # 既定（japan_v4・約11MB）
+python3 tools/fetch_ocr_model.py ppocrv5_server
+```
+
+`models/ocr/<名前>/` に置かれ、**あれば自動で使われる**（`ikensho info` で確認できる）。
+モデルを指定する場合は `--engine rapidocr:japan_v4` のように書く。
+`rapidocr:default` は同梱の中国語向けモデル。
+
+管理画面（`ikensho serve`）の「OCR」からも取得できる。取得すると
+ブラウザ版が読む場所にも自動で配られる（画面の再読み込みで反映）。
+
+正解データで測った結果は下の表のとおり。測り方は
+[開発メモ 4.1.3](devnotes.html) を参照。
+
+<!-- OCR_BENCH_START -->
+
+| エンジン | 文字正解率 | 完全一致 | 空欄の判定 | 拾い読み | 所要 |
+|---|---:|---:|---:|---:|---:|
+| rapidocr:japan_v4 | 93.0% | 60.0% | 95.5% | 0件 | 45.3秒 |
+| tesseract | 85.3% | 54.0% | 81.8% | 2件 | 9.5秒 |
+| rapidocr | 80.4% | 42.0% | 90.9% | 1件 | 55.9秒 |
+
+（正解 72 項目・うち記入あり 50 項目。辞書補正まで通した値で比較。`python3 tools/benchmark_ocr.py --update-docs` で更新）
+<!-- OCR_BENCH_END -->
+
+```bash
+# 正解データ（bench/ocr_truth.json）で測る
+python3 tools/benchmark_ocr.py --raw                       # OCRの生読みで比較
+python3 tools/benchmark_ocr.py --engines tesseract rapidocr:japan_v4
+python3 tools/benchmark_ocr.py --detail                    # 欄ごとの違いも出す
+python3 tools/benchmark_ocr.py --update-docs               # この表を更新する
+
+# 正解データを作り足す（切り抜き一覧の画像を作って、目視で書き取る）
+python3 tools/make_ocr_truth_sheet.py sample/A_type_綺麗.pdf --out /tmp/sheet
+
+# ブラウザ版の精度を同じ正解データで測る
+python3 tools/test_web_ocr.py --raw
+```
+
+### 7.1 エンジンの選び方
+
 ```bash
 ikensho info      # 使えるエンジンを確認
 ```

@@ -16,6 +16,8 @@ import shutil
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "python"))
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -29,6 +31,10 @@ def copytree(src, dst, ignore=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(ROOT, "dist", "web"))
+    ap.add_argument("--no-ocr-model", action="store_true",
+                    help="日本語OCRモデルを同梱しない（tesseract.js に戻る）")
+    ap.add_argument("--all-ocr-models", action="store_true",
+                    help="入っているモデルをすべて同梱する（比較用。数十MB増える）")
     ap.add_argument("--no-vendor", action="store_true",
                     help="vendor/ を含めない（別途配置する場合）")
     args = ap.parse_args()
@@ -79,6 +85,43 @@ def main():
     # 医療機関一覧は大きいので、都道府県ごとに分けたまま置く（画面から必要な分だけ読む）
     copytree(os.path.join(ROOT, "dict"), os.path.join(data, "dict"))
 
+    # 日本語のOCRモデル（ブラウザで onnxruntime-web に読ませる）。
+    # 認識モデルと文字辞書だけを置く。検出モデルは使わない（欄の位置は分かっている）。
+    # 大きい server 版はブラウザには重すぎるので入れない。
+    ocr_src = os.path.join(ROOT, "models", "ocr")
+    browser_models = []
+    if os.path.isdir(ocr_src) and not args.no_ocr_model:
+        ocr_out = os.path.join(data, "ocr")
+        os.makedirs(ocr_out, exist_ok=True)
+        for key in sorted(os.listdir(ocr_src)):
+            meta_path = os.path.join(ocr_src, key, "model.json")
+            if not os.path.exists(meta_path) or "server" in key:
+                continue
+            with open(meta_path, encoding="utf-8") as fp:
+                meta = json.load(fp)
+            rec = os.path.join(ocr_src, key, meta.get("rec", ""))
+            keys = os.path.join(ocr_src, key, meta.get("keys", ""))
+            if not (os.path.exists(rec) and os.path.exists(keys)):
+                continue
+            os.makedirs(os.path.join(ocr_out, key), exist_ok=True)
+            shutil.copy2(rec, os.path.join(ocr_out, key, os.path.basename(rec)))
+            shutil.copy2(keys, os.path.join(ocr_out, key, os.path.basename(keys)))
+            browser_models.append(dict(key=key, note=meta.get("note", ""),
+                                       rec=os.path.basename(rec),
+                                       keys=os.path.basename(keys),
+                                       bytes=os.path.getsize(rec)))
+        # 良いと分かっている順に並べる（読み取り側は先頭を使う）
+        from ikensho_ocr.ocr import MODEL_PREFERENCE
+        order = {k: i for i, k in enumerate(MODEL_PREFERENCE)}
+        browser_models.sort(key=lambda m: order.get(m["key"], 99))
+        # 既定では**いちばん良いものだけ**を配る（何十MBも配らないため）
+        if not args.all_ocr_models:
+            for m in browser_models[1:]:
+                shutil.rmtree(os.path.join(ocr_out, m["key"]), ignore_errors=True)
+            browser_models = browser_models[:1]
+        with open(os.path.join(ocr_out, "index.json"), "w", encoding="utf-8") as fp:
+            json.dump({"models": browser_models}, fp, ensure_ascii=False, indent=1)
+
     # ドキュメントは別ページとして生成する（画面内で切り替えない）
     import build_docs_site
     build_docs_site.build(os.path.join(out, "docs"))
@@ -87,6 +130,11 @@ def main():
                 for dp, _, fs in os.walk(out) for f in fs)
     print(f"書き出し: {out}")
     print(f"  様式テンプレート: {len(ids)} 種類 ({', '.join(ids)})")
+    if browser_models:
+        print("  日本語OCRモデル: " + "、".join(
+            f"{m['key']}（{m['bytes'] / 1048576:.0f}MB）" for m in browser_models))
+    else:
+        print("  日本語OCRモデル: なし（python3 tools/fetch_ocr_model.py で取得）")
     print(f"  合計サイズ: {total / 1024 / 1024:.1f} MB")
 
 

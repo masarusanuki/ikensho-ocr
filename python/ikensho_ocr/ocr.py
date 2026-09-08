@@ -5,6 +5,7 @@
 OCR は氏名・病名・日付などのテキスト欄に限定して使う。
 どのエンジンも無い環境では空欄を返し、確認画面で人が入力する運用にできる。
 """
+import json
 import os
 import re
 import shutil
@@ -180,15 +181,81 @@ class TesseractOcr(OcrEngine):
         return OcrResult(filter_text(best_text, charset), best_conf, self.name)
 
 
+# 日本語の認識モデルの置き場所（tools/fetch_ocr_model.py が入れる）
+OCR_MODEL_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "models", "ocr")
+# 良いと分かっている順（実測。bench/ocr_truth.json ／ docs/DEVELOPER.md）。
+#   japan_v4       文字正解率 78.0% / 0.7秒/欄 … 速さと精度の釣り合いが最も良い
+#   ppocrv5_mobile         66.4% / 0.8秒
+#   japan_v3               71.9% / 0.7秒
+#   ppocrv5_server         78.0% / 9.7秒 … 完全一致は最も高いが遅すぎるので既定にしない
+MODEL_PREFERENCE = ("japan_v4", "ppocrv5_mobile", "japan_v3", "ppocrv5_server")
+
+
+def installed_ocr_models() -> List[dict]:
+    """入っている日本語の認識モデルを、良いと分かっている順に返す。"""
+    out = []
+    if not os.path.isdir(OCR_MODEL_DIR):
+        return out
+    for key in os.listdir(OCR_MODEL_DIR):
+        conf = os.path.join(OCR_MODEL_DIR, key, "model.json")
+        if not os.path.exists(conf):
+            continue
+        try:
+            with open(conf, encoding="utf-8") as fh:
+                meta = json.load(fh)
+        except Exception:
+            continue
+        base = os.path.join(OCR_MODEL_DIR, key)
+        rec = os.path.join(base, meta.get("rec", ""))
+        keys = os.path.join(base, meta.get("keys", ""))
+        if not (os.path.exists(rec) and os.path.exists(keys)):
+            continue
+        det = os.path.join(base, meta.get("det", "")) if meta.get("det") else ""
+        out.append(dict(key=key, note=meta.get("note", ""), rec=rec, keys=keys,
+                        det=det if det and os.path.exists(det) else ""))
+    order = {k: i for i, k in enumerate(MODEL_PREFERENCE)}
+    out.sort(key=lambda m: order.get(m["key"], 99))
+    return out
+
+
 class RapidOcr(OcrEngine):
-    """rapidocr-onnxruntime（pip のみで導入でき、システム依存が無い）。"""
+    """rapidocr-onnxruntime（pip のみで導入でき、システム依存が無い）。
+
+    既定の認識モデルは**中国語向け**で、日本語のかな・字体に弱い。
+    `models/ocr/` に日本語の認識モデルがあれば、それに差し替えて使う
+    （`tools/fetch_ocr_model.py` で取得。実測は docs/DEVELOPER.md）。
+    """
     name = "rapidocr"
 
-    def __init__(self):
+    def __init__(self, model: Optional[str] = None):
         self.engine = None
+        self.model = None
         try:
             from rapidocr_onnxruntime import RapidOCR
-            self.engine = RapidOCR()
+        except Exception:
+            self.available = False
+            return
+        # model 未指定なら、入っている中でいちばん良いものを使う。
+        # "default" と指定した場合は、rapidocr 同梱の（中国語向け）モデルを使う。
+        found = [] if model == "default" else installed_ocr_models()
+        if model and model != "default":
+            found = [m for m in found if m["key"] == model]
+        try:
+            if found:
+                m = found[0]
+                kwargs = dict(rec_model_path=m["rec"], rec_keys_path=m["keys"])
+                if m["det"]:
+                    kwargs["det_model_path"] = m["det"]
+                self.engine = RapidOCR(**kwargs)
+                self.model = m["key"]
+                self.name = f"rapidocr:{m['key']}"
+            elif model and model != "default":
+                self.available = False        # 指定されたモデルが無い
+                return
+            else:
+                self.engine = RapidOCR()      # 既定（中国語向け）
             self.available = True
         except Exception:
             self.available = False
@@ -332,32 +399,47 @@ _ENGINES = {"tesseract": TesseractOcr, "rapidocr": RapidOcr,
             "mangaocr": MangaOcr, "none": NullOcr}
 
 
+def _make(name: str) -> OcrEngine:
+    """`rapidocr:ppocrv5_mobile` のようなモデル指定も受ける。"""
+    if name.startswith("rapidocr:"):
+        return RapidOcr(name.split(":", 1)[1])
+    return _ENGINES.get(name, NullOcr)()
+
+
 def get_engine(name: str = "auto") -> OcrEngine:
     """OCR エンジンを用意する。
 
-      auto     … 使えるものを1つ選ぶ（速い）
-      ensemble … 使えるものを全て使い、良い結果を採る（遅いが精度は上）
-      名前指定  … tesseract / rapidocr / none
+      auto            … 使えるものを1つ選ぶ（速い）
+      ensemble        … 使えるものを全て使い、良い結果を採る（遅いが精度は上）
+      rapidocr        … 日本語モデルが入っていればそれを使う
+      rapidocr:<名前>  … 認識モデルを指定する（models/ocr/<名前>）
+      名前指定         … tesseract / rapidocr / mangaocr / none
     """
     if name in ("ensemble", "ensemble+manga"):
-        keys = ["tesseract", "rapidocr"]
+        keys = ["rapidocr", "tesseract"]
         if name == "ensemble+manga":
             keys.append("mangaocr")
-        eng = EnsembleOcr([_ENGINES[k]() for k in keys])
+        eng = EnsembleOcr([_make(k) for k in keys])
         return eng if eng.available else NullOcr()
     if name != "auto":
-        cls = _ENGINES.get(name, NullOcr)
-        eng = cls()
+        eng = _make(name)
         return eng if eng.available else NullOcr()
+    # 日本語の認識モデルが入っていれば、それがいちばん良い（実測）
+    for key in ("rapidocr", "tesseract"):
+        eng = _make(key)
+        if eng.available:
+            if key == "rapidocr" and not eng.model:
+                continue          # 中国語向けの既定モデルは後回し
+            return eng
     for key in ("tesseract", "rapidocr"):
-        eng = _ENGINES[key]()
+        eng = _make(key)
         if eng.available:
             return eng
     return NullOcr()
 
 
 def available_engines() -> List[str]:
-    out = []
+    out = [f"rapidocr:{m['key']}" for m in installed_ocr_models()]
     for key, cls in _ENGINES.items():
         if key == "mangaocr":
             # モデル読み込みが重いので、導入されているかだけを見る

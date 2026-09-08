@@ -97,6 +97,7 @@
     // -------------------------------------------------------------- 初期化
     render() {
       this.renderSysInfo();
+      this.renderOcrModels();
       this.renderModels();
       const tplSel = document.getElementById('tpl-select');
       const ids = Object.keys(this.app.pipeline.templates);
@@ -330,6 +331,91 @@
      * サーバ版（ikensho serve）でのみ使える。ブラウザだけで開いた場合は
      * ファイルを保存できないので、そもそもパネルを出さない。
      */
+    // ------------------------------------------------------ OCRモデル
+    /**
+     * 文字を読むモデルの状況と切り替え。
+     * 取得はサーバ側で行うため、`ikensho serve` で開いた場合だけ出す。
+     */
+    async renderOcrModels() {
+      const panel = document.getElementById('panel-ocr');
+      let info;
+      try {
+        const res = await fetch('api/ocr-models');
+        if (!res.ok) throw new Error(String(res.status));
+        info = await res.json();
+      } catch (e) {
+        panel.hidden = true;
+        return;
+      }
+      panel.hidden = false;
+
+      const pp = this.app.pipeline.pp;
+      const browser = pp && pp.model ? `ppocr(${pp.model})` : 'tesseract.js(jpn)';
+      document.getElementById('ocr-state').innerHTML =
+        `Python版: <code class="inline">${esc(info.current)}</code>　`
+        + `ブラウザ版: <code class="inline">${esc(browser)}</code>`;
+
+      const list = document.getElementById('ocr-list');
+      list.innerHTML = info.models.map(m => `
+        <div class="modelcard${m.installed ? ' on' : ''}">
+          <div class="mname">${esc(m.key)}</div>
+          <div class="mnote">${esc(m.note)}</div>
+          <div class="mfoot">
+            ${m.installed
+              ? '<span class="conf high"><span class="dot"></span>取得済み'
+                + (m.bytes ? `（${(m.bytes / 1048576).toFixed(0)}MB）` : '') + '</span>'
+              : `<button class="btn sm primary" data-ocr="${esc(m.key)}">ダウンロード</button>`}
+          </div>
+        </div>`).join('');
+      list.querySelectorAll('button[data-ocr]').forEach(b => {
+        b.addEventListener('click', () => this.downloadOcrModel(b.dataset.ocr, b));
+      });
+      if (info.progress && info.progress.status === 'running') this.watchOcrModel();
+    }
+
+    async downloadOcrModel(key, btn) {
+      btn.disabled = true;
+      btn.textContent = '取得中…';
+      try {
+        const res = await fetch('api/ocr-models/download', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key }),
+        });
+        const r = await res.json();
+        if (r.error) throw new Error(r.error);
+        this.watchOcrModel();
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'ダウンロード';
+        this.app.toast('取得を開始できませんでした: ' + e.message, true);
+      }
+    }
+
+    watchOcrModel() {
+      const box = document.getElementById('ocr-progress');
+      const bar = document.getElementById('ocr-bar');
+      const msg = document.getElementById('ocr-msg');
+      box.hidden = false;
+      clearInterval(this._ocrTimer);
+      this._ocrTimer = setInterval(async () => {
+        let info;
+        try { info = await fetch('api/ocr-models').then(r => r.json()); }
+        catch (e) { return; }
+        const p = info.progress || {};
+        const mb = n => (n / 1048576).toFixed(1);
+        bar.max = p.total || 100;
+        bar.value = p.received || 0;
+        msg.textContent = p.total
+          ? `${p.message || ''}　${mb(p.received)} / ${mb(p.total)} MB`
+          : (p.message || '');
+        msg.className = 'status' + (p.status === 'error' ? ' err' : '');
+        if (p.status === 'running') return;
+        clearInterval(this._ocrTimer);
+        if (p.status === 'done') this.app.toast(p.message || 'モデルを取得しました');
+        setTimeout(() => { box.hidden = true; this.renderOcrModels(); }, 2500);
+      }, 1000);
+    }
+
     async renderModels() {
       const panel = document.getElementById('panel-models');
       let info;

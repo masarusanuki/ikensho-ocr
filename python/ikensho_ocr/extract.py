@@ -363,7 +363,18 @@ def extract_record(paths: List[str],
                     text_results[f.id] = dict(value="", confidence=0.95, raw="", empty=True,
                                               candidates=[])
                     continue
-                roi = ocr_mod.prepare_roi(warped, rect, pad=0.02)
+                # 白紙様式との差分で「書き込みが無い」と分かる欄は読まない。
+                # 読ませると罫線やカッコから文字を作ってしまう（実測で拾い読みが出た）
+                shape = text_check.written_shape(warped, blank, rect, mark)
+                if shape is not None and shape["density"] < text_check.EMPTY_DENSITY:
+                    text_results[f.id] = dict(
+                        value="", confidence=0.90, raw="", empty=True, candidates=[],
+                        note="この欄に書き込みが見当たりません（印刷の罫線だけです）")
+                    continue
+                # 罫線・カッコ・単位を含めたまま読むと精度が落ちるので、
+                # 書き込みのある範囲に詰めてから認識に回す（検算には元の矩形を使う）
+                roi = ocr_mod.prepare_roi(
+                    warped, textbox.ink_crop(warped, blank, rect), pad=0.02)
                 charset = t.get("charset") or getattr(f, "charset", "")
                 multiline = f.type == "textarea"
 

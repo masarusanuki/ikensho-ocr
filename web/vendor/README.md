@@ -11,6 +11,12 @@
 | `tesseract.min.js` / `tesseract.worker.min.js` | [tesseract.js](https://github.com/naptha/tesseract.js) | 5.1.1 | Apache-2.0 |
 | `tesseract-core-simd.wasm.js` | tesseract.js-core | 5.1.1 | Apache-2.0 |
 | `jpn.traineddata.gz` | [tessdata（日本語）](https://github.com/tesseract-ocr/tessdata_best) | 4.0.0 best | Apache-2.0 |
+| `ort.wasm.min.js` / `ort-wasm-simd-threaded.mjs` / `ort-wasm-simd-threaded.wasm` | [onnxruntime-web](https://github.com/microsoft/onnxruntime) | 1.29.0 | MIT |
+
+`onnxruntime-web` は、日本語のOCRモデル（PP-OCR）をブラウザで動かすために使います。
+モデル自体は同梱していません（`python3 tools/fetch_ocr_model.py` で取得し、
+`tools/build_web.py` が配信先に置きます）。モデルのライセンスは Apache-2.0
+（PaddleOCR）です。
 
 ## 取得しなおす
 

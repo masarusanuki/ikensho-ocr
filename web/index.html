@@ -270,6 +270,23 @@
     <div class="tplfields" style="max-height:380px"><table id="dict-table"><tbody></tbody></table></div>
   </div>
 
+  <div class="panel" id="panel-ocr" hidden>
+    <h2>OCR（文字を読むモデル）</h2>
+    <p class="hint">
+      日本語に特化した認識モデルを使います。実測（正解データ72項目）では、
+      文字正解率が tesseract 50.5% に対し
+      <strong>PP-OCRv4 日本語専用 78.0%</strong> でした。
+      Python版とブラウザ版で同じモデルを使います。
+      比較は<a href="docs/developer.html" target="_blank" rel="noopener">技術者向けページ</a>にあります。
+    </p>
+    <div id="ocr-state" class="status"></div>
+    <div class="models" id="ocr-list"></div>
+    <div id="ocr-progress" hidden>
+      <progress id="ocr-bar" value="0" max="100"></progress>
+      <div class="status" id="ocr-msg"></div>
+    </div>
+  </div>
+
   <div class="panel" id="panel-models" hidden>
     <h2>LLMモデル（読み取り候補の提示）</h2>
     <p class="hint">
@@ -373,6 +390,7 @@
 <script src="js/session.js"></script>
 <script src="js/oplog.js"></script>
 <script src="js/engine.js"></script>
+<script src="js/ppocr.js"></script>
 <script src="js/dicts.js"></script>
 <script src="js/anonymize.js"></script>
 <script src="js/dates.js"></script>

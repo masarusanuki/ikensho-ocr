@@ -79,6 +79,10 @@
       this.ocrWorker = null;
       this.ocrReady = false;
       this.ocrEnabled = opts.ocrEnabled !== false;
+      // 日本語のOCRモデル（PP-OCR / ONNX）。置かれていれば tesseract より優先する
+      this.pp = global.IkenshoPPOcr
+        ? new global.IkenshoPPOcr.PPOcr({ dataBase: this.base, vendorBase: this.vendor })
+        : null;
     }
 
     // ---------------------------------------------------------- 初期化
@@ -144,6 +148,12 @@
         this.ocrEnabled = false;
         return;
       }
+      // まず日本語専用モデルを試す。実測でこちらが明らかに正確（DEVELOPER.md）
+      if (this.pp && await this.pp.init(onStatus)) {
+        this.ocrReady = true;
+        this.engineName = `ppocr(${this.pp.model})`;
+        return;
+      }
       onStatus('日本語OCRを準備しています（初回のみ時間がかかります）…');
       const T = global.Tesseract;
       this.ocrWorker = await T.createWorker('jpn', 1, {
@@ -157,6 +167,7 @@
         preserve_interword_spaces: '1',
         tessedit_pageseg_mode: T.PSM ? T.PSM.SINGLE_LINE : '7',
       });
+      this.engineName = 'tesseract.js(jpn)';
       this.ocrReady = true;
     }
 
@@ -414,7 +425,7 @@
       const id = 'r' + Date.now().toString(36) +
                  Math.random().toString(36).slice(2, 6);
       const record = { id, fields, pages: pageInfos, templateId, warnings, images,
-                       ocrEngine: this.ocrReady ? 'tesseract.js(jpn)' : 'none',
+                       ocrEngine: this.ocrReady ? (this.engineName || 'unknown') : 'none',
                        anonymized: false };
       // 匿名化加工済みデータの扱い（氏名欄が白抜きなら「匿名化済み」）
       const A = global.IkenshoAnonymize;
@@ -440,26 +451,51 @@
         return { value: '', confidence: 0, raw: '', empty: false, candidates: [],
                  note: 'OCR未使用' };
       }
-      const canvas = this.cropForOcr(warped, rect);
       const charset = t.charset || f.charset || '';
-      // 欄の形によって適した解析モードが違うので両方試し、確信度の高い方を採る
-      const psms = f.type === 'textarea' ? [6, 4] : [7, 6];
+      const multiline = f.type === 'textarea';
+      // 白紙様式との差分で「書き込みが無い」と分かる欄は読まない。
+      // 読ませると罫線やカッコから文字を作ってしまう（実測で拾い読みが出た）
+      const shape = diff ? E.writtenShape(warped, blank, rect, diff) : null;
+      if (shape && shape.density < 0.25) {
+        return { value: '', confidence: 0.90, raw: '', empty: true, candidates: [],
+                 note: 'この欄に書き込みが見当たりません（印刷の罫線だけです）' };
+      }
       let text = '', conf = 0;
-      for (const psm of psms) {
+      if (this.pp && this.pp.ready) {
+        // 日本語専用モデル（Python版と同じもの）。
+        // 罫線・カッコ・単位を含めたまま読むと精度が落ちるので、
+        // 書き込みのある範囲に詰めてから渡す（検算には元の矩形を使う）
+        const roi = this.cropMat(warped, diff ? E.inkCrop(diff, rect) : rect);
         try {
-          // 文字種の制限は LSTM では悪影響が出るため、後段のフィルタで行う
-          await this.ocrWorker.setParameters({
-            tessedit_pageseg_mode: String(psm),
-            tessedit_char_whitelist: '',
-          });
-          const { data } = await this.ocrWorker.recognize(canvas);
-          const got = joinJapanese((data.text || '').trim());
-          const c = (data.confidence || 0) / 100;
-          if (got && (c > conf || !text)) { text = got; conf = c; }
+          const r = await this.pp.read(roi, multiline);
+          text = r.text || '';
+          conf = r.confidence || 0;
         } catch (e) {
-          if (!text) {
-            return { value: '', confidence: 0, raw: '', empty: false, candidates: [],
-                     note: 'OCR失敗: ' + e.message };
+          roi.delete();
+          return { value: '', confidence: 0, raw: '', empty: false, candidates: [],
+                   note: 'OCR失敗: ' + e.message };
+        }
+        roi.delete();
+      } else {
+        const canvas = this.cropForOcr(warped, rect);
+        // 欄の形によって適した解析モードが違うので両方試し、確信度の高い方を採る
+        const psms = multiline ? [6, 4] : [7, 6];
+        for (const psm of psms) {
+          try {
+            // 文字の種類の制限は LSTM では悪影響が出るため、後段のフィルタで行う
+            await this.ocrWorker.setParameters({
+              tessedit_pageseg_mode: String(psm),
+              tessedit_char_whitelist: '',
+            });
+            const { data } = await this.ocrWorker.recognize(canvas);
+            const got = joinJapanese((data.text || '').trim());
+            const c = (data.confidence || 0) / 100;
+            if (got && (c > conf || !text)) { text = got; conf = c; }
+          } catch (e) {
+            if (!text) {
+              return { value: '', confidence: 0, raw: '', empty: false, candidates: [],
+                       note: 'OCR失敗: ' + e.message };
+            }
           }
         }
       }
@@ -512,6 +548,17 @@
       const ratio = cv.countNonZero(bw) / (bw.rows * bw.cols);
       roi.delete(); bw.delete();
       return ratio > threshold;
+    }
+
+    /** 認識モデルに渡す切り抜き（余白も拡大もしない生の矩形）。 */
+    cropMat(warped, rect, pad = 0.02) {
+      const W = warped.cols, H = warped.rows;
+      const px = rect[2] * pad * W, py = rect[3] * pad * H;
+      const x0 = Math.max(0, Math.round(rect[0] * W - px));
+      const y0 = Math.max(0, Math.round(rect[1] * H - py));
+      const x1 = Math.min(W, Math.round((rect[0] + rect[2]) * W + px));
+      const y1 = Math.min(H, Math.round((rect[1] + rect[3]) * H + py));
+      return warped.roi(new cv.Rect(x0, y0, Math.max(4, x1 - x0), Math.max(4, y1 - y0)));
     }
 
     cropForOcr(warped, rect, pad = 0.02) {

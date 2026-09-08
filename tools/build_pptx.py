@@ -60,21 +60,28 @@ def hospital_counts():
             (idx.get("updated") or "")[:10])
 
 
-def model_bench():
-    """docs/DEVELOPER.md のモデル比較表を読む。"""
+def _md_table(marker):
+    """docs/DEVELOPER.md の印で囲まれた表を読む。"""
     path = os.path.join(ROOT, "docs", "DEVELOPER.md")
     with open(path, encoding="utf-8") as fh:
         md = fh.read()
-    m = re.search(r"<!-- MODEL_BENCH_START -->(.*?)<!-- MODEL_BENCH_END -->", md, re.S)
+    m = re.search(f"<!-- {marker}_START -->(.*?)<!-- {marker}_END -->", md, re.S)
     if not m:
         return []
     rows = []
     for line in m.group(1).strip().split("\n"):
         if not line.startswith("|") or set(line) <= set("|-: "):
             continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        rows.append(cells)
+        rows.append([c.strip() for c in line.strip().strip("|").split("|")])
     return rows
+
+
+def model_bench():
+    return _md_table("MODEL_BENCH")
+
+
+def ocr_bench():
+    return _md_table("OCR_BENCH")
 
 
 def issue_counts():
@@ -312,22 +319,21 @@ def build(out_path):
 
     # 6. ベンチマーク②
     s = blank(prs)
-    heading(s, "ベンチマーク② OCRエンジンの比較",
-            "同じ切り抜き画像を各エンジンに通した実測")
-    table(s, [
-        ["欄", "正解", "tesseract", "RapidOCR", "manga-ocr"],
-        ["医療機関名", "牛久愛和総合病院", "生ん愛和総合病院", "生久爱和合病院",
-         "ここで、年の経験経営者には"],
-        ["診断名", "変形性膝関節症", "変形性膝関節症", "变形性膝節症",
-         "．．．変材推察課題に"],
-        ["住所", "茨城県土浦市中央8-21-17", "茨城県二浦市中央8-21-17",
-         "茨城土浦市中央8-21-17", "茨城県土浦市中央８２１１７"],
-        ["特記（長文）", "独居であり……", "ほぼ全文正解", "助詞が大量に脱落", "－"],
-        ["氏名（手書き）", "石井 とめ", "（空）", "石井", "でも、石井とめでは、"],
-    ], y=1.95, size=11.5, widths=[2.2, 3, 3, 3, 3.4])
-    note(s, "tesseract を既定にした。manga-ocr は生成型のため、"
-            "文字が少ない欄で「もっともらしい文章を作り出す」ので使わない。", y=5.6,
-         color=WARN)
+    heading(s, "ベンチマーク② 文字を読むモデルの比較",
+            "正解データ（72項目）と突き合わせた実測。位置合わせと欄の切り出しは共通")
+    rows = ocr_bench() or [["エンジン", "文字正解率", "完全一致", "空欄の判定",
+                            "拾い読み", "所要"]]
+    table(s, rows, y=1.95, size=13, widths=[3.4, 2, 2, 2, 1.6, 1.6],
+          highlight=lambda r, c, v: r == 1 and c > 0)
+    bullets(s, [
+        ("日本語専用の認識モデルに替えた（PP-OCRv4）",
+         "既定のRapidOCRは中国語向け。tesseractは日本語のかな・医療用語に弱い"),
+        ("罫線・カッコ・単位を切り落としてから読む",
+         "白紙様式との差分で印刷と書き込みを見分ける。生読みで 78.0% → 84.6%"),
+        ("書き込みが無い欄は読まない", "罫線から文字を作る「拾い読み」を防ぐ"),
+        ("ブラウザ版も同じモデルを動かす（onnxruntime-web）",
+         "実測 92.1%。Python版 93.0% とほぼ揃った"),
+    ], y=4.0, size=15)
 
     # 7. ベンチマーク③（LLM）
     s = blank(prs)

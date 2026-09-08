@@ -21,6 +21,13 @@ ASSETS = [
      "https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core-simd.wasm.js"),
     ("jpn.traineddata.gz",
      "https://cdn.jsdelivr.net/npm/@tesseract.js-data/jpn@1.0.0/4.0.0_best_int/jpn.traineddata.gz"),
+    # onnxruntime-web（日本語のOCRモデルをブラウザで動かすために使う）
+    ("ort.wasm.min.js",
+     "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/ort.wasm.min.js"),
+    ("ort-wasm-simd-threaded.mjs",
+     "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/ort-wasm-simd-threaded.mjs"),
+    ("ort-wasm-simd-threaded.wasm",
+     "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.29.0/dist/ort-wasm-simd-threaded.wasm"),
 ]
 
 

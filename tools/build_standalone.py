@@ -62,7 +62,8 @@ def main():
     css = read(os.path.join(WEB, "style.css"))
     app_js = "\n".join(read(os.path.join(WEB, "js", n)) for n in
                        ("session.js", "oplog.js",
-                        "engine.js", "dicts.js", "anonymize.js", "dates.js", "speech.js",
+                        "engine.js", "ppocr.js",
+                        "dicts.js", "anonymize.js", "dates.js", "speech.js",
                         "pipeline.js",
                         "exporters.js", "review.js", "admin.js", "app.js"))
     opencv = read(os.path.join(WEB, "vendor", "opencv.js"))
