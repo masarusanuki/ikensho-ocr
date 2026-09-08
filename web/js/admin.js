@@ -349,11 +349,24 @@
       }
       panel.hidden = false;
 
+      // ブラウザ側はモデルを「読み取りを始めるとき」に読み込むので、
+      // まだ読み込んでいない場合はこれから使うモデルを出す
       const pp = this.app.pipeline.pp;
-      const browser = pp && pp.model ? `ppocr(${pp.model})` : 'tesseract.js(jpn)';
+      let browser = 'tesseract.js(jpn)';
+      let hint = '';
+      if (pp && pp.model) {
+        browser = `ppocr(${pp.model})`;
+      } else if (pp && !pp.failed) {
+        const placed = await pp.list();
+        if (placed.length) {
+          browser = `ppocr(${placed[0].key})`;
+          hint = '（読み取りを始めるときに読み込みます）';
+        }
+      }
       document.getElementById('ocr-state').innerHTML =
         `Python版: <code class="inline">${esc(info.current)}</code>　`
-        + `ブラウザ版: <code class="inline">${esc(browser)}</code>`;
+        + `ブラウザ版: <code class="inline">${esc(browser)}</code>`
+        + (hint ? `<span class="hint"> ${esc(hint)}</span>` : '');
 
       const list = document.getElementById('ocr-list');
       list.innerHTML = info.models.map(m => `
