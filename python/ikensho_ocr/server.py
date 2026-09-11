@@ -36,6 +36,9 @@ def _web_root() -> str:
     return FALLBACK_WEB
 
 
+# VLM は1つのモデルを使い回すので、同時に走らせない
+_vlm_lock = threading.Lock()
+
 # LLMモデルの取得状況（画面に進捗を返すために持つ）
 _download = dict(name="", status="idle", received=0, total=0, message="")
 _download_lock = threading.Lock()
@@ -282,6 +285,7 @@ def _bureau_names():
 class Handler(http.server.SimpleHTTPRequestHandler):
     schema = None
     templates = None
+    vlm_name = ""
     dicts = None
 
     def __init__(self, *a, **kw):
@@ -370,6 +374,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             tid = q.get("template", ["official_v1"])[0]
             return self._json(dict(template=tid,
                                    overrides=labels_mod.load_overrides(tid)))
+        if path == "/api/vlm":
+            # VLM（画像を見て読むLLM）が使えるか。ブラウザ版の切り替えボタン用
+            try:
+                from . import vlm as vlm_mod
+                models = vlm_mod.installed_models()
+                return self._json(dict(
+                    available=bool(models), models=[
+                        dict(key=m["key"], size_mb=m["size_mb"]) for m in models],
+                    loaded=Handler.vlm_name,
+                    note="画像はこの端末のPythonに渡すだけで、外部には出ません",
+                ))
+            except Exception as exc:
+                return self._json(dict(available=False, models=[], error=str(exc)))
         if path == "/api/suggest":
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self._json(dict(items=Handler.dicts.suggest(
@@ -428,6 +445,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             path_saved = labels_mod.save_overrides(tid, got)
             return self._json(dict(saved=os.path.basename(path_saved),
                                    count=len(labels_mod.load_overrides(tid))))
+        if path == "/api/vlm-read":
+            return self._vlm_read()
         if path != "/api/extract":
             return self._json(dict(error="not found"), 404)
         length = int(self.headers.get("Content-Length") or 0)
@@ -461,6 +480,49 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                  templates=Handler.templates,
                                  dictionaries=Handler.dicts)
             return self._json(record_to_json(rec, Handler.schema))
+
+
+    # ------------------------------------------------------------ VLM
+    def _vlm_read(self):
+        """1欄ぶんの切り抜き画像を VLM で読む。
+
+        ブラウザ版から呼ぶ。画像はこの端末の Python プロセスに渡すだけで、
+        外部には出ない（LLM もローカルで動かす）。
+        """
+        length = int(self.headers.get("Content-Length") or 0)
+        if length <= 0 or length > 8 * 1024 * 1024:
+            return self._json(dict(error="画像の大きさが不正です"), 400)
+        try:
+            body = json.loads(self.rfile.read(length) or b"{}")
+        except Exception:
+            return self._json(dict(error="JSON を読めません"), 400)
+        data = str(body.get("image") or "")
+        if "," in data:
+            data = data.split(",", 1)[1]
+        try:
+            import base64
+            import cv2
+            import numpy as np
+            buf = np.frombuffer(base64.b64decode(data), dtype=np.uint8)
+            img = cv2.imdecode(buf, cv2.IMREAD_GRAYSCALE)
+        except Exception as exc:
+            return self._json(dict(error=f"画像を読めません（{exc}）"), 400)
+        if img is None or img.size == 0:
+            return self._json(dict(error="画像が空です"), 400)
+        try:
+            from . import vlm as vlm_mod
+            with _vlm_lock:            # モデルは1つしか無いので順番に使う
+                eng = vlm_mod.get_engine(body.get("model") or None)
+                if not getattr(eng, "available", False):
+                    return self._json(dict(error="VLM が使えません"
+                                                 "（tools/fetch_vlm_model.py で取得してください）"), 503)
+                Handler.vlm_name = eng.name
+                res = eng.read(img, multiline=bool(body.get("multiline")),
+                               charset=str(body.get("charset") or ""))
+        except Exception as exc:
+            return self._json(dict(error=f"VLM の読み取りに失敗しました（{exc}）"), 500)
+        return self._json(dict(text=res.text, confidence=res.confidence,
+                               engine=res.engine))
 
 
 class ReusableServer(socketserver.ThreadingTCPServer):

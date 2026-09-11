@@ -145,8 +145,10 @@ def build_parser():
                    help="様式（PDF）の並びそのままの JSON の出力先。"
                         "チェック欄は印の付いた言葉で返す")
     e.add_argument("--engine", default="auto",
-                   help="OCRエンジン (auto/ensemble/tesseract/rapidocr/none)。"
-                        "ensemble は複数エンジンを併用し精度を上げるが時間は倍かかる")
+                   help="OCRエンジン (auto/ensemble/tesseract/rapidocr/vlm/none)。"
+                        "ensemble は複数エンジンを併用し精度を上げるが時間は倍かかる。"
+                        "vlm は画像を見て答えるLLMで読む"
+                        "（models/vlm に要取得。遅いが手書きに別の当たり方をする）")
     e.add_argument("--dpi", type=int, default=200)
     e.add_argument("--llm", dest="llm", action="store_true", default=None,
                    help="小型LLMで読み取り候補を提示する（既定: 使える環境なら自動で有効）")

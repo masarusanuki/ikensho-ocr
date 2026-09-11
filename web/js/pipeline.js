@@ -82,8 +82,12 @@
       this.ocrWorker = null;
       this.ocrReady = false;
       this.ocrEnabled = opts.ocrEnabled !== false;
-      // チェック欄の後ろの言葉も OCR で確かめるか（管理画面から切り替えられる）
+      // チェック欄の後ろの言葉も OCR で確かめるか（読み取り画面から切り替えられる）
       this.readLabels = opts.readLabels !== false;
+      // テキスト欄の読み方 'ocr'（既定）/ 'vlm'。ボタンで切り替える
+      this.textEngine = opts.textEngine || 'ocr';
+      // VLM は `ikensho serve` のときだけ。この端末の Python に画像を渡す
+      this.vlmEndpoint = opts.vlmEndpoint || null;
       // 日本語のOCRモデル（PP-OCR / ONNX）。置かれていれば tesseract より優先する
       this.pp = global.IkenshoPPOcr
         ? new global.IkenshoPPOcr.PPOcr({ dataBase: this.base, vendorBase: this.vendor })
@@ -406,7 +410,13 @@
           textJobs.push({ t, f, w });
         }
       }
-      if (this.ocrEnabled) await this.initOcr(m => onProgress({ phase: 'ocr', message: m }));
+      if (this.ocrEnabled && this.textEngine !== 'vlm') {
+        await this.initOcr(m => onProgress({ phase: 'ocr', message: m }));
+      }
+      if (this.textEngine === 'vlm' && this.vlmEndpoint && textJobs.length) {
+        warnings.push('テキスト欄は VLM で読みました（画像はこの端末の Python に'
+                      + '渡すだけで外部には出ません）。チェック欄は画像処理で読んでいます。');
+      }
       if (!this.ocrEnabled && textJobs.length) {
         warnings.push(Pipeline.ocrBlocked()
           ? 'テキスト欄のOCRは使っていません（ファイルを直接開いた場合、'
@@ -505,7 +515,9 @@
       const id = 'r' + Date.now().toString(36) +
                  Math.random().toString(36).slice(2, 6);
       const record = { id, fields, pages: pageInfos, templateId, warnings, images,
-                       ocrEngine: this.ocrReady ? (this.engineName || 'unknown') : 'none',
+                       ocrEngine: (this.textEngine === 'vlm' && this.vlmEndpoint)
+                         ? (this.engineName || 'vlm')
+                         : (this.ocrReady ? (this.engineName || 'unknown') : 'none'),
                        anonymized: false };
       // 匿名化加工済みデータの扱い（氏名欄が白抜きなら「匿名化済み」）
       const A = global.IkenshoAnonymize;
@@ -520,6 +532,33 @@
       return record;
     }
 
+    /**
+     * 1欄ぶんを VLM に読ませる。画像はこの端末の Python プロセスに渡すだけで、
+     * 外部には出ない（LLM もローカルで動かす）。
+     */
+    async readWithVlm(warped, rect, multiline, charset) {
+      const roi = this.cropMat(warped, rect);
+      let url;
+      try {
+        url = E.matToCanvas(roi).toDataURL('image/png');
+      } finally {
+        roi.delete();
+      }
+      try {
+        const res = await fetch(this.vlmEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: url, multiline: !!multiline, charset }),
+        });
+        const got = await res.json();
+        if (!res.ok || got.error) return { error: got.error || `HTTP ${res.status}` };
+        this.engineName = got.engine || 'vlm';
+        return { text: got.text || '', confidence: got.confidence || 0 };
+      } catch (e) {
+        return { error: e.message };
+      }
+    }
+
     async readText(warped, t, f, blank, diff) {
       // 測った左端が記入の先頭に食い込んでいることがあるので、
       // 印刷内容にぶつからない範囲で左へ広げてから読む
@@ -527,14 +566,16 @@
       if (!this.hasInk(warped, rect)) {
         return { value: '', confidence: 0.95, raw: '', empty: true, candidates: [] };
       }
-      if (!this.ocrReady) {
+      const canVlm = this.textEngine === 'vlm' && !!this.vlmEndpoint;
+      if (!this.ocrReady && !canVlm) {
         return { value: '', confidence: 0, raw: '', empty: false, candidates: [],
                  note: 'OCR未使用' };
       }
       const charset = t.charset || f.charset || '';
       const multiline = f.type === 'textarea';
       // 日付欄は「年・月・日」の枠が分かっているので専用の読み方をする
-      if (f.kind === 'date_wareki' && t.slots && this.pp && this.pp.ready) {
+      // VLM は文字の位置を返さないので、日付欄の振り分けは専用経路を使わない
+      if (f.kind === 'date_wareki' && t.slots && !canVlm && this.pp && this.pp.ready) {
         return await this.readDate(warped, t, f);
       }
       // 白紙様式との差分で「書き込みが無い」と分かる欄は読まない。
@@ -545,7 +586,17 @@
                  note: 'この欄に書き込みが見当たりません（印刷の罫線だけです）' };
       }
       let text = '', conf = 0;
-      if (this.pp && this.pp.ready) {
+      if (canVlm) {
+        // VLM で読む。書き込みの範囲に詰めてから渡す（罫線やカッコを見せない）
+        const tight = (diff && f.kind !== 'date_wareki') ? E.inkCrop(diff, rect) : rect;
+        const r = await this.readWithVlm(warped, tight, multiline, charset);
+        if (r.error) {
+          return { value: '', confidence: 0, raw: '', empty: false, candidates: [],
+                   note: 'VLMの読み取りに失敗しました: ' + r.error };
+        }
+        text = r.text || '';
+        conf = r.confidence || 0;
+      } else if (this.pp && this.pp.ready) {
         // 日本語専用モデル（Python版と同じもの）。
         // 罫線・カッコ・単位を含めたまま読むと精度が落ちるので、
         // 書き込みのある範囲に詰めてから渡す（検算には元の矩形を使う）

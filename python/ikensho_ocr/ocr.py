@@ -403,6 +403,10 @@ def _make(name: str) -> OcrEngine:
     """`rapidocr:ppocrv5_mobile` のようなモデル指定も受ける。"""
     if name.startswith("rapidocr:"):
         return RapidOcr(name.split(":", 1)[1])
+    if name == "vlm" or name.startswith("vlm:"):
+        # VLM は読み込みが重いので使い回す。循環 import を避けてここで読む
+        from . import vlm as vlm_mod
+        return vlm_mod.get_engine(name.split(":", 1)[1] if ":" in name else None)
     return _ENGINES.get(name, NullOcr)()
 
 
@@ -413,7 +417,11 @@ def get_engine(name: str = "auto") -> OcrEngine:
       ensemble        … 使えるものを全て使い、良い結果を採る（遅いが精度は上）
       rapidocr        … 日本語モデルが入っていればそれを使う
       rapidocr:<名前>  … 認識モデルを指定する（models/ocr/<名前>）
+      vlm / vlm:<名前> … 画像を見て答えるLLMで読む（models/vlm/<名前>）
       名前指定         … tesseract / rapidocr / mangaocr / none
+
+    `auto` では VLM を選ばない。実測で PP-OCR のほうが速く正確なため
+    （VLM は読めない画像からもそれらしい文字を作る。`vlm.py` の説明を参照）。
     """
     if name in ("ensemble", "ensemble+manga"):
         keys = ["rapidocr", "tesseract"]
@@ -440,6 +448,13 @@ def get_engine(name: str = "auto") -> OcrEngine:
 
 def available_engines() -> List[str]:
     out = [f"rapidocr:{m['key']}" for m in installed_ocr_models()]
+    try:
+        from . import vlm as vlm_mod
+        # 読み込まずに「入っているか」だけを見る（モデルは数GBある）
+        if vlm_mod.available():
+            out += [f"vlm:{m['key']}" for m in vlm_mod.installed_models()]
+    except Exception:
+        pass
     for key, cls in _ENGINES.items():
         if key == "mangaocr":
             # モデル読み込みが重いので、導入されているかだけを見る

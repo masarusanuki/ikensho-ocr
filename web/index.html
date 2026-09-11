@@ -52,9 +52,25 @@
     </p>
 
     <div class="row" style="margin-top:16px">
+      <span class="hint" style="margin:0">読み取り方式</span>
+      <div class="seg" id="engine-switch" role="group" aria-label="読み取り方式">
+        <button type="button" class="btn sm on" data-engine="ocr"
+                title="画像処理＋文字認識モデル（PP-OCR）。速くて、測った精度も高い">画像処理＋OCR</button>
+        <button type="button" class="btn sm" data-engine="vlm"
+                title="画像を見て答えるLLMで読む。手書きが崩れている欄の別手段">VLM</button>
+      </div>
+      <span class="hint" id="engine-note" style="margin:0"></span>
+    </div>
+
+    <div class="row" style="margin-top:12px">
       <label class="row" style="gap:6px">
         <input type="checkbox" id="opt-ocr" checked>
         テキスト欄をOCRで読み取る
+      </label>
+      <label class="row" style="gap:6px"
+             title="枠の後ろの言葉が様式で変わっていないかを確かめます（1通あたり十数秒かかります）">
+        <input type="checkbox" id="opt-labels" checked>
+        チェック欄の言葉も確かめる
       </label>
       <label class="row" style="gap:6px">
         <input type="checkbox" id="opt-split" checked>

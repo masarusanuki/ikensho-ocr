@@ -36,6 +36,7 @@
       global.IkenshoEngine.setThresholds(this.settings);
       this.schema = this.pipeline.schema;
       this.applyOcrAvailability();
+      this.applyEngineSwitch();
       this.checkSamples();
       this.checkDocs();
       this.review = new global.IkenshoReview(this);
@@ -148,6 +149,54 @@
       } catch (e) { /* 無ければ出さない */ }
     }
 
+    /**
+     * 読み取り方式の切り替え（画像処理＋OCR / VLM）。
+     * VLM は `ikensho serve` で開いたときだけ使える（この端末の Python で動かす）。
+     */
+    async applyEngineSwitch() {
+      this.engine = 'ocr';
+      const box = document.getElementById('engine-switch');
+      const note = document.getElementById('engine-note');
+      const vlmBtn = box.querySelector('[data-engine="vlm"]');
+      const set = (name, msg) => {
+        this.engine = name;
+        box.querySelectorAll('.btn').forEach(b =>
+          b.classList.toggle('on', b.dataset.engine === name));
+        note.textContent = msg;
+      };
+      let info = null;
+      try {
+        const res = await fetch('api/vlm');
+        if (res.ok) info = await res.json();
+      } catch (e) { /* サーバ無しで開いている */ }
+      this.vlmInfo = info;
+      this.pipeline.vlmEndpoint = (info && info.available) ? 'api/vlm-read' : null;
+      if (!info || !info.available) {
+        vlmBtn.disabled = true;
+        vlmBtn.title = info
+          ? 'VLM のモデルが入っていません（tools/fetch_vlm_model.py で取得できます）'
+          : 'VLM は `ikensho serve` で開いたときだけ使えます';
+        set('ocr', '');
+      } else {
+        const m = (info.models[0] || {}).key || '';
+        vlmBtn.title = `VLM（${m}）で読む。画像はこの端末の Python に渡すだけで外部には出ません`;
+        set('ocr', '');
+      }
+      box.querySelectorAll('.btn').forEach(b => {
+        b.addEventListener('click', () => {
+          if (b.disabled) return;
+          if (b.dataset.engine === 'vlm') {
+            const m = ((this.vlmInfo || {}).models || [])[0] || {};
+            set('vlm', `VLM（${m.key || ''}）で読みます。`
+                       + '画像はこの端末の Python に渡すだけで外部には出ません。1欄あたり数秒かかります');
+          } else {
+            set('ocr', '');
+          }
+          this.op('engine', { note: this.engine });
+        });
+      });
+    }
+
     /** file:// で開いた場合は OCR を使えないので、その旨を画面に出す。 */
     applyOcrAvailability() {
       if (!global.IkenshoPipeline.ocrBlocked()) return;
@@ -219,6 +268,8 @@
       // ファイル名には氏名が入っていることが多いので記録しない（件数だけ残す）
       this.op('read_start', { count: this.files.length });
       this.pipeline.ocrEnabled = document.getElementById('opt-ocr').checked;
+      this.pipeline.readLabels = document.getElementById('opt-labels').checked;
+      this.pipeline.textEngine = this.engine || 'ocr';
       const split = document.getElementById('opt-split').checked;
 
       try {
