@@ -249,7 +249,11 @@ def score_text(truth, results, detail=0):
         def expect_of(fid):
             if fid in DATE_MAP:
                 pre = DATE_MAP[fid]
-                parts = [want.get(f"{pre}_{k}") for k in ("年", "月", "日")]
+                # 元年は正解データでは「元」と書かれている。読み取りは 1 を返すので
+                # そろえる（そろえないと、正しく読めているのに誤りに数えてしまう）
+                parts = [("1" if (want.get(f"{pre}_{k}") or "").strip() in ("元", "元年")
+                          else want.get(f"{pre}_{k}"))
+                         for k in ("年", "月", "日")]
                 if not any(parts):
                     return None
                 marks = ("年", "月", "日")

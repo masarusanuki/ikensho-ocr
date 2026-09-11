@@ -585,7 +585,7 @@ class DigitReader:
         if not self.available:
             return result
         pad = 0.02
-        roi = prepare_roi(warped, rect, pad=pad, target_height=72)
+        roi = prepare_roi(warped, rect, pad=pad, target_height=DATE_TARGET_H)
         if roi is None:
             return result
         H, W = warped.shape
@@ -637,6 +637,15 @@ def get_digit_reader() -> DigitReader:
     return _DIGIT_READER
 
 
+# 切り抜きのノイズ取りの強さ。強くすると薄い鉛筆の線まで消える。0 で切る。
+# **全部の欄に効くので、変えるときは日付だけでなく文字欄も測ること**
+# （`tools/benchmark_dates.py` と `tools/benchmark_seigo.py --text`）。
+# 環境変数で試せるようにしてある: IKENSHO_DENOISE=0 など
+DENOISE_H = int(os.environ.get("IKENSHO_DENOISE", "7"))
+# 日付欄を OCR に渡すときの高さ。小さい数字の検出に効く
+DATE_TARGET_H = int(os.environ.get("IKENSHO_DATE_H", "72"))
+
+
 def prepare_roi(warped: np.ndarray, rect: List[float], pad: float = 0.0,
                 target_height: int = 48) -> np.ndarray:
     """テンプレート座標の矩形から OCR 用の切り抜きを作る。"""
@@ -654,7 +663,8 @@ def prepare_roi(warped: np.ndarray, rect: List[float], pad: float = 0.0,
     scale = max(1.0, float(target_height) / max(roi.shape[0], 1))
     if scale > 1.0:
         roi = cv2.resize(roi, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-    roi = cv2.fastNlMeansDenoising(roi, None, 7, 7, 21)
+    if DENOISE_H > 0:
+        roi = cv2.fastNlMeansDenoising(roi, None, DENOISE_H, 7, 21)
     roi = cv2.copyMakeBorder(roi, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=255)
     return roi
 

@@ -26,6 +26,12 @@ PARTS = ("year", "month", "day")
 JA = {"year": "年", "month": "月", "day": "日"}
 
 
+def norm_truth(value: str) -> str:
+    """正解の表記を数字にそろえる。元年は「元」と書かれている。"""
+    v = (value or "").strip()
+    return "1" if v in ("元", "元年") else v
+
+
 def run_one(doc):
     """1通ぶんの日付欄を読む。{項目: {year/month/day: 値}} を返す。"""
     templates = load_templates()
@@ -84,7 +90,7 @@ def main():
         for fid, pre in DATE_MAP.items():
             read = (got.get(doc) or {}).get(fid) or {}
             for p in PARTS:
-                truth = (want.get(f"{pre}_{JA[p]}") or "").strip()
+                truth = norm_truth(want.get(f"{pre}_{JA[p]}"))
                 mine = read.get(p)
                 mine_s = "" if mine is None else str(int(mine))
                 for bucket in (stat[p], per_field[fid][p]):
