@@ -306,9 +306,27 @@ OCR を挟むと結果がエンジンに左右されて比較になりません�
 ```bash
 python3 tools/benchmark_seigo.py --jobs 6 --marks   # チェック欄（印の種類ごとも出す）
 python3 tools/benchmark_seigo.py --jobs 6 --text    # 文字欄
+python3 tools/benchmark_dates.py --limit 30 --jobs 6  # 日付を年・月・日に分けて
+python3 tools/test_web_dates.py --limit 8           # ブラウザ版の日付（別実装）
 python3 tools/tune_checkbox.py dump --jobs 6        # 枠ごとの測定値を書き出す（約60秒）
 python3 tools/tune_checkbox.py eval                 # 規則を画像なしで試す
 ```
+
+**日付はまとめた正解率で見ないこと。** 「日だけ抜ける」という外し方をするので、
+`benchmark_dates.py` で年・月・日を別々に見ます。実測では
+年 75.5% / 月 92.4% / 日 94.1% で、**いちばん悪いのは年**でした。
+
+**ブラウザ版の日付は Python 版と別実装**（`pipeline.readDate`）なので、
+Python 版を測っただけでは分かりません。`test_web_dates.py` で別に測ります。
+
+切り抜きの前処理は環境変数で差し替えて比べられます。
+
+```bash
+IKENSHO_DENOISE=0 IKENSHO_DATE_H=96 python3 tools/benchmark_dates.py --limit 30 --jobs 6
+```
+
+`IKENSHO_DENOISE`（ノイズ取りの強さ。既定7）は**全部の欄に効く**ので、
+変えるときは日付だけでなく `--text` も測ってください。
 
 `tune_checkbox.py dump` は 18,600 枠の測定値を `bench/seigo_features.json` に
 落とします。**判定の規則を触るときは必ずこれを使ってください。**
