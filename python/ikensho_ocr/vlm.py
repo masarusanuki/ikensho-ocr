@@ -23,6 +23,7 @@ import atexit
 import contextlib
 import os
 import re
+import threading
 from typing import List, Optional
 
 import cv2
@@ -160,6 +161,10 @@ def _handler_name(key: str) -> str:
     return "MTMDChatHandler"
 
 
+# 標準出力の差し替えはプロセス全体に効くので、同時に2つ走らせない
+_SILENCE_LOCK = threading.Lock()
+
+
 @contextlib.contextmanager
 def _silence():
     """C 側が標準出力・標準エラーに直接書く分を捨てる。
@@ -167,7 +172,15 @@ def _silence():
     llama.cpp の画像符号化の経過（`image slice encoded in ...`）は
     ログの受け口を通らず直接書かれるため、ファイル記述子ごと差し替える。
     失敗は例外で分かるので、捨てても情報は落ちない。
+
+    **プロセス全体のファイル記述子を差し替える**ため、同時に走ると
+    復帰が入れ違って標準出力が /dev/null に固定されてしまう。錠をかける。
     """
+    with _SILENCE_LOCK:
+        yield from _silence_inner()
+
+
+def _silence_inner():
     try:
         null = os.open(os.devnull, os.O_WRONLY)
         saved = (os.dup(1), os.dup(2))

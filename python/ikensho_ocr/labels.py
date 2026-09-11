@@ -119,11 +119,8 @@ def read_labels(warped: np.ndarray, boxes: List[dict], ocr,
     out: Dict[str, str] = {}
     for row in group_rows(boxes):
         rects = {f"{b['field']}.{b['opt']}": label_rect(b, boxes) for b in row}
-        if only is not None:
-            wanted = {f"{b['field']}.{b['opt']}" for b in row
-                      if (b["field"], b["opt"]) in only}
-            if not wanted:
-                continue
+        if only is not None and not any((b["field"], b["opt"]) in only for b in row):
+            continue
         x0 = min(r[0] for r in rects.values())
         x1 = max(r[0] + r[2] for r in rects.values())
         y0 = min(r[1] for r in rects.values())
