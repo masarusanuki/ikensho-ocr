@@ -42,6 +42,12 @@
         () => document.getElementById('tpl-import-input').click());
       document.getElementById('tpl-import-input').addEventListener('change', e => this.importTemplate(e));
 
+      // VLM の接続先
+      const vb = document.getElementById('btn-vlm-save');
+      if (vb) vb.addEventListener('click', () => this.saveVlmBase());
+      const vc = document.getElementById('btn-vlm-clear');
+      if (vc) vc.addEventListener('click', () => this.saveVlmBase(''));
+
       // チェック欄の言葉
       document.getElementById('lbl-select').addEventListener('change', e => {
         this.lblId = e.target.value; this.renderLabels();
@@ -129,6 +135,7 @@
       this.lblId = this.lblId && ids.includes(this.lblId) ? this.lblId : ids[0];
       lblSel.value = this.lblId;
 
+      this.renderVlm();
       this.renderTemplate();
       this.renderLabels();
       this.renderDict();
@@ -558,6 +565,53 @@
     }
 
     // ------------------------------------------------------ テンプレート編集
+    // -------------------------------------------------- VLM の接続先
+    /**
+     * VLM を動かしている `ikensho serve` の場所を表示する。
+     * このページをサーバに置いて開いた場合、ページは静的ファイルなので
+     * 接続先を教えないと VLM を選べない。
+     */
+    renderVlm() {
+      const el = document.getElementById('vlm-base');
+      const org = document.getElementById('vlm-origin');
+      if (!el) return;
+      el.value = global.IkenshoPipeline.vlmBase();
+      if (org) org.textContent = location.origin;
+      this.vlmStatus(this.app.pipeline.vlmEndpoint
+        ? 'いま VLM が使えます（接続先: '
+          + (global.IkenshoPipeline.vlmBase() || 'このページと同じ場所') + '）'
+        : 'いま VLM は使えません。上に接続先を入れて「保存して確かめる」を押してください。');
+    }
+
+    vlmStatus(msg, isError) {
+      const el = document.getElementById('vlm-status');
+      if (!el) return;
+      el.textContent = msg;
+      el.style.color = isError ? 'var(--low)' : '';
+    }
+
+    /** 接続先を保存し、実際につながるかを確かめる。 */
+    async saveVlmBase(value) {
+      const el = document.getElementById('vlm-base');
+      const url = value === undefined ? el.value : value;
+      if (!global.IkenshoPipeline.saveVlmBase(url)) {
+        this.vlmStatus('この環境では保存できません', true);
+        return;
+      }
+      el.value = global.IkenshoPipeline.vlmBase();
+      this.vlmStatus('確かめています…');
+      const info = await this.app.probeVlm();
+      if (info.available) {
+        const m = (info.models[0] || {}).key || '';
+        this.vlmStatus(`つながりました。VLM（${m}）が使えます。`
+                       + '読み取り画面で「VLM」を選べます。');
+      } else {
+        this.vlmStatus(info.reason || 'つながりませんでした', true);
+      }
+      // 読み取り画面のボタンの出し入れも作り直す
+      await this.app.applyEngineSwitch();
+    }
+
     // -------------------------------------------------- チェック欄の言葉
     /**
      * 枠の後ろの言葉の一覧。定義・読めた言葉・使う言葉（直せる）を並べる。

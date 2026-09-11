@@ -367,6 +367,10 @@ table.records tr:hover td { background: #fafbfc; }
   position: sticky; top: 0; background: var(--panel); }
 
 code.inline { background: #eef0f4; border-radius: 4px; padding: 1px 6px; font-size: 12.5px; }
+/* 管理画面に出すコマンド例 */
+pre.cmd { background: #f5f6f8; border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; overflow-x: auto; margin: 8px 0 0; font-size: 12.5px; }
+pre.cmd code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .muted { color: var(--muted); }
 .err { color: var(--low); }
 
