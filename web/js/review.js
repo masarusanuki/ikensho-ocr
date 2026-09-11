@@ -1271,6 +1271,17 @@
         e.value = text;
         e.raw = text;
         e.engine = got.engine || 'vlm';
+        // 日付欄は年・月・日と西暦も作り直す。値だけ差し替えると食い違う
+        if (f.kind === 'date_wareki') {
+          const D = global.IkenshoDates;
+          const parts = D.parse(text);
+          const era = D.canonicalEra(f.default_era || parts.era || e.era || '');
+          e.date = { year: parts.year, month: parts.month, day: parts.day };
+          e.era = era;
+          e.gregorian = D.toGregorian(era, parts.year, parts.month, parts.day);
+          const shown = D.format(e.date);
+          if (shown) e.value = shown;
+        }
         e.note = 'VLMで読み直しました（内容を確かめてください）';
         // VLM は自己申告しないので確信度は上げない。必ず確認してもらう
         e.confidence = Math.min(e.confidence || 0, got.confidence || 0.5);
