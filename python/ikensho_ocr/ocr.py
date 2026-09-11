@@ -265,7 +265,7 @@ class RapidOcr(OcrEngine):
         if not self.available:
             return []
         try:
-            res, _ = self.engine(cv2.cvtColor(image, cv2.COLOR_GRAY2BGR))
+            res, _ = self._run(cv2.cvtColor(image, cv2.COLOR_GRAY2BGR))
         except Exception:
             return []
         out = []
@@ -275,12 +275,60 @@ class RapidOcr(OcrEngine):
                              float(r[2]) if len(r) > 2 else 0.5))
         return out
 
+    # 検出した文字が少なすぎるとき、全体1行の読みを採るための条件。
+    # 「はしもと さぶろう」が「しも」になる（検出が一部しか拾えない）ので、
+    # 文字数が明らかに多い方を採る。確信度が低いものは採らない。
+    WHOLE_MIN_CONF = 0.50
+    WHOLE_MIN_GAIN = 3       # これだけ文字数が増えるなら乗り換える
+
+    def _read_whole(self, bgr: np.ndarray):
+        """切り抜き全体を1行として読む（位置の検出を通さない）。"""
+        try:
+            flat, _ = self.engine(bgr, use_det=False, use_rec=True)
+        except Exception:
+            return None
+        if not flat:
+            return None
+        h, w = bgr.shape[:2]
+        box = [[0.0, 0.0], [float(w), 0.0], [float(w), float(h)], [0.0, float(h)]]
+        return [[box, r[0], r[1]] for r in flat]
+
+    def _run(self, bgr: np.ndarray, single_line: bool = False):
+        """文字の位置を見つけてから読む。見つからなければ全体を1行として読む。
+
+        欄の切り抜きは「横に長く縦が短い帯」なので、位置の検出が
+        まるごと失敗することがある。**実測で、検出が空だった欄を
+        全体1行として読ませると読めた**（ふりがな欄で顕著）。
+
+            いしかわ みつこ  → 検出あり: 何も返らない
+                             → 全体1行: 「いしかわみつと」
+
+        ブラウザ版には元から同じ受けがあり、Python 版だけ無かった。
+        """
+        res, _ = self.engine(bgr)
+        if not res:
+            return self._read_whole(bgr), True
+        if not single_line:
+            return res, False
+        # 1行の欄では、検出が一部しか拾えていないことがある。
+        # 全体1行の読みと比べ、明らかに文字数が多ければそちらを採る。
+        whole = self._read_whole(bgr)
+        if not whole:
+            return res, False
+        got = sum(len(str(r[1])) for r in res)
+        alt = sum(len(str(r[1])) for r in whole)
+        conf = min(float(r[2]) for r in whole)
+        if alt >= got + self.WHOLE_MIN_GAIN and conf >= self.WHOLE_MIN_CONF:
+            return whole, True
+        return res, False
+
     def read(self, image: np.ndarray, multiline: bool = False,
              charset: str = "") -> OcrResult:
         if not self.available:
             return OcrResult("", 0.0, self.name)
         try:
-            res, _ = self.engine(cv2.cvtColor(image, cv2.COLOR_GRAY2BGR))
+            res, whole = self._run(cv2.cvtColor(image, cv2.COLOR_GRAY2BGR),
+                                   single_line=not multiline)
         except Exception:
             return OcrResult("", 0.0, self.name)
         if not res:
@@ -644,8 +692,14 @@ def get_digit_reader() -> DigitReader:
 DENOISE_H = int(os.environ.get("IKENSHO_DENOISE", "7"))
 # 日付欄を OCR に渡すときの高さ。小さい数字の検出に効く
 DATE_TARGET_H = int(os.environ.get("IKENSHO_DATE_H", "72"))
-# 引き伸ばしたあとに輪郭を立てる強さ（0 で切る）
-SHARPEN = float(os.environ.get("IKENSHO_SHARPEN", "0.6"))
+# 引き伸ばしたあとに輪郭を立てる強さ（0 で切る）。
+# **既定は 0（切る）。** 入れてみたが実測で悪化した。
+# 100dpi の入力で 年 74.0% → 70.2%（月・日は変わらず）。
+# にじみを戻すつもりが、粒を立てて誤読を増やしたと見ている。
+SHARPEN = float(os.environ.get("IKENSHO_SHARPEN", "0"))
+# 低解像度向けの引き伸ばし（Lanczos・輪郭立て・ノイズ取りの弱め）を使うか。
+# 効果を測るために、以前の動き（Cubic・常にノイズ取り）に戻せるようにしてある
+LOWRES = os.environ.get("IKENSHO_LOWRES", "1") != "0"
 
 
 def prepare_roi(warped: np.ndarray, rect: List[float], pad: float = 0.0,
@@ -681,16 +735,19 @@ def upscale_for_ocr(roi: np.ndarray, target_height: int) -> np.ndarray:
         return np.full((8, 8), 255, np.uint8)
     h = max(roi.shape[0], 1)
     scale = max(1.0, float(target_height) / h)
+    big = LOWRES and scale >= 2.0
     if scale > 1.0:
         # 2倍を超える引き伸ばしは Lanczos（細い線を残す）
-        interp = cv2.INTER_LANCZOS4 if scale >= 2.0 else cv2.INTER_CUBIC
+        interp = cv2.INTER_LANCZOS4 if big else cv2.INTER_CUBIC
         roi = cv2.resize(roi, None, fx=scale, fy=scale, interpolation=interp)
-        if scale >= 2.0:
+        if big and SHARPEN > 0:
             # にじみを戻す。強くかけると粒が立つので控えめに
             blur = cv2.GaussianBlur(roi, (0, 0), 1.0)
             roi = cv2.addWeighted(roi, 1.0 + SHARPEN, blur, -SHARPEN, 0)
     # 引き伸ばしが大きいほどノイズ取りを弱める
-    strength = DENOISE_H if scale < 2.0 else (DENOISE_H // 2 if scale < 3.0 else 0)
+    strength = DENOISE_H
+    if big:
+        strength = DENOISE_H // 2 if scale < 3.0 else 0
     if strength > 0:
         roi = cv2.fastNlMeansDenoising(roi, None, strength, 7, 21)
     return cv2.copyMakeBorder(roi, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=255)

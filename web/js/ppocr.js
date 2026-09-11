@@ -19,8 +19,9 @@
   const MAX_WIDTH = 2400;         // 長い記述欄でも扱える上限
   const MIN_LINE_PX = 6;          // これ未満の高さの行は無視する
   const PAD = 10;                      // 認識に渡すときに足す白い余白（画素）
-  // 引き伸ばしたあとに輪郭を立てる強さ（Python 版の ocr.SHARPEN と同じ値）
-  const SHARPEN = 0.6;
+  // 引き伸ばしたあとに輪郭を立てる強さ（Python 版の ocr.SHARPEN と同じ値）。
+  // 実測で悪化したので 0（切る）。100dpi の入力で 年 74.0% → 70.2% だった
+  const SHARPEN = 0;
   // 文字の位置を見つけるモデルの設定（rapidocr の config.yaml と同じ値）
   const DET_LIMIT = 736;          // 短辺をここまで拡大する
   const DET_MAX_SIDE = 1600;      // 重くなりすぎないための上限
