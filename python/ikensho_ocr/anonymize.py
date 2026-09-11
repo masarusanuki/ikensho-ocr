@@ -45,12 +45,27 @@ def apply(fields: Dict[str, dict], schema, force: bool = False) -> Dict[str, dic
     return fields
 
 
+def _is_empty(entry: dict) -> bool:
+    value = (entry or {}).get("value")
+    if isinstance(value, str):
+        return not value.strip()
+    return not value
+
+
 def looks_anonymized(fields: Dict[str, dict], schema) -> bool:
-    """氏名欄がすべて空なら、匿名化済みデータの可能性が高い。"""
+    """氏名欄がすべて空なら、匿名化済みデータの可能性が高い。
+
+    ただし**何も読めていない場合は判定しない。** 様式を判別できなかった
+    ときも全部の欄が空になるので、そのまま見ると「匿名化済み」と
+    答えてしまう（実際にそうなった）。読めなかったことと、
+    氏名が伏せてあることは別のもの。
+    """
     names = [f.id for f in schema if getattr(f, "pii", "") == "name"]
     if not names:
         return False
-    return all(not (fields.get(n, {}).get("value") or "").strip()
-               if isinstance(fields.get(n, {}).get("value"), str)
-               else not fields.get(n, {}).get("value")
-               for n in names)
+    if not all(_is_empty(fields.get(n, {})) for n in names):
+        return False
+    # 氏名以外に1つでも読めているか（全部空なら「読めなかった」とみなす）
+    others = [f.id for f in schema
+              if f.id not in names and getattr(f, "is_text", False)]
+    return any(not _is_empty(fields.get(o, {})) for o in others)

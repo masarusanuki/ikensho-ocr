@@ -15,6 +15,7 @@
 """
 import os
 import re
+import threading
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -67,11 +68,18 @@ def _char_overlap(a: str, b: str) -> float:
 
 
 class LlmAssist:
-    """llama.cpp 経由の小型LLM。導入されていなければ何もしない。"""
+    """llama.cpp 経由の小型LLM。導入されていなければ何もしない。
+
+    **実体は1つを使い回すので、同時に呼んではいけない。**
+    llama.cpp の文脈は同時呼び出しに耐えず、踏むと `GGML_ASSERT` で
+    **プロセスごと落ちる**（サーバなら処理中の全部が巻き添えになる）。
+    入り口に錠をかけて、必ず順番に通す。
+    """
 
     def __init__(self, model_path: Optional[str] = None, n_ctx: int = 1024,
                  max_tokens: int = 24, threads: Optional[int] = None):
         self.available = False
+        self._lock = threading.Lock()
         self.model_path = model_path or self._find_model()
         self.max_tokens = max_tokens
         self._llm = None
@@ -122,10 +130,11 @@ class LlmAssist:
                   f"候補: {' / '.join(candidates[:5])}\n"
                   f"正式名称:")
         try:
-            res = self._llm.create_chat_completion(
-                messages=[{"role": "system", "content": SYSTEM_PROMPT},
-                          {"role": "user", "content": prompt}],
-                max_tokens=self.max_tokens, temperature=0.0)
+            with self._lock:           # 同時に呼ぶと落ちる（クラスの説明を参照）
+                res = self._llm.create_chat_completion(
+                    messages=[{"role": "system", "content": SYSTEM_PROMPT},
+                              {"role": "user", "content": prompt}],
+                    max_tokens=self.max_tokens, temperature=0.0)
             out = strip_thinking(res["choices"][0]["message"]["content"])
             out = out.split("\n")[0].strip()
         except Exception:
@@ -153,10 +162,11 @@ class LlmAssist:
         if not self.available:
             return ""
         try:
-            res = self._llm.create_chat_completion(
-                messages=[{"role": "system", "content": system},
-                          {"role": "user", "content": prompt}],
-                max_tokens=max_tokens, temperature=0.0)
+            with self._lock:           # 同時に呼ぶと落ちる（クラスの説明を参照）
+                res = self._llm.create_chat_completion(
+                    messages=[{"role": "system", "content": system},
+                              {"role": "user", "content": prompt}],
+                    max_tokens=max_tokens, temperature=0.0)
             return strip_thinking(res["choices"][0]["message"]["content"])
         except Exception:
             return ""

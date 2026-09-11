@@ -5,6 +5,7 @@
 ブラウザだけで完結させたい場合は web/ を任意のサーバに置くだけでよく、
 このサーバは「Python 側の高精度OCRを使いたい場合」や「オフラインで手軽に起動したい場合」向け。
 """
+import hmac
 import http.server
 import json
 import os
@@ -39,6 +40,9 @@ def _web_root() -> str:
 
 # VLM は1つのモデルを使い回すので、同時に走らせない
 _vlm_lock = threading.Lock()
+# 源内からの読み取りも1通ずつ通す。1通で40〜90秒かかる重い処理なので、
+# 同時に走らせても速くならず、待ち時間だけが伸びる
+_gennai_lock = threading.Lock()
 
 # LLMモデルの取得状況（画面に進捗を返すために持つ）
 _download = dict(name="", status="idle", received=0, total=0, message="")
@@ -290,6 +294,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     # 源内（デジタル庁の生成AI基盤）の AI アプリとして応答するか。
     # **既定は無効。** 患者情報が端末の外に出るため、明示したときだけ開く
     gennai = False
+    # 源内からの呼び出しに求める合言葉（x-api-key）。空なら確かめない
+    gennai_key = ""
     # 別の場所に置いたページから API を呼ばせたい場合だけ、明示的に許す。
     # 既定は空＝同じ場所のページからしか使えない（勝手に画像を送られないため）
     allow_origins: list = []
@@ -521,6 +527,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
     # ---------------------------------------------------------- 源内向け
+    def _gennai_ng(self, message, status=400):
+        """受け取れなかったことを利用者の画面にも出す。
+
+        源内の取り決めでは、同期の返しに入るのは `outputs` だけ。
+        `error` にだけ書いても利用者には届かないので、両方に入れる。
+        """
+        return self._json(dict(outputs=gennai_mod.message_markdown(message),
+                               error=message), status)
+
     def _gennai(self):
         """源内（デジタル庁の生成AI基盤）の AI アプリとして1通を読む。
 
@@ -530,38 +545,46 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if not Handler.gennai:
             return self._json(dict(error="源内向けの受け口は無効です"
                                          "（ikensho serve --gennai で開きます）"), 404)
+        if Handler.gennai_key:
+            # 合言葉は長さの違いも漏らさないように比べる
+            got = self.headers.get("x-api-key") or ""
+            if not hmac.compare_digest(got, Handler.gennai_key):
+                return self._gennai_ng("合言葉（x-api-key）が違います。", 401)
         length = int(self.headers.get("Content-Length") or 0)
         if length <= 0 or length > MAX_UPLOAD:
-            return self._json(dict(error="送信サイズが不正です"), 400)
+            return self._gennai_ng("送信された大きさが扱える範囲を超えています。")
         try:
             body = json.loads(self.rfile.read(length) or b"{}")
         except Exception:
-            return self._json(dict(error="JSON を読めません"), 400)
+            return self._gennai_ng("送信された内容を読めませんでした（JSON の形が不正です）。")
         inputs = body.get("inputs")
         if not isinstance(inputs, dict):
-            return self._json(dict(error="inputs がありません"), 400)
+            return self._gennai_ng("inputs がありません。")
         try:
             files = gennai_mod.parse_files(inputs)
         except gennai_mod.GennaiError as exc:
-            return self._json(dict(error=str(exc)), 400)
+            return self._gennai_ng(str(exc))
         opt = gennai_mod.options(inputs)
 
         with tempfile.TemporaryDirectory() as td:
             paths = []
-            # 同じ名前で送られても上書きしないよう連番を付ける
-            # （名前が無い場合の既定値も重なるため）
+            # 同じ名前で送られても上書きしないよう、別々の入れ物に分けて置く。
+            # 連番をファイル名に足すと、結果の「元ファイル」にその番号が出てしまう
             for i, (name, blob) in enumerate(files, 1):
-                p = os.path.join(td, f"{i:02d}_{name}")
+                sub = os.path.join(td, f"{i:02d}")
+                os.makedirs(sub, exist_ok=True)
+                p = os.path.join(sub, name)
                 with open(p, "wb") as fp:
                     fp.write(blob)
                 paths.append(p)
             try:
-                rec = extract_record(paths, schema=Handler.schema,
-                                     templates=Handler.templates,
-                                     dictionaries=Handler.dicts,
-                                     anonymized=opt["anonymized"])
+                with _gennai_lock:     # 1通ずつ順番に読む
+                    rec = extract_record(paths, schema=Handler.schema,
+                                         templates=Handler.templates,
+                                         dictionaries=Handler.dicts,
+                                         anonymized=opt["anonymized"])
             except Exception as exc:
-                return self._json(dict(error=f"読み取りに失敗しました（{exc}）"), 500)
+                return self._gennai_ng(f"読み取りの途中で止まりました（{exc}）。", 500)
         form = record_to_form_json(rec, Handler.schema)
         if opt["format"] == "json":
             text = json.dumps(form, ensure_ascii=False, indent=2)
@@ -620,9 +643,10 @@ def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True,
           template_dir: Optional[str] = None,
           schema_path: Optional[str] = None,
           allow_origins: Optional[list] = None,
-          gennai: bool = False) -> None:
+          gennai: bool = False, gennai_key: str = "") -> None:
     Handler.allow_origins = [o.strip() for o in (allow_origins or []) if o.strip()]
     Handler.gennai = bool(gennai)
+    Handler.gennai_key = (gennai_key or "").strip()
     Handler.schema = load_schema(schema_path) if schema_path else load_schema()
     Handler.templates = load_templates(template_dir)
     Handler.dicts = DEFAULT_DICTIONARIES()
@@ -640,10 +664,17 @@ def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True,
         if Handler.gennai:
             print("  源内向けの受け口を開きました: POST /api/gennai")
             print("    登録用のリクエスト形式: GET /api/gennai/form")
+            if Handler.gennai_key:
+                print("    合言葉（x-api-key）を確かめます")
+            else:
+                print("    ** 合言葉を確かめません。この入り口に届く相手なら"
+                      "誰でも意見書を投げ込み、読み取り結果を受け取れます。")
+                print("    ** --gennai-key で合言葉を決めてください。")
             print("    ** 送られた意見書はこの端末で読みますが、"
                   "源内はクラウド上のサービスです。")
-            print("    ** 要配慮個人情報を端末の外に出してよいか、"
-                  "運用の取り決めを必ず確かめてください。")
+            print("    ** 読み取り結果には氏名・生年月日・住所が含まれます。"
+                  "要配慮個人情報を端末の外に出してよいか、")
+            print("       運用の取り決めを必ず確かめてください。")
         if Handler.allow_origins:
             print("  別の場所のページからの呼び出しを許しました: "
                   + "、".join(Handler.allow_origins))

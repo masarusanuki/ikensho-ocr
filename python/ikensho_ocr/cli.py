@@ -101,7 +101,8 @@ def cmd_serve(args):
     from .server import serve
     serve(host=args.host, port=args.port, open_browser=not args.no_browser,
           template_dir=args.templates, schema_path=args.schema,
-          allow_origins=args.allow_origin, gennai=args.gennai)
+          allow_origins=args.allow_origin, gennai=args.gennai,
+          gennai_key=args.gennai_key)
 
 
 def cmd_info(args):
@@ -175,6 +176,10 @@ def build_parser():
                         "として応答する受け口を開く（POST /api/gennai）。"
                         "既定は閉じている。源内はクラウド上のサービスなので、"
                         "要配慮個人情報を端末の外に出してよいか確かめてから使うこと")
+    s.add_argument("--gennai-key", dest="gennai_key", default="", metavar="合言葉",
+                   help="源内向けの受け口に合言葉（x-api-key）を求める。"
+                        "決めないと、この入り口に届く相手なら誰でも"
+                        "意見書を投げ込めます")
     s.add_argument("--allow-origin", action="append", default=[],
                    metavar="URL",
                    help="別の場所に置いたページからこのAPIを呼ばせる"

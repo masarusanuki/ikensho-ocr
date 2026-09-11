@@ -40,6 +40,9 @@ python3 tools/build_standalone.py                # dist/ikensho-standalone.html 
 ```
 
 処理は端末内で完結し、患者情報は外部に送信されません。
+（`ikensho serve --gennai` で源内向けの受け口を自分で開いた場合だけは、
+読み取り結果が源内側に渡ります。既定では閉じています。README の
+「源内につなぐ」を参照してください）
 
 ---
 

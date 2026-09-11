@@ -41,9 +41,10 @@ REQUEST_FORM: Dict[str, Any] = {
         "desc": "「読みやすい形」は様式の並びどおりに整えたものです。",
         "required": False,
         "default_value": "markdown",
-        "options": [
-            {"label": "読みやすい形（様式の並び）", "value": "markdown"},
-            {"label": "JSON（様式の並び）", "value": "json"},
+        # 選択肢は `items` / `title`。`options` / `label` ではない（仕様書のとおり）
+        "items": [
+            {"title": "読みやすい形（様式の並び）", "value": "markdown"},
+            {"title": "JSON（様式の並び）", "value": "json"},
         ],
     },
     "anonymized": {
@@ -51,7 +52,7 @@ REQUEST_FORM: Dict[str, Any] = {
         "title": "匿名化加工済みデータとして扱う",
         "desc": "氏名が白抜きの研究用データの場合に選んでください。",
         "required": False,
-        "options": [{"label": "匿名化加工済み", "value": "yes"}],
+        "items": [{"title": "匿名化加工済み", "value": "yes"}],
     },
 }
 
@@ -78,12 +79,12 @@ def _one_file(item: Any) -> List[Tuple[str, str]]:
         for f in inner:
             if not isinstance(f, dict):
                 continue
-            data = f.get("content") or f.get("contents")
-            if data:
+            if "content" in f or "contents" in f:
+                data = f.get("content") or f.get("contents") or ""
                 out.append((str(f.get("filename") or "input"), str(data)))
         return out
-    data = item.get("content") or item.get("contents")
-    if data:
+    if "content" in item or "contents" in item:
+        data = item.get("content") or item.get("contents") or ""
         return [(str(item.get("filename") or "input"), str(data))]
     return []
 
@@ -111,7 +112,7 @@ def parse_files(inputs: Dict[str, Any]) -> List[Tuple[str, bytes]]:
         except (binascii.Error, ValueError) as exc:
             raise GennaiError(f"{name}: base64 を読めません（{exc}）") from exc
         if not blob:
-            raise GennaiError(f"{name}: 中身が空です")
+            raise GennaiError(f"{name}: ファイルの中身が空です")
         if len(blob) > MAX_BYTES:
             raise GennaiError(f"{name}: 大きすぎます"
                               f"（{len(blob) / 1048576:.1f}MB。上限 {MAX_BYTES // 1048576}MB）")
@@ -206,8 +207,22 @@ def _item_lines(item: Dict[str, Any], indent: str = "") -> List[str]:
         note.append("特定疾病")
     if item.get("西暦"):
         note.append(f"西暦 {item['西暦']}")
-    tail = f"　<sub>{' ・ '.join(note)}</sub>" if note else ""
+    # HTML の記号は使わない。源内の画面が絵にしてくれるとは限らない
+    tail = f"　（{' ・ '.join(note)}）" if note else ""
     return [f"{indent}- **{item.get('項目', '')}**: {_value_text(item)}{tail}"]
+
+
+def failed(form: Dict[str, Any]) -> bool:
+    """様式を判別できず、読み取れていない状態か。
+
+    この場合でも項目の入れ物は出来てしまうので、
+    **「空欄がずらりと並んだ、それらしい表」に見えてしまう。**
+    見出しではっきり伝える必要がある。
+    """
+    warn = " ".join(str(w) for w in (form.get("注意") or []))
+    return ("様式を判別できませんでした" in warn
+            or "読み取れるページがありません" in warn
+            or not form.get("様式ID"))
 
 
 def to_markdown(form: Dict[str, Any]) -> str:
@@ -215,6 +230,8 @@ def to_markdown(form: Dict[str, Any]) -> str:
 
     源内 Web は `outputs` のテキストを Markdown として表示する。
     """
+    if failed(form):
+        return error_markdown(form)
     lines: List[str] = [f"# {form.get('様式', '主治医意見書')} の読み取り結果", ""]
     src = form.get("元ファイル") or []
     if src:
@@ -246,6 +263,36 @@ def to_markdown(form: Dict[str, Any]) -> str:
     lines.append("")
     lines.append(f"要確認の項目: {low} 個")
     return "\n".join(lines)
+
+
+def error_markdown(form: Dict[str, Any]) -> str:
+    """読み取れなかったことを、まぎれなく伝える。"""
+    lines = ["# 読み取れませんでした", "",
+             "この意見書からは内容を取り出せませんでした。"
+             "**下の結果は使わないでください。**", ""]
+    warn = form.get("注意") or []
+    if warn:
+        lines.append("理由として考えられるもの:")
+        for w in warn:
+            lines.append(f"- {w}")
+        lines.append("")
+    lines += [
+        "確かめてほしいこと:", "",
+        "- 主治医意見書（厚生労働省の標準様式）の PDF か画像かどうか",
+        "- 写真の場合、用紙の四隅が入っているか。斜めや影が強くないか",
+        "- 文字がつぶれていないか（A4の紙が横 600 画素を下回ると苦しくなります）",
+        "- 2ページとも渡しているか",
+    ]
+    return "\n".join(lines)
+
+
+def message_markdown(text: str) -> str:
+    """受け取れなかったときに、利用者の画面へ出す文。
+
+    源内の取り決めでは、同期の返しに入るのは `outputs` だけ。
+    `error` に書いても利用者には届かないので、本文にも同じことを書く。
+    """
+    return "\n".join(["# 読み取りを始められませんでした", "", text])
 
 
 def _count_low(form: Dict[str, Any]) -> int:
