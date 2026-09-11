@@ -152,16 +152,22 @@ def _lines(mask: np.ndarray) -> List[Tuple[int, int]]:
     return out
 
 
+# 文字欄で白紙側を太らせる幅。枠の判定（5）より**小さくする**。
+# 5 にすると罫線やラベルに重なった手書きまで消え、「書き込みが無い」と
+# 誤判定して欄をまるごと空にしてしまう（実際にそうなった）
+TEXT_BLANK_DILATE = 3
+
+
 def mark_layer(warped: np.ndarray, blank: Optional[np.ndarray]) -> Optional[np.ndarray]:
     """白紙様式との差分（＝書き込みだけ）。ページに1回作れば足りる。"""
-    return checkbox._mark_layer(warped, blank)
+    return checkbox._mark_layer(warped, blank, dilate=TEXT_BLANK_DILATE)
 
 
 def written_shape(warped: np.ndarray, blank: Optional[np.ndarray],
                   rect: List[float], diff: Optional[np.ndarray] = None) -> Optional[dict]:
     """欄の中の書き込みから、行数・おおよその文字数・端に接しているかを出す。"""
     if diff is None:
-        diff = checkbox._mark_layer(warped, blank)
+        diff = mark_layer(warped, blank)
     if diff is None:
         return None
     H, W = diff.shape

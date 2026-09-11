@@ -24,6 +24,9 @@ MARK_MARGIN = 0.45       # 参考値 mark を測る窓の広さ（枠サイズ�
 MARK_EMPTY_MAX = 0.012   # 参考値 mark の目安（判定には使わない）
 MARK_FILLED_MIN = 0.030
 BLANK_DILATE = 5         # 白紙側のインクを太らせる幅（重ね合わせのずれを吸収）
+# **文字欄では 3 を使う**（`text_check.TEXT_BLANK_DILATE`）。
+# 枠の判定では 5 にして印刷の枠線を確実に消したいが、同じ値を文字欄に使うと
+# 罫線やラベルに重なった手書きまで消え、「書き込みが無い」と誤判定する。
 
 # 判定に使う3つの見方（正解データ100通・18,600枠で調整）
 #   ink : 枠の中の書き込み量。ふつうのレ点・×・塗りつぶしはここで決まる
@@ -104,19 +107,24 @@ def _halo_ratio(bw: np.ndarray, x: int, y: int, w: int, h: int) -> float:
     return float(ring.mean()) if ring.size else 0.0
 
 
-def _mark_layer(warped: np.ndarray, blank: Optional[np.ndarray]) -> Optional[np.ndarray]:
+def _mark_layer(warped: np.ndarray, blank: Optional[np.ndarray],
+                dilate: int = BLANK_DILATE) -> Optional[np.ndarray]:
     """白紙様式との差分をとり、手書きのマークだけを残した2値画像を作る。
 
     枠線・ラベル・説明文といった印刷内容が消えるため、
     枠からはみ出したレ点や枠を囲む丸印も素直に拾える。
+
+    `dilate` は白紙側のインクを太らせる幅。**用途によって変える。**
+    枠の判定は 5（印刷の枠線を確実に消す）、文字欄は 3
+    （太らせすぎると罫線に重なった手書きまで消える）。
     """
     if blank is None or blank.shape != warped.shape:
         return None
     scan = _binarize(warped)
     base = _binarize(blank)
     # 位置ずれの許容のため、白紙側のインクを少し太らせてから引く
-    base = cv2.dilate(base, np.ones((BLANK_DILATE, BLANK_DILATE), np.uint8),
-                      iterations=1)
+    d = max(1, int(dilate))
+    base = cv2.dilate(base, np.ones((d, d), np.uint8), iterations=1)
     diff = cv2.bitwise_and(scan, cv2.bitwise_not(base))
     # 孤立したノイズ点を除去
     diff = cv2.morphologyEx(diff, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))

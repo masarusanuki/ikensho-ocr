@@ -7,6 +7,8 @@
   const L = global.IkenshoLabels;
   // チェック欄の言葉を直した内容の置き場所。様式の設定なので利用者ごとに分けない
   const LABELS_KEY = 'ikensho.labels.v1';
+  // VLM を動かしている `ikensho serve` の場所。端末の設定なので利用者ごとに分けない
+  const VLM_KEY = 'ikensho.vlm.base.v1';
 
   // 欄ごとの文字種ヒント。書かれる文字が決まっている欄は候補を絞ると精度が上がる。
   const KATAKANA = Array.from({ length: 0x30F6 - 0x30A1 + 1 },
@@ -149,6 +151,25 @@
      */
     static ocrBlocked() {
       return location.protocol === 'file:';
+    }
+
+    /**
+     * VLM を動かしている `ikensho serve` の場所。
+     * 空なら同じ場所（`ikensho serve` で開いた場合）だけを見る。
+     * 公開したページから使う場合は、管理画面でここに URL を入れてもらう。
+     */
+    static vlmBase() {
+      try { return (localStorage.getItem(VLM_KEY) || '').trim(); }
+      catch (e) { return ''; }
+    }
+
+    static saveVlmBase(url) {
+      const v = String(url || '').trim().replace(/\/+$/, '');
+      try {
+        if (v) localStorage.setItem(VLM_KEY, v);
+        else localStorage.removeItem(VLM_KEY);
+        return true;
+      } catch (e) { return false; }
     }
 
     /** 管理画面で直した「チェック欄の言葉」。{"field.opt": "言葉"} */
@@ -427,7 +448,8 @@
       const diffs = {};
       for (const [idx, w] of Object.entries(warped)) {
         const b = this.blanks[`${templateId}:${idx}`];
-        const d = b ? E.markLayer(w.mat, b) : null;
+        // 文字欄用の差分。枠の判定より弱く白紙を太らせる（engine.js を参照）
+        const d = b ? E.markLayer(w.mat, b, E.TEXT_BLANK_DILATE) : null;
         if (d) diffs[idx] = d;
       }
       try {

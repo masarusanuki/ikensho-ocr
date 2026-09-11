@@ -100,7 +100,8 @@ def cmd_extract(args):
 def cmd_serve(args):
     from .server import serve
     serve(host=args.host, port=args.port, open_browser=not args.no_browser,
-          template_dir=args.templates, schema_path=args.schema)
+          template_dir=args.templates, schema_path=args.schema,
+          allow_origins=args.allow_origin)
 
 
 def cmd_info(args):
@@ -169,6 +170,13 @@ def build_parser():
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8765)
     s.add_argument("--no-browser", action="store_true")
+    s.add_argument("--allow-origin", action="append", default=[],
+                   metavar="URL",
+                   help="別の場所に置いたページからこのAPIを呼ばせる"
+                        "（例: --allow-origin http://localhost）。"
+                        "公開したページから VLM を使うときに指定する。"
+                        "許した場所のページはこの端末の読み取りAPIを使えるので、"
+                        "信用できる場所だけを書くこと")
     s.set_defaults(func=cmd_serve)
 
     i = sub.add_parser("info", help="動作環境を表示する")

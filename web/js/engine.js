@@ -217,7 +217,11 @@
 
 
   const MARK_MARGIN = 0.45;   // 枠の外周（丸囲み）を見る窓の広さ
-  const BLANK_DILATE = 5;     // 白紙側のインクを太らせる幅（重ね合わせのずれ）
+  const BLANK_DILATE = 5;      // 枠の判定で白紙側を太らせる幅（重ね合わせのずれ）
+  // **文字欄では 3 を使う。** 枠の判定では印刷の枠線を確実に消したいので 5 だが、
+  // 同じ値を文字欄に使うと罫線やラベルに重なった手書きまで消え、
+  // 「書き込みが無い」と誤判定して欄をまるごと空にしてしまう（実際にそうなった）
+  const TEXT_BLANK_DILATE = 3;
   // 二重線で消した印
   const STRIKE_BANDS_MIN = 1;      // 枠を左右に突き抜ける長い横線の本数
   const STRIKE_ALL_BANDS_MIN = 2;  // 突き抜けを問わない本数（二重線なので2本）
@@ -228,13 +232,17 @@
   /**
    * 白紙様式との差分をとり、手書きのマークだけを残した2値画像を作る。
    * 枠線・ラベル・説明文が消えるので、枠からはみ出したレ点や丸印も拾える。
+   *
+   * `dilate` は白紙側のインクを太らせる幅。**用途によって変える。**
+   * 枠の判定は 5（印刷の枠線を確実に消す）、文字欄は 3
+   * （太らせすぎると罫線に重なった手書きまで消える）。
    */
-  function markLayer(warped, blank) {
+  function markLayer(warped, blank, dilate) {
     if (!blank || blank.cols !== warped.cols || blank.rows !== warped.rows) return null;
+    const d = Math.max(1, Math.round(dilate || BLANK_DILATE));
     const scan = binarize(warped);
     const base = binarize(blank);
-    const k = cv.getStructuringElement(cv.MORPH_RECT,
-                                       new cv.Size(BLANK_DILATE, BLANK_DILATE));
+    const k = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(d, d));
     cv.dilate(base, base, k);                   // 位置ずれの許容
     const inv = new cv.Mat();
     cv.bitwise_not(base, inv);
@@ -874,7 +882,7 @@
   function writtenShape(warped, blank, rect, sharedDiff) {
     if (!rect || !rect.every(v => Number.isFinite(v))) return null;
     // 差分は1ページに1回作れば足りる。欄ごとに作り直すと重い
-    const diff = sharedDiff || markLayer(warped, blank);
+    const diff = sharedDiff || markLayer(warped, blank, TEXT_BLANK_DILATE);
     if (!diff) return null;
     const W = diff.cols, H = diff.rows;
     const x0 = Math.max(0, Math.min(W - 1, Math.round(rect[0] * W)));
@@ -971,7 +979,7 @@
     canvasToGrayMat, matToCanvas, flattenIllumination, dewarpPaper,
     registerToRef, matchScore, readBoxes, resolveGroups, readCircle, markLayer,
     detectCircled, resolveStrikes, strikeLines, inkRatio, ringRatio, outsideRatio,
-    binarize, TARGET_WIDTH,
+    binarize, TARGET_WIDTH, BLANK_DILATE, TEXT_BLANK_DILATE,
     widenLeft, inkCrop, inkGroups, trimEdges, checkText, writtenShape
   };
 })(window);

@@ -286,6 +286,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     schema = None
     templates = None
     vlm_name = ""
+    # 別の場所に置いたページから API を呼ばせたい場合だけ、明示的に許す。
+    # 既定は空＝同じ場所のページからしか使えない（勝手に画像を送られないため）
+    allow_origins: list = []
     dicts = None
 
     def __init__(self, *a, **kw):
@@ -295,10 +298,33 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass    # 静かに動かす
 
     # ------------------------------------------------------------- API
+    def _cors(self):
+        """許した場所からの呼び出しにだけ、越境を許可する見出しを付ける。
+
+        既定では何も付けない。付けると**どのページからでも画像を送れる**ため、
+        `--allow-origin` で明示された場所だけに限る。
+        """
+        origin = self.headers.get("Origin")
+        if not origin or not Handler.allow_origins:
+            return
+        if "*" in Handler.allow_origins or origin in Handler.allow_origins:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+
+    def do_OPTIONS(self):
+        """越境呼び出しの事前確認（プリフライト）に答える。"""
+        self.send_response(204)
+        self._cors()
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def _json(self, obj, status=200):
         body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self._cors()
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -532,7 +558,9 @@ class ReusableServer(socketserver.ThreadingTCPServer):
 
 def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True,
           template_dir: Optional[str] = None,
-          schema_path: Optional[str] = None) -> None:
+          schema_path: Optional[str] = None,
+          allow_origins: Optional[list] = None) -> None:
+    Handler.allow_origins = [o.strip() for o in (allow_origins or []) if o.strip()]
     Handler.schema = load_schema(schema_path) if schema_path else load_schema()
     Handler.templates = load_templates(template_dir)
     Handler.dicts = DEFAULT_DICTIONARIES()
@@ -547,6 +575,10 @@ def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True,
         print(f"  様式テンプレート: {template_dir or os.environ.get('IKENSHO_TEMPLATES') or '(既定)'}"
               f" / {len(Handler.templates)} 種類")
         print(f"  利用可能なOCRエンジン: {', '.join(available_engines())}")
+        if Handler.allow_origins:
+            print("  別の場所のページからの呼び出しを許しました: "
+                  + "、".join(Handler.allow_origins))
+            print("    （許した場所のページは、この端末の読み取りAPIを使えます）")
         print("  停止するには Ctrl+C")
         if open_browser:
             threading.Timer(0.8, lambda: webbrowser.open(url)).start()

@@ -278,6 +278,33 @@
   </div>
 
   <div class="panel">
+    <h2>VLM（画像を見て答えるLLM）の接続先</h2>
+    <p class="hint">
+      VLM は<strong>この端末の Python</strong>で動かします。このページを
+      サーバに置いて開いている場合、ページ自体は静的ファイルなので
+      接続先を教える必要があります。
+      <code class="inline">ikensho serve</code> で開いている場合は空のままで構いません。
+    </p>
+    <div class="row" style="margin-bottom:10px">
+      <input type="text" id="vlm-base" placeholder="http://127.0.0.1:8765"
+             style="flex:1;min-width:260px;border:1px solid var(--border);border-radius:7px;padding:6px 9px">
+      <button class="btn" id="btn-vlm-save">保存して確かめる</button>
+      <button class="btn" id="btn-vlm-clear">消す</button>
+    </div>
+    <div id="vlm-status" class="hint" style="margin:0"></div>
+    <p class="hint" style="margin:10px 0 0">
+      接続先の Python 側は、このページからの呼び出しを明示的に許す必要があります。
+    </p>
+    <pre class="cmd"><code>python3 tools/fetch_vlm_model.py
+ikensho serve --allow-origin <span id="vlm-origin"></span></code></pre>
+    <p class="hint" style="margin:8px 0 0">
+      <strong>許した場所のページは、この端末の読み取りAPIを使えます。</strong>
+      信用できる場所だけを許してください。画像が外部に出ることはありません
+      （渡す先はこの端末の Python です）。
+    </p>
+  </div>
+
+  <div class="panel">
     <h2>チェック欄の言葉</h2>
     <p class="hint">
       チェック欄の<strong>後ろに書いてある言葉</strong>です。読み取りのときに

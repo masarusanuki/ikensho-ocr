@@ -57,8 +57,9 @@ def ink_crop(warped: np.ndarray, blank: Optional[np.ndarray],
     """
     if blank is None or blank.size == 0:
         return rect
-    from . import checkbox
-    diff = checkbox._mark_layer(warped, blank)
+    from . import text_check
+    # 文字欄の差分は枠の判定より弱く白紙を太らせる（text_check を参照）
+    diff = text_check.mark_layer(warped, blank)
     if diff is None:
         return rect
     H, W = diff.shape[:2]

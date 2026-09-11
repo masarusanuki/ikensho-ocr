@@ -162,22 +162,25 @@
         this.engine = name;
         box.querySelectorAll('.btn').forEach(b =>
           b.classList.toggle('on', b.dataset.engine === name));
-        note.textContent = msg;
+        note.innerHTML = msg;
       };
-      let info = null;
-      try {
-        const res = await fetch('api/vlm');
-        if (res.ok) info = await res.json();
-      } catch (e) { /* サーバ無しで開いている */ }
-      this.vlmInfo = info;
-      this.pipeline.vlmEndpoint = (info && info.available) ? 'api/vlm-read' : null;
-      if (!info || !info.available) {
+      const info = await this.probeVlm();
+      if (!info.available) {
         vlmBtn.disabled = true;
-        vlmBtn.title = info
-          ? 'VLM のモデルが入っていません（tools/fetch_vlm_model.py で取得できます）'
-          : 'VLM は `ikensho serve` で開いたときだけ使えます';
-        set('ocr', '');
+        // 使えない理由は**画面に出す**。ボタンが押せないだけでは分からない
+        set('ocr', esc(info.reason) +
+          ' <a href="#" id="vlm-setup">VLMを使う手順</a>');
+        const link = document.getElementById('vlm-setup');
+        if (link) {
+          link.addEventListener('click', ev => {
+            ev.preventDefault();
+            this.showView('admin');
+            const el = document.getElementById('vlm-base');
+            if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.focus(); }
+          });
+        }
       } else {
+        vlmBtn.disabled = false;
         const m = (info.models[0] || {}).key || '';
         vlmBtn.title = `VLM（${m}）で読む。画像はこの端末の Python に渡すだけで外部には出ません`;
         set('ocr', '');
@@ -187,17 +190,56 @@
           if (b.disabled) return;
           if (b.dataset.engine === 'vlm') {
             const m = ((this.vlmInfo || {}).models || [])[0] || {};
-            set('vlm', `VLM（${m.key || ''}）で読みます。`
-                       + '画像はこの端末の Python に渡すだけで外部には出ません。'
-                       + '1欄あたり5〜20秒かかるので、1通で10分以上になります。'
-                       + '読めない欄だけを直したい場合は、画像処理＋OCRで読んだあと、'
-                       + '確認画面の「この欄をVLMで読み直す」を使ってください');
+            set('vlm', esc(`VLM（${m.key || ''}）で読みます。`
+              + '画像はこの端末の Python に渡すだけで外部には出ません。'
+              + '1欄あたり5〜20秒かかるので、1通で10分以上になります。'
+              + '読めない欄だけを直したい場合は、画像処理＋OCRで読んだあと、'
+              + '確認画面の「この欄をVLMで読み直す」を使ってください'));
           } else {
             set('ocr', '');
           }
           this.op('engine', { note: this.engine });
         });
       });
+    }
+
+    /**
+     * VLM が使えるかを調べる。
+     * まず同じ場所（`ikensho serve` で開いた場合）、次に管理画面で入れた場所を見る。
+     * 公開したページは静的ファイルだけなので、後者が無いと使えない。
+     */
+    async probeVlm() {
+      const P = global.IkenshoPipeline;
+      const base = P.vlmBase();
+      const tries = [{ url: 'api/vlm', prefix: '' }];
+      if (base) tries.push({ url: base + '/api/vlm', prefix: base + '/' });
+      for (const t of tries) {
+        try {
+          const res = await fetch(t.url, { cache: 'no-store' });
+          if (!res.ok) continue;
+          const info = await res.json();
+          if (!info || !info.available) {
+            this.vlmInfo = info;
+            this.pipeline.vlmEndpoint = null;
+            return { available: false, models: [],
+                     reason: 'VLMのモデルが置かれていません（' +
+                             'python3 tools/fetch_vlm_model.py で取得できます）。' };
+          }
+          this.vlmInfo = info;
+          this.pipeline.vlmEndpoint = t.prefix + 'api/vlm-read';
+          return { available: true, models: info.models || [] };
+        } catch (e) { /* 次を試す */ }
+      }
+      this.vlmInfo = null;
+      this.pipeline.vlmEndpoint = null;
+      return { available: false, models: [],
+               reason: base
+                 ? `VLMの接続先（${base}）につながりません。`
+                   + '`ikensho serve --allow-origin ' + location.origin + '` が'
+                   + '動いているか確かめてください。'
+                 : 'VLMはこの端末のPythonで動かします。'
+                   + 'このページは静的ファイルだけなので、'
+                   + '接続先を管理画面で設定してください。' };
     }
 
     /** file:// で開いた場合は OCR を使えないので、その旨を画面に出す。 */
