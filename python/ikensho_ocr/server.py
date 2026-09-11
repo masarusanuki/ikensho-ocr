@@ -16,9 +16,10 @@ import urllib.request
 import webbrowser
 from typing import Optional
 
+from . import gennai as gennai_mod
 from . import labels as labels_mod
 from .dictionaries import DEFAULT_DICTIONARIES
-from .export import csv_text, record_to_json
+from .export import csv_text, record_to_form_json, record_to_json
 from .extract import extract_record
 from .ocr import available_engines
 from .schema import load_schema
@@ -286,6 +287,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     schema = None
     templates = None
     vlm_name = ""
+    # 源内（デジタル庁の生成AI基盤）の AI アプリとして応答するか。
+    # **既定は無効。** 患者情報が端末の外に出るため、明示したときだけ開く
+    gennai = False
     # 別の場所に置いたページから API を呼ばせたい場合だけ、明示的に許す。
     # 既定は空＝同じ場所のページからしか使えない（勝手に画像を送られないため）
     allow_origins: list = []
@@ -400,6 +404,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             tid = q.get("template", ["official_v1"])[0]
             return self._json(dict(template=tid,
                                    overrides=labels_mod.load_overrides(tid)))
+        if path == "/api/gennai/form":
+            # 源内の「リクエスト形式」に貼り付ける JSON を返す（登録作業用）
+            if not Handler.gennai:
+                return self._json(dict(error="源内向けの受け口は無効です"
+                                             "（ikensho serve --gennai で開きます）"), 404)
+            return self._json(gennai_mod.REQUEST_FORM)
         if path == "/api/vlm":
             # VLM（画像を見て読むLLM）が使えるか。ブラウザ版の切り替えボタン用
             try:
@@ -473,6 +483,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                    count=len(labels_mod.load_overrides(tid))))
         if path == "/api/vlm-read":
             return self._vlm_read()
+        if path == "/api/gennai":
+            return self._gennai()
         if path != "/api/extract":
             return self._json(dict(error="not found"), 404)
         length = int(self.headers.get("Content-Length") or 0)
@@ -507,6 +519,52 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                                  dictionaries=Handler.dicts)
             return self._json(record_to_json(rec, Handler.schema))
 
+
+    # ---------------------------------------------------------- 源内向け
+    def _gennai(self):
+        """源内（デジタル庁の生成AI基盤）の AI アプリとして1通を読む。
+
+        取り決めは genai-web の「AI アプリ API 仕様」に合わせてある。
+          受け取り {"inputs": {...}} / 返し {"outputs": "Markdown"}
+        """
+        if not Handler.gennai:
+            return self._json(dict(error="源内向けの受け口は無効です"
+                                         "（ikensho serve --gennai で開きます）"), 404)
+        length = int(self.headers.get("Content-Length") or 0)
+        if length <= 0 or length > MAX_UPLOAD:
+            return self._json(dict(error="送信サイズが不正です"), 400)
+        try:
+            body = json.loads(self.rfile.read(length) or b"{}")
+        except Exception:
+            return self._json(dict(error="JSON を読めません"), 400)
+        inputs = body.get("inputs")
+        if not isinstance(inputs, dict):
+            return self._json(dict(error="inputs がありません"), 400)
+        try:
+            files = gennai_mod.parse_files(inputs)
+        except gennai_mod.GennaiError as exc:
+            return self._json(dict(error=str(exc)), 400)
+        opt = gennai_mod.options(inputs)
+
+        with tempfile.TemporaryDirectory() as td:
+            paths = []
+            for name, blob in files:
+                p = os.path.join(td, name)
+                with open(p, "wb") as fp:
+                    fp.write(blob)
+                paths.append(p)
+            try:
+                rec = extract_record(paths, schema=Handler.schema,
+                                     templates=Handler.templates,
+                                     dictionaries=Handler.dicts,
+                                     anonymized=opt["anonymized"])
+            except Exception as exc:
+                return self._json(dict(error=f"読み取りに失敗しました（{exc}）"), 500)
+        form = record_to_form_json(rec, Handler.schema)
+        if opt["format"] == "json":
+            text = json.dumps(form, ensure_ascii=False, indent=2)
+            return self._json(dict(outputs=f"```json\n{text}\n```"))
+        return self._json(dict(outputs=gennai_mod.to_markdown(form)))
 
     # ------------------------------------------------------------ VLM
     def _vlm_read(self):
@@ -559,8 +617,10 @@ class ReusableServer(socketserver.ThreadingTCPServer):
 def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True,
           template_dir: Optional[str] = None,
           schema_path: Optional[str] = None,
-          allow_origins: Optional[list] = None) -> None:
+          allow_origins: Optional[list] = None,
+          gennai: bool = False) -> None:
     Handler.allow_origins = [o.strip() for o in (allow_origins or []) if o.strip()]
+    Handler.gennai = bool(gennai)
     Handler.schema = load_schema(schema_path) if schema_path else load_schema()
     Handler.templates = load_templates(template_dir)
     Handler.dicts = DEFAULT_DICTIONARIES()
@@ -575,6 +635,13 @@ def serve(host: str = "127.0.0.1", port: int = 8765, open_browser: bool = True,
         print(f"  様式テンプレート: {template_dir or os.environ.get('IKENSHO_TEMPLATES') or '(既定)'}"
               f" / {len(Handler.templates)} 種類")
         print(f"  利用可能なOCRエンジン: {', '.join(available_engines())}")
+        if Handler.gennai:
+            print("  源内向けの受け口を開きました: POST /api/gennai")
+            print("    登録用のリクエスト形式: GET /api/gennai/form")
+            print("    ** 送られた意見書はこの端末で読みますが、"
+                  "源内はクラウド上のサービスです。")
+            print("    ** 要配慮個人情報を端末の外に出してよいか、"
+                  "運用の取り決めを必ず確かめてください。")
         if Handler.allow_origins:
             print("  別の場所のページからの呼び出しを許しました: "
                   + "、".join(Handler.allow_origins))

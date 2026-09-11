@@ -101,7 +101,7 @@ def cmd_serve(args):
     from .server import serve
     serve(host=args.host, port=args.port, open_browser=not args.no_browser,
           template_dir=args.templates, schema_path=args.schema,
-          allow_origins=args.allow_origin)
+          allow_origins=args.allow_origin, gennai=args.gennai)
 
 
 def cmd_info(args):
@@ -170,6 +170,11 @@ def build_parser():
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8765)
     s.add_argument("--no-browser", action="store_true")
+    s.add_argument("--gennai", action="store_true",
+                   help="源内（デジタル庁の生成AI基盤）の「行政実務用AIアプリ」"
+                        "として応答する受け口を開く（POST /api/gennai）。"
+                        "既定は閉じている。源内はクラウド上のサービスなので、"
+                        "要配慮個人情報を端末の外に出してよいか確かめてから使うこと")
     s.add_argument("--allow-origin", action="append", default=[],
                    metavar="URL",
                    help="別の場所に置いたページからこのAPIを呼ばせる"
