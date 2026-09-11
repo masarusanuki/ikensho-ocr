@@ -439,6 +439,17 @@ def extract_record(paths: List[str],
                     entry = dict(value=corrected, confidence=round(conf, 3),
                                  raw=res.text, candidates=cands, empty=False,
                                  engine=res.engine)
+                # 診断名は ICD のいちばん近い場所を添える。
+                # 書かれた名前は**置き換えない**（「右」「術後」が消えるため）。
+                # コードだけを付けるので、詳しい病名のまま分類に使える。
+                icd = dicts.nearest_icd(f, entry.get("value") or "")
+                if icd:
+                    entry["icd10"] = icd["code"]
+                    entry["icd_name"] = icd["name"]
+                    entry["tokutei"] = icd["tokutei"]
+                    if not icd["exact"]:
+                        _add_note(entry,
+                                  f"ICDは近い分類を当てました（{icd['name']} {icd['code']}）")
                 # 身長・体重は小数1桁。小さな小数点は読み落とされやすいので、
                 # 範囲から外れていて小数点を入れると収まる場合だけ戻す
                 if entry.get("value"):

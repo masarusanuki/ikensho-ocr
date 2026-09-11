@@ -49,6 +49,11 @@ def build(fields: Dict[str, dict], schema) -> Dict[str, Any]:
     """
     out: Dict[str, Any] = {}
     for f in schema:
+        if f.id.startswith("diagnosis") and f.id.endswith("_name"):
+            e = fields.get(f.id) or {}
+            out[f"{f.id}_icd10"] = e.get("icd10")
+            out[f"{f.id}_tokutei"] = e.get("tokutei")
+    for f in schema:
         if getattr(f, "kind", "") != "date_wareki":
             continue
         e = fields.get(f.id) or {}
@@ -80,6 +85,10 @@ def derived_keys(schema) -> list:
         if getattr(f, "kind", "") == "date_wareki":
             keys += [f"{f.id}_iso", f"{f.id}_era", f"{f.id}_year",
                      f"{f.id}_month", f"{f.id}_day"]
+    # 診断名に当てた ICD（分類に使えるよう、西暦などと同じ末尾にまとめる）
+    for f in schema:
+        if f.id.startswith("diagnosis") and f.id.endswith("_name"):
+            keys += [f"{f.id}_icd10", f"{f.id}_tokutei"]
     keys += ["age_computed", "age_written", "age_matches"]
     return keys
 
@@ -94,6 +103,10 @@ def derived_labels(schema) -> Dict[str, str]:
             labels[f"{f.id}_year"] = f"{f.label}（和暦年）"
             labels[f"{f.id}_month"] = f"{f.label}（月）"
             labels[f"{f.id}_day"] = f"{f.label}（日）"
+    for f in schema:
+        if f.id.startswith("diagnosis") and f.id.endswith("_name"):
+            labels[f"{f.id}_icd10"] = f"{f.label}（ICD10）"
+            labels[f"{f.id}_tokutei"] = f"{f.label}（特定疾病）"
     labels["age_computed"] = "年齢（生年月日から計算）"
     labels["age_written"] = "年齢（様式の記載）"
     labels["age_matches"] = "年齢の一致"

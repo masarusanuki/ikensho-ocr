@@ -673,6 +673,18 @@
       const c = this.dicts.correct(f.id, trimmed.text, conf);
       const entry = { value: c.value, confidence: c.confidence, raw: text,
                       empty: false, candidates: c.candidates };
+      // 診断名は ICD のいちばん近い場所を添える。
+      // 書かれた名前は置き換えない（「右」「術後」が消えるため）。
+      const icd = this.dicts.nearestIcd(f.id, entry.value || '');
+      if (icd) {
+        entry.icd10 = icd.code;
+        entry.icd_name = icd.name;
+        entry.tokutei = icd.tokutei;
+        if (!icd.exact) {
+          entry.note = [entry.note,
+            `ICDは近い分類を当てました（${icd.name} ${icd.code}）`].filter(Boolean).join('／');
+        }
+      }
       // 身長・体重は小数1桁。小さな小数点は読み落とされやすいので、
       // 範囲から外れていて小数点を入れると収まる場合だけ戻す
       const dec = global.IkenshoDicts.fixDecimalPoint(f.id, entry.value);

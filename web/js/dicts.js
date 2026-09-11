@@ -110,11 +110,23 @@
   // 辞書語が読み取り結果にそのまま含まれていて、しかもこれより短い場合は、
   // 置き換えると情報が減るだけなので採用しない（Python の dictionaries.py と同じ）
   const SHORTEN_RATIO = 0.70;
+  // ICD コードを付けてよい一致度の下限（Python の dictionaries.py と同じ値）
+  const ICD_MIN = 0.60;
+  // 辞書語を当てても「捨ててよい」文字。記号・空白だけ。
+  // 「右」「両」「術後」「（保存期）」のような語は捨ててはいけない
+  const DROPPABLE = /[\s　.,、。・:：;；!！?？'"“”「」『』（）()\[\]【】/／\\|ー\-—–]+/g;
 
+  /**
+   * 辞書語で置き換えると内容が削られてしまう関係か。
+   * 長さの比で見ていたため `右大腿骨頸部骨折術後` に `大腿骨頸部骨折` を当てて
+   * 「右」「術後」を消していた（比がちょうど0.70で判定を抜けた）。
+   * 辞書語を取り除いた**残りに意味のある文字があるか**で判断する。
+   */
   function isShortening(text, term) {
     const nt = normalize(text), nb = normalize(term);
     if (!nt || !nb || !nt.includes(nb)) return false;
-    return nb.length < nt.length * SHORTEN_RATIO;
+    const rest = nt.replace(nb, '');
+    return rest.replace(DROPPABLE, '').length > 0;
   }
 
   function similarity(a, b) {
@@ -225,10 +237,32 @@
         const s = similarity(query, e.name);
         if (s >= minScore) scored.push({ entry: e, score: s });
       }
+      // 同点なら**より詳しい（長い）辞書語**を先にする。
+      // ICD は詳しいほど近い場所を指すので、`脳血管性認知症` には
+      // `認知症(F03)` より `血管性認知症(F01.9)` を当てたい。
+      // 特定疾病は、同じ詳しさのときだけ優先する。
       scored.sort((a, b) => (b.score - a.score) ||
-                            ((a.entry.tokutei ? 0 : 1) - (b.entry.tokutei ? 0 : 1)) ||
-                            (a.entry.name.length - b.entry.name.length));
+                            (normalize(b.entry.name).length - normalize(a.entry.name).length) ||
+                            ((a.entry.tokutei ? 0 : 1) - (b.entry.tokutei ? 0 : 1)));
       return scored.slice(0, limit);
+    }
+
+    /**
+     * 診断名に対して、ICD のいちばん近い場所を返す。
+     * 候補は「詳しい辞書語が先」に並んでいるので、その先頭を使う。
+     * 似ていないものに無理にコードを付けないよう、下限を設けている。
+     */
+    nearestIcd(fieldId, text) {
+      const key = this.fieldMap[fieldId];
+      const t = cleanOcr(String(text || ''));
+      if (!key || !this.lexicons[key] || !t) return null;
+      const hits = this.search(key, t, 1);
+      if (!hits.length) return null;
+      const { entry, score } = hits[0];
+      if (score < ICD_MIN || !entry.icd10) return null;
+      return { code: entry.icd10, name: entry.name, score: +score.toFixed(4),
+               tokutei: !!entry.tokutei,
+               exact: normalize(entry.name) === normalize(t) };
     }
 
     /** 入力補完（前方一致優先、部分一致で補う）。 */

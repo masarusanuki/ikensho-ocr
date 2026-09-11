@@ -99,14 +99,34 @@ def _partial_similarity(query: str, term: str) -> float:
 # 辞書語が読み取り結果にそのまま含まれていて、しかもこれより短い場合は、
 # 置き換えると情報が減るだけなので採用しない
 SHORTEN_RATIO = 0.70
+# ICD コードを付けてよい一致度の下限。これ未満は「近い場所」とは言えない。
+# 例: `起立性低血圧` に対する最有力が `貧血`（0.50）のような場合は付けない
+ICD_MIN = 0.60
+
+
+# 辞書語を当てても「捨ててよい」文字。記号・空白だけ。
+# 「右」「両」「術後」「（保存期）」のような語は**捨ててはいけない**ので、
+# 長さの比ではなく**何が捨てられるか**で判断する。
+_DROPPABLE = re.compile(r"[\s　.,、。・:：;；!！?？'\"“”「」『』（）()\[\]【】/／\\|ー\-—–]+")
 
 
 def _is_shortening(text: str, term: str) -> bool:
-    """辞書語で置き換えると内容が削られてしまう関係か。"""
+    """辞書語で置き換えると内容が削られてしまう関係か。
+
+    以前は「辞書語が読み取り結果の7割未満の長さなら削られる」と見ていたが、
+    `右大腿骨頸部骨折術後`（10文字）に `大腿骨頸部骨折`（7文字）を当てると
+    比がちょうど 0.70 で判定を抜け、**「右」と「術後」が消えていた**。
+    診療情報でこれは起こしてはいけない。
+
+    そこで、辞書語を取り除いた**残りに意味のある文字があるか**で判断する。
+    残りが記号・空白だけ（例: `高血圧症。` → `。`）なら、
+    辞書の正式表記に直してよい。
+    """
     nt, nb = normalize(text), normalize(term)
     if not nt or not nb or nb not in nt:
         return False
-    return len(nb) < len(nt) * SHORTEN_RATIO
+    rest = nt.replace(nb, "", 1)
+    return bool(_DROPPABLE.sub("", rest))
 
 
 def similarity(a: str, b: str) -> float:
@@ -151,8 +171,12 @@ class Lexicon:
             return []
         scored = [(e, similarity(query, e.name)) for e in self.entries]
         scored = [(e, s) for e, s in scored if s >= min_score]
-        # 特定疾病は同点なら優先する
-        scored.sort(key=lambda t: (-t[1], not t[0].tokutei, len(t[0].name)))
+        # 同点なら**より詳しい（長い）辞書語**を先にする。
+        # ICD は詳しいほど近い場所を指すので、`脳血管性認知症` には
+        # `認知症(F03)` より `血管性認知症(F01.9)` を当てたい。
+        # 以前は短い方を先にしていたため、粗いコードが選ばれていた。
+        # 特定疾病は、同じ詳しさのときだけ優先する（介護保険の判定に関わる）。
+        scored.sort(key=lambda t: (-t[1], -len(normalize(t[0].name)), not t[0].tokutei))
         return scored[:limit]
 
     def prefix(self, query: str, limit: int = MAX_CANDIDATES) -> List[Entry]:
@@ -264,6 +288,25 @@ class Dictionaries:
             conf = round(min(0.95, (base_confidence * 0.5 + score * 0.5)), 3)
             return best.name, conf, candidates
         return text, round(base_confidence * 0.75, 3), candidates
+
+    def nearest_icd(self, field, text: str) -> Optional[dict]:
+        """診断名に対して、ICD のいちばん近い場所を返す。
+
+        候補は「詳しい（長い）辞書語が先」に並んでいるので、その先頭を使う。
+        似ていないものに無理にコードを付けないよう、下限を設けている。
+        """
+        lex = self.for_field(field.id)
+        if lex is None or not text:
+            return None
+        hits = lex.search(clean_ocr(text), limit=1)
+        if not hits:
+            return None
+        entry, score = hits[0]
+        if score < ICD_MIN or not entry.icd10:
+            return None
+        return dict(code=entry.icd10, name=entry.name, score=round(score, 4),
+                    tokutei=bool(entry.tokutei),
+                    exact=normalize(entry.name) == normalize(text))
 
     def suggest(self, field_id: str, query: str, limit: int = MAX_CANDIDATES
                 ) -> List[dict]:

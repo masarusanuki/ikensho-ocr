@@ -36,6 +36,9 @@ def record_to_json(rec, schema: Schema) -> Dict[str, Any]:
                           anonymized=bool(e.get("anonymized")),
                           date=e.get("date"), era=e.get("era"),
                           gregorian=e.get("gregorian"),
+                          # 診断名に当てた ICD（近い分類の場合もある）
+                          icd10=e.get("icd10"), icd_name=e.get("icd_name"),
+                          tokutei=e.get("tokutei"),
                           # なぜ確信度が低いのかが分かるよう、注記と訂正も残す
                           note=e.get("note") or "",
                           corrections=e.get("corrections") or [],
@@ -169,6 +172,12 @@ def _form_item(entry: Dict[str, Any], f) -> Dict[str, Any]:
         item["西暦"] = entry.get("gregorian")
         if entry.get("era"):
             item["元号"] = entry.get("era")
+    if entry.get("icd10"):
+        item["ICD10"] = entry["icd10"]
+        if entry.get("icd_name") and entry["icd_name"] != entry.get("value"):
+            item["ICDの分類名"] = entry["icd_name"]
+        if entry.get("tokutei"):
+            item["特定疾病"] = True
     item["確信度"] = entry.get("confidence")
     item["確信度の段階"] = {"high": "高", "medium": "中", "low": "低",
                             "edited": "修正", "done": "確定"}.get(

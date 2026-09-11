@@ -23,6 +23,12 @@
   function buildDerived(rec, schema) {
     const out = {};
     for (const id of schema.order) {
+      if (!(id.startsWith('diagnosis') && id.endsWith('_name'))) continue;
+      const e = rec.fields[id] || {};
+      out[`${id}_icd10`] = e.icd10 || null;
+      out[`${id}_tokutei`] = e.tokutei === undefined ? null : e.tokutei;
+    }
+    for (const id of schema.order) {
       const f = schema.byId[id];
       if (f.kind !== 'date_wareki') continue;
       const e = rec.fields[id] || {};
@@ -56,6 +62,12 @@
 
   function derivedKeys(schema) {
     const keys = [];
+    // 診断名に当てた ICD（Python の derive.py と同じ並び）
+    for (const id of schema.order) {
+      if (id.startsWith('diagnosis') && id.endsWith('_name')) {
+        keys.push(`${id}_icd10`, `${id}_tokutei`);
+      }
+    }
     for (const id of schema.order) {
       if (schema.byId[id].kind === 'date_wareki') {
         keys.push(`${id}_iso`, `${id}_era`, `${id}_year`, `${id}_month`, `${id}_day`);
@@ -74,6 +86,12 @@
       labels[`${id}_year`] = `${f.label}（和暦年）`;
       labels[`${id}_month`] = `${f.label}（月）`;
       labels[`${id}_day`] = `${f.label}（日）`;
+    }
+    for (const id of schema.order) {
+      if (!(id.startsWith('diagnosis') && id.endsWith('_name'))) continue;
+      const f = schema.byId[id];
+      labels[`${id}_icd10`] = `${f.label}（ICD10）`;
+      labels[`${id}_tokutei`] = `${f.label}（特定疾病）`;
     }
     labels.age_computed = '年齢（生年月日から計算）';
     labels.age_written = '年齢（様式の記載）';
@@ -105,6 +123,9 @@
         // なぜ確信度が低いのかが分かるよう、注記と訂正も残す。
         // これが無いと、書き出して読み直したときに理由だけが消える
         note: e.note || '',
+        // 診断名に当てた ICD（近い分類の場合もある）
+        icd10: e.icd10 || null, icd_name: e.icd_name || null,
+        tokutei: e.tokutei === undefined ? null : e.tokutei,
         corrections: e.corrections || [],
         expected_chars: e.expected_chars === undefined ? null : e.expected_chars,
         llm_applied: !!e.llm_applied,
@@ -267,6 +288,11 @@
     if (f.kind === 'date_wareki') {
       item['西暦'] = entry.gregorian || null;
       if (entry.era) item['元号'] = entry.era;
+    }
+    if (entry.icd10) {
+      item['ICD10'] = entry.icd10;
+      if (entry.icd_name && entry.icd_name !== entry.value) item['ICDの分類名'] = entry.icd_name;
+      if (entry.tokutei) item['特定疾病'] = true;
     }
     item['確信度'] = entry.confidence === undefined ? null : entry.confidence;
     item['確信度の段階'] = LEVEL_JA[entry.level] || entry.level || null;
