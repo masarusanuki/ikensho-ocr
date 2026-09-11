@@ -41,6 +41,7 @@
 | `align.py` | `engine.js` | 位置合わせ・様式判定 |
 | `checkbox.py` | `engine.js` | チェックボックス判定 |
 | `labels.py` | `labels.js` | チェック欄の後ろの言葉 |
+| `ocr.upscale_for_ocr` | `ppocr.js` の `prepare` | 切り抜きの引き伸ばし（低解像度対応） |
 | `dictionaries.py` `proofread.py` `kanji_norm.py` | `dicts.js` | 辞書照合・日本語チェック |
 | `extract.py` | `pipeline.js` | 全体の流れ |
 | `export.py` | `exporters.js` | 出力 |
@@ -327,6 +328,15 @@ IKENSHO_DENOISE=0 IKENSHO_DATE_H=96 python3 tools/benchmark_dates.py --limit 30 
 
 `IKENSHO_DENOISE`（ノイズ取りの強さ。既定7）は**全部の欄に効く**ので、
 変えるときは日付だけでなく `--text` も測ってください。
+
+**前処理はいまの値が最良だと測ってあります**（開発メモ 7.4.3）。
+弱めても大きくしても悪化しました。触るならこの比較を作り直してから決めてください。
+
+解像度の低い入力は、低い dpi で読み込んで模擬できます。
+
+```bash
+IKENSHO_BENCH_DPI=100 python3 tools/benchmark_dates.py --limit 20 --jobs 6
+```
 
 `tune_checkbox.py dump` は 18,600 枠の測定値を `bench/seigo_features.json` に
 落とします。**判定の規則を触るときは必ずこれを使ってください。**
