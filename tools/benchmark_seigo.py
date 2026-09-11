@@ -232,7 +232,10 @@ def score_checkbox(truth, results, show_marks=False, detail=0):
                 continue
             print(f"\n  【{title}】{len(rows)} 件（先頭 {min(detail, len(rows))} 件）")
             for r in rows[:detail]:
-                print(f"    {r[0]} {r[1]} {str(r[2])[:18]:20s} {str(r[3])[:12]:14s} {r[-1]}")
+                # 行の形が種類ごとに違う（誤検出はラベル・印の種類を持たない）
+                doc, bid = r[0], r[1]
+                mid = "  ".join(str(v)[:18] for v in r[2:-1])
+                print(f"    {doc} {bid} {mid:36s} {r[-1]}")
     return dict(total=total, acc=(tp + tn) / max(total, 1), fn=fn, fp=fp,
                 struck_ng=struck_ng, by_kind={k: v for k, v in by_kind.items()})
 

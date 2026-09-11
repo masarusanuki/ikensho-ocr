@@ -18,7 +18,9 @@
   const REC_HEIGHT = 48;          // PP-OCR の認識モデルは高さ48で学習されている
   const MAX_WIDTH = 2400;         // 長い記述欄でも扱える上限
   const MIN_LINE_PX = 6;          // これ未満の高さの行は無視する
-  const PAD = 10;                 // 認識に渡すときに足す白い余白（画素）
+  const PAD = 10;                      // 認識に渡すときに足す白い余白（画素）
+  // 引き伸ばしたあとに輪郭を立てる強さ（Python 版の ocr.SHARPEN と同じ値）
+  const SHARPEN = 0.6;
   // 文字の位置を見つけるモデルの設定（rapidocr の config.yaml と同じ値）
   const DET_LIMIT = 736;          // 短辺をここまで拡大する
   const DET_MAX_SIDE = 1600;      // 重くなりすぎないための上限
@@ -221,6 +223,15 @@
      * 余白が無いと、枠いっぱいに書かれた数字を読み落とす
      * （実測で `11` が `1` になった）。
      */
+    /**
+     * 認識に渡す前に、読みやすい大きさに整える。
+     *
+     * **解像度の低い入力への備え。** 人が読める程度に写っていても、
+     * 1文字が10px前後だと認識モデルは読めない。Python 版の
+     * `ocr.upscale_for_ocr` と同じ考え方にしてある。
+     *   - 2倍を超える引き伸ばしは Lanczos（Cubic はにじんで細い線が消える）
+     *   - 引き伸ばしたあとに軽く輪郭を立てて、にじみを戻す
+     */
     prepare(gray) {
       const scale = Math.max(1, REC_HEIGHT / Math.max(gray.rows, 1));
       let work = gray;
@@ -228,7 +239,13 @@
         work = new cv.Mat();
         cv.resize(gray, work, new cv.Size(Math.round(gray.cols * scale),
                                           Math.round(gray.rows * scale)),
-                  0, 0, cv.INTER_CUBIC);
+                  0, 0, scale >= 2 ? cv.INTER_LANCZOS4 : cv.INTER_CUBIC);
+        if (scale >= 2 && SHARPEN > 0) {
+          const blur = new cv.Mat();
+          cv.GaussianBlur(work, blur, new cv.Size(0, 0), 1.0);
+          cv.addWeighted(work, 1 + SHARPEN, blur, -SHARPEN, 0, work);
+          blur.delete();
+        }
       }
       const padded = new cv.Mat();
       cv.copyMakeBorder(work, padded, PAD, PAD, PAD, PAD,

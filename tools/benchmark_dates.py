@@ -32,12 +32,16 @@ def norm_truth(value: str) -> str:
     return "1" if v in ("元", "元年") else v
 
 
+DPI = int(os.environ.get("IKENSHO_BENCH_DPI", str(imaging.DEFAULT_DPI)))
+
+
 def run_one(doc):
     """1通ぶんの日付欄を読む。{項目: {year/month/day: 値}} を返す。"""
     templates = load_templates()
     schema = load_schema()
     out = {}
-    for sp in imaging.load_any(pdf_path(doc), imaging.DEFAULT_DPI):
+    # 低い dpi で読み込むと、解像度の低い入力を模擬できる
+    for sp in imaging.load_any(pdf_path(doc), DPI):
         m = align.match_page(sp.image, templates)
         if m is None:
             continue
@@ -64,7 +68,7 @@ def main():
     docs = sorted(text_truth)
     if args.limit:
         docs = docs[:args.limit]
-    print(f"{len(docs)} 通の日付欄を測ります")
+    print(f"{len(docs)} 通の日付欄を測ります（読み込み {DPI} dpi）")
 
     t0 = time.time()
     got = {}

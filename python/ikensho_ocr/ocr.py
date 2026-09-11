@@ -644,6 +644,8 @@ def get_digit_reader() -> DigitReader:
 DENOISE_H = int(os.environ.get("IKENSHO_DENOISE", "7"))
 # 日付欄を OCR に渡すときの高さ。小さい数字の検出に効く
 DATE_TARGET_H = int(os.environ.get("IKENSHO_DATE_H", "72"))
+# 引き伸ばしたあとに輪郭を立てる強さ（0 で切る）
+SHARPEN = float(os.environ.get("IKENSHO_SHARPEN", "0.6"))
 
 
 def prepare_roi(warped: np.ndarray, rect: List[float], pad: float = 0.0,
@@ -659,14 +661,39 @@ def prepare_roi(warped: np.ndarray, rect: List[float], pad: float = 0.0,
     if x1 - x0 < 4 or y1 - y0 < 4:
         return np.full((8, 8), 255, np.uint8)
     roi = warped[y0:y1, x0:x1]
-    # 小さい欄は拡大した方が OCR の精度が上がる
-    scale = max(1.0, float(target_height) / max(roi.shape[0], 1))
+    return upscale_for_ocr(roi, target_height)
+
+
+def upscale_for_ocr(roi: np.ndarray, target_height: int) -> np.ndarray:
+    """OCR に渡す切り抜きを、読みやすい大きさに整える。
+
+    **解像度の低い入力への備え。** 人が読める程度に写っていても、
+    1文字が10px前後だと認識モデルは読めない。元の高さに応じて
+    やることを変える。
+
+      - 大きく引き伸ばすとき（低解像度）は Lanczos を使う。
+        Cubic はにじむので、細い線が消える
+      - 引き伸ばしたあとに軽く輪郭を立てる（にじみを戻す）
+      - ノイズ取りは**引き伸ばし率が高いときは弱める**。
+        低解像度では1画素が文字の一部なので、消すと線が切れる
+    """
+    if roi.size == 0:
+        return np.full((8, 8), 255, np.uint8)
+    h = max(roi.shape[0], 1)
+    scale = max(1.0, float(target_height) / h)
     if scale > 1.0:
-        roi = cv2.resize(roi, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-    if DENOISE_H > 0:
-        roi = cv2.fastNlMeansDenoising(roi, None, DENOISE_H, 7, 21)
-    roi = cv2.copyMakeBorder(roi, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=255)
-    return roi
+        # 2倍を超える引き伸ばしは Lanczos（細い線を残す）
+        interp = cv2.INTER_LANCZOS4 if scale >= 2.0 else cv2.INTER_CUBIC
+        roi = cv2.resize(roi, None, fx=scale, fy=scale, interpolation=interp)
+        if scale >= 2.0:
+            # にじみを戻す。強くかけると粒が立つので控えめに
+            blur = cv2.GaussianBlur(roi, (0, 0), 1.0)
+            roi = cv2.addWeighted(roi, 1.0 + SHARPEN, blur, -SHARPEN, 0)
+    # 引き伸ばしが大きいほどノイズ取りを弱める
+    strength = DENOISE_H if scale < 2.0 else (DENOISE_H // 2 if scale < 3.0 else 0)
+    if strength > 0:
+        roi = cv2.fastNlMeansDenoising(roi, None, strength, 7, 21)
+    return cv2.copyMakeBorder(roi, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=255)
 
 
 def has_ink(warped: np.ndarray, rect: List[float], threshold: float = 0.008) -> bool:
