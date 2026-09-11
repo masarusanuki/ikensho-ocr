@@ -115,8 +115,19 @@ def parse_files(inputs: Dict[str, Any]) -> List[Tuple[str, bytes]]:
         if len(blob) > MAX_BYTES:
             raise GennaiError(f"{name}: 大きすぎます"
                               f"（{len(blob) / 1048576:.1f}MB。上限 {MAX_BYTES // 1048576}MB）")
-        out.append((_safe_name(name), blob))
+        out.append((_with_extension(_safe_name(name), blob), blob))
     return out
+
+
+# 中身から種類を見分ける（拡張子が無い・当てにならない場合の備え）。
+# `imaging.load_any` は拡張子で処理を振り分けるため、拡張子が無いと読めない。
+_MAGIC = (
+    (b"%PDF", ".pdf"),
+    (b"\x89PNG\r\n\x1a\n", ".png"),
+    (b"\xff\xd8\xff", ".jpg"),
+    (b"II*\x00", ".tif"),
+    (b"MM\x00*", ".tif"),
+)
 
 
 def _safe_name(name: str) -> str:
@@ -124,6 +135,20 @@ def _safe_name(name: str) -> str:
     base = str(name).replace("\\", "/").split("/")[-1]
     base = base.replace("..", "_").strip()
     return base or "input"
+
+
+def _with_extension(name: str, blob: bytes) -> str:
+    """拡張子が無い・知らない場合は、中身を見て付ける。
+
+    読み込み側は拡張子で処理を振り分けるので、無いとそのまま落ちる。
+    """
+    known = (".pdf", ".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp")
+    if name.lower().endswith(known):
+        return name
+    for magic, ext in _MAGIC:
+        if blob.startswith(magic):
+            return name + ext
+    return name
 
 
 def _truthy(value: Any) -> bool:

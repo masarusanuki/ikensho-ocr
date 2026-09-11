@@ -315,7 +315,11 @@ _CORPORATE = re.compile(
 def strip_corporate(text: str) -> Tuple[str, Optional[Correction]]:
     """医療機関名の前に付いた法人名を落とす。
 
-    落とした結果が短すぎる（施設名が残らない）場合は触らない。
+    **法人名と施設名の間に区切り（空白）があるときだけ落とす。**
+    続けて書かれている場合は、どこまでが法人名か決められない。
+    「医療法人三愛会総合病院」を「総合病院」にしてしまうと施設が分からなくなる。
+
+    落とした結果が短すぎる（施設名が残らない）場合も触らない。
     """
     t = (text or "").strip()
     if not t or "医療法人" not in t:
@@ -323,6 +327,8 @@ def strip_corporate(text: str) -> Tuple[str, Optional[Correction]]:
     m = _CORPORATE.match(t)
     if not m or not m.group(0).strip():
         return t, None
+    if not m.group(0)[-1].isspace():
+        return t, None              # 区切りが無い＝どこまでが法人名か決められない
     rest = t[m.end():].strip()
     if len(rest) < 3:
         return t, None              # 施設名が残らないなら触らない

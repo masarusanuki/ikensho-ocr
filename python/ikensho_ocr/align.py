@@ -69,8 +69,11 @@ def _warp_interp(gray: np.ndarray, page) -> int:
     あとの OCR でいくら拡大しても戻らない。
 
       引き伸ばす（＝低解像度）… Cubic
-      縮める（＝高解像度）  … Area。線形だと縮小で網目が出る
-      同じ大きさ            … 線形（触らない）
+      同じ大きさ・縮める      … 線形
+
+    **縮小は warpPerspective では直せない。** この関数に INTER_AREA を渡しても
+    黙って線形に落とされる（OpenCV 5.0 で確認。CUBIC は効くが AREA は効かない）。
+    高解像度の入力は `_prescale` で先に縮めてから写す。
 
     実測（20通・日付284件、正解数で比較）:
 
@@ -86,11 +89,25 @@ def _warp_interp(gray: np.ndarray, page) -> int:
     if os.environ.get("IKENSHO_WARP") == "linear":
         return cv2.INTER_LINEAR          # 以前の動き（効果を測るため）
     ratio = page.width / max(gray.shape[1], 1)
-    if ratio > 1.02:
-        return cv2.INTER_CUBIC
-    if ratio < 0.98:
-        return cv2.INTER_AREA
-    return cv2.INTER_LINEAR
+    return cv2.INTER_CUBIC if ratio > 1.02 else cv2.INTER_LINEAR
+
+
+def _prescale(gray: np.ndarray, page, Hf: np.ndarray):
+    """入力がテンプレートより大きいときだけ、先に縮めてから写す。
+
+    `warpPerspective` は INTER_AREA を受け付けない（黙って線形になる）。
+    線形のまま間引くと網目が出るので、`resize` で面積平均をかけてから渡す。
+    縮めたぶんは射影行列で戻す。
+    """
+    ratio = page.width / max(gray.shape[1], 1)
+    if ratio >= 0.98:
+        return gray, Hf
+    small = cv2.resize(gray, (max(1, int(round(gray.shape[1] * ratio))),
+                              max(1, int(round(gray.shape[0] * ratio)))),
+                       interpolation=cv2.INTER_AREA)
+    inv = np.array([[1 / ratio, 0, 0], [0, 1 / ratio, 0], [0, 0, 1]],
+                   dtype=np.float64)
+    return small, Hf @ inv
 
 
 def match_page(gray: np.ndarray, templates: Dict[str, Template],
@@ -116,8 +133,9 @@ def match_page(gray: np.ndarray, templates: Dict[str, Template],
                 continue
             S = np.array([[scale, 0, 0], [0, scale, 0], [0, 0, 1]], dtype=np.float64)
             Hf = S @ H
-            warped = cv2.warpPerspective(gray, Hf, (tp.width, tp.height),
-                                         flags=_warp_interp(gray, tp),
+            src, Hw = _prescale(gray, tp, Hf)
+            warped = cv2.warpPerspective(src, Hw, (tp.width, tp.height),
+                                         flags=_warp_interp(src, tp),
                                          borderValue=255)
             cand = PageMatch(template_id=tid, page_index=tp.index, warped=warped,
                              homography=Hf, inliers=ninl, matches=nmatch)

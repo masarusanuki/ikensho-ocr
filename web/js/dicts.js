@@ -354,12 +354,18 @@
   // 国立・県立・市立などは施設名の一部なので落とさない。
   const CORPORATE = /^\s*(社会|特定)?医療法人\s*(社団|財団|社団法人|財団法人)?\s*([^\s]{1,12}?(会|会館|協会))?\s*/;
 
-  /** 医療機関名の前に付いた法人名を落とす。 */
+  /**
+   * 医療機関名の前に付いた法人名を落とす。
+   * 法人名と施設名の間に区切り（空白）があるときだけ落とす。
+   * 続けて書かれている場合はどこまでが法人名か決められないので触らない
+   * （「医療法人三愛会総合病院」→「総合病院」にすると施設が分からなくなる）。
+   */
   function stripCorporate(text) {
     const t = String(text || '').trim();
     if (!t || t.indexOf('医療法人') < 0) return { value: t, reason: '' };
     const m = CORPORATE.exec(t);
     if (!m || !m[0].trim()) return { value: t, reason: '' };
+    if (!/\s$/.test(m[0])) return { value: t, reason: '' };
     const rest = t.slice(m[0].length).trim();
     if (rest.length < 3) return { value: t, reason: '' };
     return { value: rest, reason: '法人名を落としました（医療機関名の欄）' };

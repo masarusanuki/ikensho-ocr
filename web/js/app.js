@@ -185,6 +185,10 @@
         vlmBtn.title = `VLM（${m}）で読む。画像はこの端末の Python に渡すだけで外部には出ません`;
         set('ocr', '');
       }
+      // 押したときの動きは一度だけ結び付ける。
+      // 管理画面から何度も呼ばれるので、毎回足すと操作ログが重複する
+      if (this._engineBound) return;
+      this._engineBound = true;
       box.querySelectorAll('.btn').forEach(b => {
         b.addEventListener('click', () => {
           if (b.disabled) return;
@@ -213,17 +217,16 @@
       const base = P.vlmBase();
       const tries = [{ url: 'api/vlm', prefix: '' }];
       if (base) tries.push({ url: base + '/api/vlm', prefix: base + '/' });
+      let missing = false;        // どこかが「モデルが無い」と答えたか
       for (const t of tries) {
         try {
           const res = await fetch(t.url, { cache: 'no-store' });
           if (!res.ok) continue;
           const info = await res.json();
           if (!info || !info.available) {
-            this.vlmInfo = info;
-            this.pipeline.vlmEndpoint = null;
-            return { available: false, models: [],
-                     reason: 'VLMのモデルが置かれていません（' +
-                             'python3 tools/fetch_vlm_model.py で取得できます）。' };
+            // ここが駄目でも、管理画面で入れた接続先がまだ残っている
+            missing = true;
+            continue;
           }
           this.vlmInfo = info;
           this.pipeline.vlmEndpoint = t.prefix + 'api/vlm-read';
@@ -232,6 +235,11 @@
       }
       this.vlmInfo = null;
       this.pipeline.vlmEndpoint = null;
+      if (missing) {
+        return { available: false, models: [],
+                 reason: 'VLMのモデルが置かれていません'
+                         + '（python3 tools/fetch_vlm_model.py で取得できます）。' };
+      }
       return { available: false, models: [],
                reason: base
                  ? `VLMの接続先（${base}）につながりません。`

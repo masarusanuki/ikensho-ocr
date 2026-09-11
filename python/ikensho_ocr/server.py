@@ -548,8 +548,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
         with tempfile.TemporaryDirectory() as td:
             paths = []
-            for name, blob in files:
-                p = os.path.join(td, name)
+            # 同じ名前で送られても上書きしないよう連番を付ける
+            # （名前が無い場合の既定値も重なるため）
+            for i, (name, blob) in enumerate(files, 1):
+                p = os.path.join(td, f"{i:02d}_{name}")
                 with open(p, "wb") as fp:
                     fp.write(blob)
                 paths.append(p)

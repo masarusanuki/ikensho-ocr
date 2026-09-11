@@ -62,15 +62,15 @@
 
   function derivedKeys(schema) {
     const keys = [];
-    // 診断名に当てた ICD（Python の derive.py と同じ並び）
-    for (const id of schema.order) {
-      if (id.startsWith('diagnosis') && id.endsWith('_name')) {
-        keys.push(`${id}_icd10`, `${id}_tokutei`);
-      }
-    }
     for (const id of schema.order) {
       if (schema.byId[id].kind === 'date_wareki') {
         keys.push(`${id}_iso`, `${id}_era`, `${id}_year`, `${id}_month`, `${id}_day`);
+      }
+    }
+    // 診断名に当てた ICD（Python の derive.derived_keys と同じ並び：日付のあと）
+    for (const id of schema.order) {
+      if (id.startsWith('diagnosis') && id.endsWith('_name')) {
+        keys.push(`${id}_icd10`, `${id}_tokutei`);
       }
     }
     return keys.concat(['age_computed', 'age_written', 'age_matches']);

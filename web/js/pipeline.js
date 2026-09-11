@@ -304,10 +304,24 @@
       cv.gemm(S, match.H, 1, new cv.Mat(), 0, Hf);
       const out = new cv.Mat();
       const ratio = match.tplPage.width / Math.max(gray.cols, 1);
-      const interp = ratio > 1.02 ? cv.INTER_CUBIC
-                   : (ratio < 0.98 ? cv.INTER_AREA : cv.INTER_LINEAR);
-      cv.warpPerspective(gray, out, Hf, new cv.Size(match.tplPage.width, match.tplPage.height),
-                         interp, cv.BORDER_CONSTANT, new cv.Scalar(255));
+      // 縮小は warpPerspective では直せない（INTER_AREA を渡しても線形に落ちる）。
+      // 面積平均をかけてから写し、縮めたぶんは射影行列で戻す
+      let src = gray, Hw = Hf, small = null, adj = null;
+      if (ratio < 0.98) {
+        small = new cv.Mat();
+        cv.resize(gray, small, new cv.Size(Math.max(1, Math.round(gray.cols * ratio)),
+                                           Math.max(1, Math.round(gray.rows * ratio))),
+                  0, 0, cv.INTER_AREA);
+        adj = cv.matFromArray(3, 3, cv.CV_64F,
+                              [1 / ratio, 0, 0, 0, 1 / ratio, 0, 0, 0, 1]);
+        const Hs = new cv.Mat();
+        cv.gemm(Hf, adj, 1, new cv.Mat(), 0, Hs);
+        src = small; Hw = Hs;
+      }
+      cv.warpPerspective(src, out, Hw, new cv.Size(match.tplPage.width, match.tplPage.height),
+                         ratio > 1.02 ? cv.INTER_CUBIC : cv.INTER_LINEAR,
+                         cv.BORDER_CONSTANT, new cv.Scalar(255));
+      if (small) { small.delete(); adj.delete(); Hw.delete(); }
       S.delete(); Hf.delete();
       return out;
     }
