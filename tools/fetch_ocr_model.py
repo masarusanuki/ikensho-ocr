@@ -41,6 +41,9 @@ CHOICES = {
         note="PP-OCRv4 日本語専用（日本語だけを学習。約11MB）",
         rec=("cycloneboy/japan_PP-OCRv4_rec_infer", "model.onnx"),
         keys=("cycloneboy/japan_PP-OCRv4_rec_infer", "japan_dict.txt"),
+        # 文字の位置を見つけるモデル。Python 版（rapidocr 同梱）と同じもの。
+        # ブラウザ版でも「どこに字があるか」を先に見つけるために使う
+        det=("SWHL/RapidOCR", "PP-OCRv4/ch_PP-OCRv4_det_infer.onnx"),
     ),
     "japan_v3": dict(
         note="PP-OCRv3 日本語専用（古い版。比較用）",
@@ -84,7 +87,8 @@ def fetch(key, out_dir=OUT_DIR, verbose=True):
         if part not in conf:
             continue
         repo, name = conf[part]
-        dst = os.path.join(base, name)
+        # 置き場所は名前だけにする（取得元がフォルダ付きの場合があるため）
+        dst = os.path.join(base, os.path.basename(name))
         got[part] = dst
         if os.path.exists(dst) and os.path.getsize(dst) > 1024:
             if verbose:

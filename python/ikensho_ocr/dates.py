@@ -48,18 +48,44 @@ def parse(text: str) -> Dict[str, Optional[int]]:
         out["era"] = canonical_era(m.group(1))
         t = t[m.end():]
 
-    # 「年」「月」「日」を手がかりに取り出す
-    for key, mark in (("year", "年"), ("month", "月"), ("day", "日")):
-        mm = re.search(r"(\d{1,4})\s*" + mark, t)
-        if mm:
-            out[key] = int(mm.group(1))
+    # 印刷されている「年」「月」「日」を区切りにして拾う。
+    #
+    # 「日」は欄のいちばん右に印刷されているため、読み取りの都合で
+    # 落ちることがある（例: `12年3月4`）。そこで **「日」が無くても
+    # 「月」より後の数字を日として拾う**。
+    # 逆に読み取りが乱れて `8日年11月20` のように余分な字が挟まることもあるので、
+    # 数字と区切り文字の間に少しの異物を許す。
+    y = re.search(r"(\d+)\D{0,2}年", t)
+    if y:
+        out["year"] = int(y.group(1))
+    after_year = t[y.end():] if y else t
 
-    # 区切り文字が読めなかった場合は、数字の並び順で拾う
+    mo = re.search(r"(\d+)\D{0,2}月", after_year)
+    if mo:
+        out["month"] = int(mo.group(1))
+    # 「月」の位置で切る。月の数字が読めなくても、その後ろは日として拾える
+    mark = after_year.find("月")
+    after_month = after_year[mark + 1:] if mark >= 0 else None
+
+    if after_month is not None:
+        d = re.search(r"(\d+)", after_month)       # 「日」が無くても拾う
+        if d:
+            out["day"] = int(d.group(1))
+    else:
+        d = re.search(r"(\d+)\D{0,2}日", t)
+        if d:
+            out["day"] = int(d.group(1))
+
+    # 区切り文字が1つも読めなかった場合は、数字の並び順で拾う
     if out["year"] is None and out["month"] is None and out["day"] is None:
         nums = [int(n) for n in re.findall(r"\d{1,4}", t)]
         for key, val in zip(("year", "month", "day"), nums):
             out[key] = val
 
+    # ありえない値は捨てる（読み間違いをそのまま通さない）。
+    # 元号年なので、年は2桁までしか入らない
+    if out["year"] is not None and not 1 <= out["year"] <= 99:
+        out["year"] = None
     if out["month"] is not None and not 1 <= out["month"] <= 12:
         out["month"] = None
     if out["day"] is not None and not 1 <= out["day"] <= 31:

@@ -361,6 +361,7 @@
         onProgress({ phase: 'ocr', current: i + 1, total: textJobs.length,
                      message: `テキスト欄を読み取っています（${f.label}）` });
         try {
+          this.dateDiff = diffs[w.tplPage.index] || null;
           textResults[t.field] = await this.readText(
             w.mat, t, f, this.blanks[`${templateId}:${w.tplPage.index}`],
             diffs[w.tplPage.index]);
@@ -390,11 +391,16 @@
           era = textResults[f.era_field].value;
           fixed = false;
         }
-        const info = D.enrich(entry.value || '', era, fixed);
-        entry.date = info.parts;
-        entry.era = info.era;
-        entry.gregorian = info.gregorian;
-        if (info.text) entry.value = info.text;
+        // 専用の読み方（readDate）で年・月・日が取れている場合はそれを使う
+        const parts = entry.dateParts
+          || D.parse(entry.value || '');
+        const canonical = D.canonicalEra(fixed ? era : (parts.era || era));
+        entry.date = { year: parts.year, month: parts.month, day: parts.day };
+        entry.era = canonical;
+        entry.gregorian = D.toGregorian(canonical, parts.year, parts.month, parts.day);
+        const text = D.format(entry.date);
+        if (text) entry.value = text;
+        delete entry.dateParts;
       }
 
       // --- 5) レコード組み立て
@@ -453,6 +459,10 @@
       }
       const charset = t.charset || f.charset || '';
       const multiline = f.type === 'textarea';
+      // 日付欄は「年・月・日」の枠が分かっているので専用の読み方をする
+      if (f.kind === 'date_wareki' && t.slots && this.pp && this.pp.ready) {
+        return await this.readDate(warped, t, f);
+      }
       // 白紙様式との差分で「書き込みが無い」と分かる欄は読まない。
       // 読ませると罫線やカッコから文字を作ってしまう（実測で拾い読みが出た）
       const shape = diff ? E.writtenShape(warped, blank, rect, diff) : null;
@@ -465,7 +475,12 @@
         // 日本語専用モデル（Python版と同じもの）。
         // 罫線・カッコ・単位を含めたまま読むと精度が落ちるので、
         // 書き込みのある範囲に詰めてから渡す（検算には元の矩形を使う）
-        const roi = this.cropMat(warped, diff ? E.inkCrop(diff, rect) : rect);
+        // 日付欄は、印刷されている「年・月・日」を手がかりに分けるので、
+        // 書き込みの範囲に詰めると**いちばん右の「日」が落ちる**（印刷なので
+        // 書き込みの範囲に入らない）。日付欄だけは詰めない
+        const tight = (diff && f.kind !== 'date_wareki')
+          ? E.inkCrop(diff, rect) : rect;
+        const roi = this.cropMat(warped, tight);
         try {
           const r = await this.pp.read(roi, multiline);
           text = r.text || '';
@@ -548,6 +563,80 @@
       const ratio = cv.countNonZero(bw) / (bw.rows * bw.cols);
       roi.delete(); bw.delete();
       return ratio > threshold;
+    }
+
+    /**
+     * 日付欄を読む。
+     *
+     * 欄には「年」「月」「日」が印刷されているので、**欄全体を1行として読み、
+     * その区切りで数字を振り分ける**（Python 版と同じ考え方）。
+     *
+     * 注意: 書き込みの範囲に詰めてはいけない。「日」は欄のいちばん右に
+     * 印刷されており、詰めると落ちて日が取れなくなる（実測でそうなっていた）。
+     *
+     * 区切りで足りない部分が出たときだけ、年・月・日の枠を囲う範囲を読み直す。
+     * 欄には元号の丸印など余分な書き込みが入ることがあり、狭く取った方が
+     * 拾えることがあるため。
+     */
+    async readDate(warped, t, f) {
+      const D = global.IkenshoDates;
+      const slots = t.slots || {};
+      const keys = ['year', 'month', 'day'].filter(k => slots[k]);
+      const plausible = (k, v) => v !== null && v !== undefined
+        && (k === 'month' ? (v >= 1 && v <= 12)
+          : k === 'day' ? (v >= 1 && v <= 31) : (v >= 1 && v <= 99));
+      const readOne = async rect => {
+        const roi = this.cropMat(warped, rect);
+        try {
+          const r = await this.pp.read(roi, false);
+          return { text: (r.text || '').trim(), conf: r.confidence || 0 };
+        } finally {
+          roi.delete();
+        }
+      };
+
+      const whole = await readOne(t.rect);
+      const parts = D.parse(whole.text);
+      let conf = whole.conf;
+      let raw = whole.text;
+      const missing = () => ['year', 'month', 'day']
+        .filter(k => !plausible(k, parts[k]));
+
+      if (keys.length && missing().length) {
+        // 年・月・日の枠だけを囲う範囲で読み直す
+        const xs = keys.map(k => slots[k]);
+        const union = [
+          Math.min(...xs.map(r => r[0])), Math.min(...xs.map(r => r[1])),
+          Math.max(...xs.map(r => r[0] + r[2])) - Math.min(...xs.map(r => r[0])),
+          Math.max(...xs.map(r => r[1] + r[3])) - Math.min(...xs.map(r => r[1])),
+        ];
+        const narrow = await readOne(union);
+        const guess = D.parse(narrow.text);
+        const filled = [];
+        for (const k of missing()) {
+          if (!plausible(k, guess[k])) continue;
+          parts[k] = guess[k];
+          filled.push(k);
+        }
+        if (filled.length) {
+          raw += ` / ${narrow.text}`;
+          conf = Math.min(conf || 1, narrow.conf || 0.5);
+        }
+      }
+
+      const got = ['year', 'month', 'day'].filter(k => plausible(k, parts[k])).length;
+      for (const k of ['year', 'month', 'day']) {
+        if (!plausible(k, parts[k])) parts[k] = null;
+      }
+      return {
+        value: D.format(parts),
+        // 全部そろって初めて高い確信度にする（欠けは要確認に出す）
+        confidence: got ? Math.min(0.95, (conf || 0.5) * (0.55 + 0.15 * got)) : 0,
+        raw, empty: got === 0, candidates: [],
+        dateParts: { year: parts.year, month: parts.month, day: parts.day },
+        note: got === 3 ? ''
+          : '日付の一部が読めませんでした（数字を直接入力できます）',
+      };
     }
 
     /** 認識モデルに渡す切り抜き（余白も拡大もしない生の矩形）。 */

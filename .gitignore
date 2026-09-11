@@ -18,11 +18,15 @@ models/
 # 個人情報を含みうるデータは絶対にコミットしない
 master/
 sample/
+seigo/
 data/
 uploads/
 out/
 *.pdf
 !docs/**/*.pdf
+
+# 正解データから作る中間ファイル（tools/tune_checkbox.py dump で作り直せる）
+bench/seigo_features.json
 
 # エディタ
 .vscode/

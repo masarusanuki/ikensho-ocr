@@ -30,15 +30,36 @@
     let t = toHalf(text);
     const m = t.match(/(明治|大正|昭和|平成|令和|明|大|昭|平|令)/);
     if (m) { out.era = canonicalEra(m[1]); t = t.slice(m.index + m[1].length); }
-    const marks = [['year', '年'], ['month', '月'], ['day', '日']];
-    for (const [key, mark] of marks) {
-      const mm = t.match(new RegExp('(\\d{1,4})\\s*' + mark));
-      if (mm) out[key] = parseInt(mm[1], 10);
+    // 印刷されている「年」「月」「日」を区切りにして拾う（Python の dates.py と同じ規則）。
+    //
+    // 「日」は欄のいちばん右に印刷されているため、読み取りの都合で落ちることがある
+    // （例: `12年3月4`）。そこで **「日」が無くても「月」より後の数字を日として拾う**。
+    // 逆に `8日年11月20` のように余分な字が挟まることもあるので、少しの異物を許す。
+    const y = t.match(/(\d+)\D{0,2}年/);
+    if (y) out.year = parseInt(y[1], 10);
+    const afterYear = y ? t.slice(y.index + y[0].length) : t;
+
+    const mo = afterYear.match(/(\d+)\D{0,2}月/);
+    if (mo) out.month = parseInt(mo[1], 10);
+    // 「月」の位置で切る。月の数字が読めなくても、その後ろは日として拾える
+    const mark = afterYear.indexOf('月');
+    const afterMonth = mark >= 0 ? afterYear.slice(mark + 1) : null;
+
+    if (afterMonth !== null) {
+      const d = afterMonth.match(/(\d+)/);          // 「日」が無くても拾う
+      if (d) out.day = parseInt(d[1], 10);
+    } else {
+      const d = t.match(/(\d+)\D{0,2}日/);
+      if (d) out.day = parseInt(d[1], 10);
     }
+
     if (out.year === null && out.month === null && out.day === null) {
       const nums = (t.match(/\d{1,4}/g) || []).map(n => parseInt(n, 10));
       ['year', 'month', 'day'].forEach((k, i) => { if (nums[i] !== undefined) out[k] = nums[i]; });
     }
+    // ありえない値は捨てる（読み間違いをそのまま通さない）。
+    // 元号年なので、年は2桁までしか入らない
+    if (out.year !== null && !(out.year >= 1 && out.year <= 99)) out.year = null;
     if (out.month !== null && !(out.month >= 1 && out.month <= 12)) out.month = null;
     if (out.day !== null && !(out.day >= 1 && out.day <= 31)) out.day = null;
     return out;

@@ -18,8 +18,17 @@
     CONF_MID: 0.50,     // 確信度「中」の下限
     EMPTY_MAX: 0.10,        // 枠内インク率がこれ未満なら未チェック
     FILLED_MIN: 0.28,       // 枠内インク率がこれ以上ならチェック済み
-    MARK_EMPTY_MAX: 0.012,  // 白紙との差分がこれ未満なら未記入
-    MARK_FILLED_MIN: 0.030, // 白紙との差分がこれ以上なら記入あり
+    MARK_EMPTY_MAX: 0.012,  // 参考値 mark の目安（判定には使わない）
+    MARK_FILLED_MIN: 0.030,
+    INK_EMPTY_MAX: 0.02,    // 枠の中の書き込みがこれ未満なら未記入（境界 0.04）
+    INK_FILLED_MIN: 0.06,
+    RING_EMPTY_MAX: 0.10,   // 枠の外周の書き込み＝丸囲み（境界 0.20）
+    RING_FILLED_MIN: 0.30,
+    RING_BIAS_MAX: 0.50,    // 外周のインクが片側に寄っていたら隣の字とみなす
+    OUT_EMPTY_MAX: 0.015,   // 枠の右下へのはみ出し（境界 0.03）
+    OUT_FILLED_MIN: 0.045,
+    OUT_EDGE_EMPTY_MAX: 0.010,  // 枠の右端とつながっているか（境界 0.02）
+    OUT_EDGE_FILLED_MIN: 0.030,
     MIN_INLIERS: 25,        // 様式判定に必要な対応点数
   };
   function setThresholds(obj) { Object.assign(thresholds, obj || {}); }
@@ -207,7 +216,14 @@
   }
 
 
-  const MARK_MARGIN = 0.45;   // 枠の外側どこまでを見るか。はみ出したレ点を拾う
+  const MARK_MARGIN = 0.45;   // 枠の外周（丸囲み）を見る窓の広さ
+  const BLANK_DILATE = 5;     // 白紙側のインクを太らせる幅（重ね合わせのずれ）
+  // 二重線で消した印
+  const STRIKE_BANDS_MIN = 1;      // 枠を左右に突き抜ける長い横線の本数
+  const STRIKE_ALL_BANDS_MIN = 2;  // 突き抜けを問わない本数（二重線なので2本）
+  const STRIKE_LEN_MIN = 1.8;      // 同じ項目に他の印があるときの線の長さ（枠幅比）
+  const STRIKE_LEN_ALONE = 2.2;    // ないとき
+  const STRIKE_SIDE = 0.3;         // 枠の左右どこまで出ていれば「突き抜けた」か
 
   /**
    * 白紙様式との差分をとり、手書きのマークだけを残した2値画像を作る。
@@ -217,7 +233,8 @@
     if (!blank || blank.cols !== warped.cols || blank.rows !== warped.rows) return null;
     const scan = binarize(warped);
     const base = binarize(blank);
-    const k = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(3, 3));
+    const k = cv.getStructuringElement(cv.MORPH_RECT,
+                                       new cv.Size(BLANK_DILATE, BLANK_DILATE));
     cv.dilate(base, base, k);                   // 位置ずれの許容
     const inv = new cv.Mat();
     cv.bitwise_not(base, inv);
@@ -240,18 +257,193 @@
     return r;
   }
 
+  /** 枠の中だけの書き込み量。隣の手書きを拾わない。 */
+  function inkRatio(diff, x, y, w, h) {
+    const x0 = Math.max(0, x), y0 = Math.max(0, y);
+    const x1 = Math.min(diff.cols, x + w), y1 = Math.min(diff.rows, y + h);
+    if (x1 - x0 < 1 || y1 - y0 < 1) return 0;
+    const roi = diff.roi(new cv.Rect(x0, y0, x1 - x0, y1 - y0));
+    const r = cv.countNonZero(roi) / (roi.rows * roi.cols);
+    roi.delete();
+    return r;
+  }
+
+  /**
+   * 枠の外周の書き込み量と、その左右の偏り。
+   * 丸囲みは外周がぐるりと濃くなる。隣の字なら片側に偏る。
+   */
+  function ringRatio(diff, x, y, w, h) {
+    const mx = Math.round(w * MARK_MARGIN), my = Math.round(h * MARK_MARGIN);
+    const rx0 = Math.max(0, x - mx), ry0 = Math.max(0, y - my);
+    const rx1 = Math.min(diff.cols, x + w + mx), ry1 = Math.min(diff.rows, y + h + my);
+    if (rx1 - rx0 < 2 || ry1 - ry0 < 2) return [0, 0];
+    const win = diff.roi(new cv.Rect(rx0, ry0, rx1 - rx0, ry1 - ry0));
+    const ix0 = Math.max(0, x), iy0 = Math.max(0, y);
+    const ix1 = Math.min(diff.cols, x + w), iy1 = Math.min(diff.rows, y + h);
+    const hasInner = ix1 - ix0 > 0 && iy1 - iy0 > 0;
+    const inner = hasInner ? diff.roi(new cv.Rect(ix0, iy0, ix1 - ix0, iy1 - iy0)) : null;
+    const total = cv.countNonZero(win);
+    const innerN = inner ? cv.countNonZero(inner) : 0;
+    const innerArea = inner ? inner.rows * inner.cols : 0;
+    const area = Math.max(1, win.rows * win.cols - innerArea);
+    const cx = Math.max(1, Math.trunc(x + w / 2 - rx0));
+    const lw = Math.min(cx, win.cols);
+    const leftRoi = win.roi(new cv.Rect(0, 0, lw, win.rows));
+    const left = cv.countNonZero(leftRoi);
+    leftRoi.delete();
+    const bias = Math.abs(left - (total - left)) / Math.max(total, 1);
+    win.delete();
+    if (inner) inner.delete();
+    return [Math.max(0, total - innerN) / area, bias];
+  }
+
+  /**
+   * 枠の右下にずれて書かれた印を拾う。
+   * はみ出した印は枠の右端に掛かったまま外へ伸びる。
+   * 隣の手書きは枠に触れないので、枠の右端の濃さも併せて見る。
+   */
+  function outsideRatio(diff, x, y, w, h) {
+    const qx0 = Math.max(0, x + Math.trunc(w * 0.35));
+    const qy0 = Math.max(0, y - Math.trunc(h * 0.1));
+    const qx1 = Math.min(diff.cols, x + Math.trunc(w * 1.6));
+    const qy1 = Math.min(diff.rows, y + Math.trunc(h * 1.4));
+    let out = 0;
+    if (qx1 - qx0 > 0 && qy1 - qy0 > 0) {
+      const q = diff.roi(new cv.Rect(qx0, qy0, qx1 - qx0, qy1 - qy0));
+      out = cv.countNonZero(q) / (q.rows * q.cols);
+      q.delete();
+    }
+    const tx0 = Math.max(0, x + Math.trunc(w * 0.6)), tx1 = Math.min(diff.cols, x + w);
+    const ty0 = Math.max(0, y), ty1 = Math.min(diff.rows, y + h);
+    let edge = 0;
+    if (tx1 - tx0 > 0 && ty1 - ty0 > 0) {
+      const t = diff.roi(new cv.Rect(tx0, ty0, tx1 - tx0, ty1 - ty0));
+      edge = cv.countNonZero(t) / (t.rows * t.cols);
+      t.delete();
+    }
+    return [out, edge];
+  }
+
+  /** 各行のインク数を配列で返す。 */
+  function rowCounts(mat) {
+    const dst = new cv.Mat();
+    cv.reduce(mat, dst, 1, cv.REDUCE_SUM, cv.CV_32S);
+    const a = new Int32Array(dst.rows);
+    for (let i = 0; i < dst.rows; i++) a[i] = dst.intAt(i, 0) / 255;
+    dst.delete();
+    return a;
+  }
+
+  /** しきい値を超える行のかたまりの数。 */
+  function countBands(rows, need) {
+    let bands = 0, prev = false;
+    for (const v of rows) {
+      const on = v >= need;
+      if (on && !prev) bands++;
+      prev = on;
+    }
+    return bands;
+  }
+
+  /**
+   * 枠を横切る「手書きの長い横線」の長さと本数。二重線で消した印を見つける。
+   * 差分では線が枠線や文字と重なった部分で途切れるので、元画像から横線だけを
+   * 取り出し、白紙様式にも同じ線があるもの（罫線）を引いて求める。
+   */
+  function strikeLines(bw, blankBw, x, y, w, h) {
+    if (!blankBw) return [0, 0, 0];
+    const by0 = Math.max(0, y - h), by1 = Math.min(bw.rows, y + h * 2);
+    const bx0 = Math.max(0, x - Math.trunc(w * 1.8));
+    const bx1 = Math.min(bw.cols, x + Math.trunc(w * 2.8));
+    if (bx1 - bx0 < 4 || by1 - by0 < 3) return [0, 0, 0];
+    const rect = new cv.Rect(bx0, by0, bx1 - bx0, by1 - by0);
+    const band = bw.roi(rect), bband = blankBw.roi(rect);
+    const ker = cv.getStructuringElement(cv.MORPH_RECT,
+                                         new cv.Size(Math.max(6, Math.trunc(w * 1.3)), 1));
+    const lines = new cv.Mat(), plines = new cv.Mat(), inv = new cv.Mat(),
+          written = new cv.Mat();
+    cv.morphologyEx(band, lines, cv.MORPH_OPEN, ker);
+    cv.morphologyEx(bband, plines, cv.MORPH_OPEN, ker);
+    // 罫線は重ね合わせのずれで数ピクセル動く。縦に厚く膨らませて確実に消す
+    const dk = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 9));
+    cv.dilate(plines, plines, dk);
+    cv.bitwise_not(plines, inv);
+    cv.bitwise_and(lines, inv, written);
+    const ry0 = Math.max(0, y - by0 + Math.trunc(h * 0.12));
+    const ry1 = Math.min(written.rows, y - by0 + h - Math.trunc(h * 0.12));
+    let result = [0, 0, 0];
+    if (ry1 - ry0 > 0) {
+      const seg = written.roi(new cv.Rect(0, ry0, written.cols, ry1 - ry0));
+      const rows = rowCounts(seg);
+      const need = w * 1.2;
+      const bandsAll = countBands(rows, need);
+      // 枠の左右どちらにも突き抜けている行だけに絞る
+      const lx = Math.max(1, x - bx0 - Math.trunc(w * STRIKE_SIDE));
+      const rx = Math.min(seg.cols - 1, x - bx0 + w + Math.trunc(w * STRIKE_SIDE));
+      const lRoi = seg.roi(new cv.Rect(0, 0, Math.min(lx, seg.cols), seg.rows));
+      const rRoi = seg.roi(new cv.Rect(rx, 0, Math.max(1, seg.cols - rx), seg.rows));
+      const lr = rowCounts(lRoi), rr = rowCounts(rRoi);
+      lRoi.delete(); rRoi.delete();
+      let maxRow = 0;
+      const kept = new Int32Array(rows.length);
+      for (let i = 0; i < rows.length; i++) {
+        kept[i] = (lr[i] > 0 && rr[i] > 0) ? rows[i] : 0;
+        if (kept[i] > maxRow) maxRow = kept[i];
+      }
+      result = [maxRow / Math.max(w, 1), countBands(kept, need), bandsAll];
+      seg.delete();
+    }
+    band.delete(); bband.delete(); ker.delete(); dk.delete();
+    lines.delete(); plines.delete(); inv.delete(); written.delete();
+    return result;
+  }
+
+  /**
+   * 二重線で消された印を未チェックに戻す。
+   * 同じ項目に他の印があるとき（＝書き直し）は、より緩く見る。
+   */
+  function resolveStrikes(rs) {
+    const byField = {};
+    for (const r of rs) (byField[r.field] = byField[r.field] || []).push(r);
+    for (const group of Object.values(byField)) {
+      for (const r of group) {
+        if (!r.checked || (r.strikeBands || 0) < STRIKE_BANDS_MIN ||
+            (r.strikeAll || 0) < STRIKE_ALL_BANDS_MIN) continue;
+        const others = group.filter(o => o !== r && o.checked).length;
+        const need = others ? STRIKE_LEN_MIN : STRIKE_LEN_ALONE;
+        if ((r.strikeLen || 0) >= need) {
+          r.struck = true;
+          r.checked = false;
+          r.score = Math.min(r.score, 0.45);
+          r.confidence = scoreConfidence(r.score);
+        }
+      }
+    }
+  }
+
   function unit(v, lo, hi) {
     if (hi <= lo) return 0;
     return Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
   }
 
   /**
-   * 枠内インク率と差分マークの大きい方を「記入の強さ」とする。
-   * 枠内に収まったチェックは fill が、はみ出したレ点や丸印は mark が拾う。
+   * 記入の強さを 0..1 で表す。0.5 以上を「印あり」とする。
+   * 書き方によって印の現れる場所が違うので、一番強い見方を採る。
+   *   枠の中に収まった印 → fill / ink
+   *   枠を丸で囲んだ印   → ring（左右に偏っていたら隣の字とみなす）
+   *   枠外にはみ出した印 → out（枠の右端とつながっているものだけ）
    */
-  function combinedScore(fill, mark, hasDiff) {
-    let s = unit(fill, thresholds.EMPTY_MAX, thresholds.FILLED_MIN);
-    if (hasDiff) s = Math.max(s, unit(mark, thresholds.MARK_EMPTY_MAX, thresholds.MARK_FILLED_MIN));
+  function combinedScore(fill, ink, ring, ringBias, outMark, outEdge, hasDiff) {
+    const t = thresholds;
+    let s = unit(fill, t.EMPTY_MAX, t.FILLED_MIN);
+    if (hasDiff) {
+      s = Math.max(s, unit(ink, t.INK_EMPTY_MAX, t.INK_FILLED_MIN));
+      if (ringBias <= t.RING_BIAS_MAX) {
+        s = Math.max(s, unit(ring, t.RING_EMPTY_MAX, t.RING_FILLED_MIN));
+      }
+      s = Math.max(s, Math.min(unit(outMark, t.OUT_EMPTY_MAX, t.OUT_FILLED_MIN),
+                               unit(outEdge, t.OUT_EDGE_EMPTY_MAX, t.OUT_EDGE_FILLED_MIN)));
+    }
     return s;
   }
 
@@ -298,6 +490,8 @@
   function readBoxes(warped, boxes, blank) {
     const bw = binarize(warped);
     const diff = markLayer(warped, blank);
+    const blankBw = (blank && blank.cols === warped.cols && blank.rows === warped.rows)
+      ? binarize(blank) : null;
     const W = warped.cols, H = warped.rows;
     const out = [];
     for (const b of boxes) {
@@ -307,14 +501,21 @@
       x = Math.max(0, Math.min(x, W - w)); y = Math.max(0, Math.min(y, H - h));
       const fill = fillRatio(bw, x, y, w, h);
       const mark = diff ? markRatio(diff, x, y, w, h) : 0;
+      const ink = diff ? inkRatio(diff, x, y, w, h) : 0;
+      const [ring, ringBias] = diff ? ringRatio(diff, x, y, w, h) : [0, 0];
+      const [outMark, outEdge] = diff ? outsideRatio(diff, x, y, w, h) : [0, 0];
+      const [strikeLen, strikeBands, strikeAll] = strikeLines(bw, blankBw, x, y, w, h);
       const halo = haloRatio(bw, x, y, w, h);
-      const score = combinedScore(fill, mark, !!diff);
-      out.push({ field: b.field, opt: b.opt, fill, mark, halo, score, rect: b.rect,
-                 circled: false, checked: score >= 0.5,
+      const score = combinedScore(fill, ink, ring, ringBias, outMark, outEdge, !!diff);
+      out.push({ field: b.field, opt: b.opt, fill, mark, ink, ring, ringBias,
+                 outMark, outEdge, strikeLen, strikeBands, strikeAll, halo, score,
+                 rect: b.rect, circled: false, struck: false, checked: score >= 0.5,
                  confidence: scoreConfidence(score) });
     }
     bw.delete();
     if (diff) diff.delete();
+    if (blankBw) blankBw.delete();
+    resolveStrikes(out);
     return out;
   }
 
@@ -330,6 +531,7 @@
       const detail = rs.map(r => ({ opt: r.opt, fill: +r.fill.toFixed(4),
                                     halo: +(r.halo || 0).toFixed(4), circled: !!r.circled,
                                     mark: +(r.mark || 0).toFixed(4),
+                                    ink: +(r.ink || 0).toFixed(4), struck: !!r.struck,
                                     score: +r.score.toFixed(4), checked: r.checked }));
       if (f.type === 'flag') {
         result[fid] = { value: rs[0].checked, confidence: rs[0].confidence, detail };
@@ -518,11 +720,80 @@
     return [nx0 / W, ny0 / H, (nx1 - nx0) / W, (ny1 - ny0) / H];
   }
 
+  /**
+   * 矩形の中の「書き込みのかたまり」を左から順に返す。
+   *
+   * 白紙様式との差分を使うので、**印刷されている文字（年・月・日・罫線）は入らない**。
+   * 日付欄では、かたまりがそのまま 年・月・日 の数字になる。
+   * 文字の検出モデルを積まずに、それに近いことができる。
+   */
+  function inkGroups(diff, rect, gapRatio) {
+    const out = [];
+    if (!diff || !rect || !rect.every(v => Number.isFinite(v))) return out;
+    const W = diff.cols, H = diff.rows;
+    const x0 = Math.max(0, _r(rect[0] * W)), y0 = Math.max(0, _r(rect[1] * H));
+    const x1 = Math.min(W, _r((rect[0] + rect[2]) * W));
+    const y1 = Math.min(H, _r((rect[1] + rect[3]) * H));
+    if (x1 - x0 < 6 || y1 - y0 < 6) return out;
+    const roi = diff.roi(new cv.Rect(x0, y0, x1 - x0, y1 - y0));
+    const win = roi.isContinuous() ? roi : roi.clone();
+    const rows = win.rows, cols = win.cols, d = win.data;
+    const col = new Int32Array(cols);
+    for (let r = 0; r < rows; r++) {
+      const base = r * cols;
+      for (let c = 0; c < cols; c++) if (d[base + c]) col[c]++;
+    }
+    // 文字と文字の間より広い空きで区切る
+    const gap = Math.max(3, _r(rows * (gapRatio || 0.45)));
+    let start = null, blank = 0;
+    const runs = [];
+    for (let c = 0; c <= cols; c++) {
+      const on = c < cols && col[c] >= 1;
+      if (on) {
+        if (start === null) start = c;
+        blank = 0;
+      } else if (start !== null) {
+        blank++;
+        if (blank >= gap || c === cols) {
+          runs.push([start, c - blank + 1]);
+          start = null;
+          blank = 0;
+        }
+      }
+    }
+    for (const [a, b] of runs) {
+      if (b - a < 2) continue;                 // 点は捨てる
+      // 縦は、その範囲でインクのある行に合わせる
+      let top = -1, bottom = -1;
+      for (let r = 0; r < rows; r++) {
+        const base = r * cols;
+        for (let c = a; c < b; c++) {
+          if (d[base + c]) { if (top < 0) top = r; bottom = r; break; }
+        }
+      }
+      if (top < 0) continue;
+      const pad = Math.max(2, _r((bottom - top + 1) * 0.45));
+      out.push([
+        Math.max(0, x0 + a - pad) / W,
+        Math.max(0, y0 + top - pad) / H,
+        Math.min(W, x0 + b + pad) / W - Math.max(0, x0 + a - pad) / W,
+        Math.min(H, y0 + bottom + 1 + pad) / H - Math.max(0, y0 + top - pad) / H,
+      ]);
+    }
+    if (win !== roi) win.delete();
+    roi.delete();
+    return out;
+  }
+
   const LEAD_MISC = '｜|:：;；,，、。・･_＿=＝~〜/／\\＊*+＋"\'`^>＞→ー―—–-';
   const TAIL_MISC = '｜|:；;,，_＿=＝~〜/／\\＊*+＋"\'`^>＞→';
   const OPENERS = '（(「『［[｛{';
   const CLOSERS = '）)」』］]｝}';
   const SIGNS = '+＋-ー―—–';
+  // これだけで出来ている文字列は、印刷の括弧や罫線を読んだものなので空にする。
+  // `-`（該当なしの意思表示）や `○` `×` は意味を持つので入れない
+  const NOISE_ONLY = '（）()「」『』［］[]｛｝{}:：;；,，、。・･_＿=＝~〜/／\\'
+                   + '|｜＊*+＋"\'`^ 　>＞<＜→←';
   // 空白の扱いを Python と揃える（trim() と str.strip() は対象が微妙に違う）
   const WS = '[\\t\\n\\v\\f\\r \\u001c-\\u001f\\u0085\\u00a0\\u1680\\u2000-\\u200a'
            + '\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]';
@@ -576,6 +847,13 @@
     if (removed) notes.push(`末尾の記号「${removed}」を削除`);
 
     out = trim(out);
+    // 記号だけ（印刷の括弧や罫線を読んだもの）なら空にする。
+    // ただし `-` や `○` は「該当なし」の意思表示なので残す
+    const residue = out || original;
+    if (residue && [...residue].every(ch => NOISE_ONLY.includes(ch))) {
+      return { text: '',
+               notes: notes.concat([`記号だけの読み取り「${residue}」を空にしました`]) };
+    }
     if (!out) return { text: original, notes: [] };   // 全部消えるなら元のまま
     return { text: out, notes };
   }
@@ -692,8 +970,8 @@
     thresholds, setThresholds, confidenceLevel, waitFor,
     canvasToGrayMat, matToCanvas, flattenIllumination, dewarpPaper,
     registerToRef, matchScore, readBoxes, resolveGroups, readCircle, markLayer,
-    detectCircled,
+    detectCircled, resolveStrikes, strikeLines, inkRatio, ringRatio, outsideRatio,
     binarize, TARGET_WIDTH,
-    widenLeft, inkCrop, trimEdges, checkText, writtenShape
+    widenLeft, inkCrop, inkGroups, trimEdges, checkText, writtenShape
   };
 })(window);

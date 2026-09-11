@@ -106,10 +106,16 @@ def main():
             os.makedirs(os.path.join(ocr_out, key), exist_ok=True)
             shutil.copy2(rec, os.path.join(ocr_out, key, os.path.basename(rec)))
             shutil.copy2(keys, os.path.join(ocr_out, key, os.path.basename(keys)))
-            browser_models.append(dict(key=key, note=meta.get("note", ""),
-                                       rec=os.path.basename(rec),
-                                       keys=os.path.basename(keys),
-                                       bytes=os.path.getsize(rec)))
+            entry = dict(key=key, note=meta.get("note", ""),
+                         rec=os.path.basename(rec), keys=os.path.basename(keys),
+                         bytes=os.path.getsize(rec))
+            # 文字の位置を見つけるモデル（あればブラウザ版でも使う）
+            det = os.path.join(ocr_src, key, meta.get("det", ""))
+            if meta.get("det") and os.path.exists(det):
+                shutil.copy2(det, os.path.join(ocr_out, key, os.path.basename(det)))
+                entry["det"] = os.path.basename(det)
+                entry["bytes"] += os.path.getsize(det)
+            browser_models.append(entry)
         # 良いと分かっている順に並べる（読み取り側は先頭を使う）
         from ikensho_ocr.ocr import MODEL_PREFERENCE
         order = {k: i for i, k in enumerate(MODEL_PREFERENCE)}

@@ -27,6 +27,10 @@ OPENERS = "（(「『［[｛{"
 CLOSERS = "）)」』］]｝}"
 # 符号として意味を持つので、後ろが数字なら落とさない
 SIGNS = "+＋-ー―—–"
+# これだけで出来ている文字列は、印刷の括弧や罫線を読んだものなので空にする。
+# `-`（該当なしの意思表示）や `○` `×` は意味を持つので入れない
+NOISE_ONLY = ("（）()「」『』［］[]｛｝{}:：;；,，、。・･_＿=＝~〜/／\\"
+              "|｜＊*+＋\"'`^ 　>＞<＜→←")
 # 空白の扱いをブラウザ版と揃える（str.strip() と trim() は対象が微妙に違う）
 _WS = ("[\t\n\v\f\r \u001c-\u001f\u0085\u00a0\u1680\u2000-\u200a"
        "\u2028\u2029\u202f\u205f\u3000\ufeff]")
@@ -121,8 +125,13 @@ def trim_edges(text: str) -> Tuple[str, List[str]]:
         notes.append(f"末尾の記号「{removed}」を削除")
 
     out = _strip(out)
+    # 記号だけ（印刷の括弧や罫線を読んだもの）なら空にする。
+    # ただし `-` や `○` は「該当なし」の意思表示なので残す
+    residue = out or original
+    if residue and all(ch in NOISE_ONLY for ch in residue):
+        return "", notes + [f"記号だけの読み取り「{residue}」を空にしました"]
     if not out:
-        return original, []          # 全部消えるなら元のまま（記入の意思表示を消さない）
+        return original, []          # 全部消えるなら元のまま（意思表示を消さない）
     return out, notes
 
 
