@@ -167,11 +167,16 @@
     <div class="row" style="margin-top:16px">
       <button class="btn primary" id="btn-export-json">JSONで保存</button>
       <button class="btn primary" id="btn-export-csv">CSVで保存</button>
+      <button class="btn primary" id="btn-export-form-json">様式の形のJSONで保存</button>
       <button class="btn" id="btn-export-json-one">選択中の1件をJSONで保存</button>
       <span class="spacer"></span>
       <button class="btn" id="btn-import">保存したJSONを読み込む</button>
       <input type="file" id="import-input" accept="application/json" hidden>
     </div>
+    <p class="hint" style="margin:10px 0 0">
+      「様式の形のJSON」は、意見書の紙の並び（節 → まとまり → 項目）そのままに
+      入れ子にしたものです。チェック欄は<strong>印の付いた言葉</strong>で入ります。
+    </p>
     <div class="row" style="margin-top:10px">
       <button class="btn" id="btn-drop-all-images" hidden></button>
       <span class="hint">元画像はブラウザに保存していません（開いている間だけ画面が抱えています）。

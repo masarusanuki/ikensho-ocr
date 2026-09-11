@@ -220,5 +220,127 @@
     return out;
   }
 
-  global.IkenshoExport = { exportJson, exportCsv, importJson, toRecordJson, download, flatValue };
+
+  // ------------------------------------------- 様式の形そのままのJSON
+  // Python 版 `export.py::record_to_form_json` と同じ形にそろえている。
+
+  // 項目の種類を、様式を見ている人に分かる言葉にする
+  const KIND_JA = {
+    text: '記述', textarea: '記述（複数行）', choice: '択一',
+    multi: '複数選択', circle: '丸囲み', flag: '有無',
+  };
+  const LEVEL_JA = { high: '高', medium: '中', low: '低', edited: '修正', done: '確定' };
+
+  /** 選択肢の言葉。実物を OCR で読んだ／管理画面で直したものを優先する。 */
+  function optionWords(entry, f) {
+    const w = entry.optionWords || entry.option_words;
+    if (Array.isArray(w) && w.length === (f.options || []).length) return w.map(String);
+    return (f.options || []).map(String);
+  }
+
+  /**
+   * 様式の1項目を、そのまま読める形にする。
+   * チェック欄は**言葉**が要なので、選択肢の言葉と、どれに印が付いたかを返す。
+   */
+  function formItem(entry, f) {
+    const item = { 項目: f.label, 種類: KIND_JA[f.type] || f.type,
+                   値: entry.value === undefined ? null : entry.value };
+    if (f.options) {
+      const words = optionWords(entry, f);
+      item['選択肢'] = words;
+      const detail = entry.detail || [];
+      const picked = entry.value;
+      const chosen = new Set(Array.isArray(picked) ? picked
+                             : (typeof picked === 'string' ? [picked] : []));
+      const marks = words.map((word, i) => {
+        const d = detail.find(x => x.opt === i) || {};
+        const m = { 言葉: word, 印: !!d.checked || chosen.has(word) };
+        if (d.struck) m['二重線で訂正'] = true;
+        if (d.circled) m['丸囲み'] = true;
+        return m;
+      });
+      if (marks.length) item['チェック'] = marks;
+      if (entry.optionWords || entry.option_words) {
+        item['定義の選択肢'] = (f.options || []).map(String);
+      }
+    }
+    if (f.kind === 'date_wareki') {
+      item['西暦'] = entry.gregorian || null;
+      if (entry.era) item['元号'] = entry.era;
+    }
+    item['確信度'] = entry.confidence === undefined ? null : entry.confidence;
+    item['確信度の段階'] = LEVEL_JA[entry.level] || entry.level || null;
+    if (entry.confirmed) item['確認済み'] = true;
+    if (entry.edited) item['人が直した'] = true;
+    if (entry.note) item['注記'] = entry.note;
+    for (const n of (entry.labelNotes || entry.label_notes || [])) {
+      if (!n.changed) continue;
+      item['言葉の食い違い'] = item['言葉の食い違い'] || [];
+      item['言葉の食い違い'].push({ 定義: n.expected, 読めた言葉: n.read });
+    }
+    item['項目ID'] = f.id;
+    return item;
+  }
+
+  /**
+   * 様式（PDF）の並びそのままの JSON。
+   * 節 → まとまり → 項目 の順に入れ子にしてあり、上から読めば様式と同じ順になる。
+   */
+  function toFormJson(rec, schema) {
+    const sections = [];
+    for (const sec of (schema.sections || [])) {
+      const items = [];
+      const groups = {};
+      const pages = new Set();
+      for (const sf of (sec.fields || [])) {
+        const f = schema.byId[sf.id];
+        const entry = rec.fields[sf.id];
+        if (!f || !entry) continue;
+        pages.add(f.page);
+        const item = formItem(entry, f);
+        const gid = f.group || f.groupId;
+        if (gid) {
+          let g = groups[gid];
+          if (!g) {
+            g = { まとまり: f.groupLabel || f.group_label || gid, 項目: [] };
+            groups[gid] = g;
+            items.push(g);
+          }
+          g['項目'].push(item);
+        } else {
+          items.push(item);
+        }
+      }
+      if (!items.length) continue;
+      sections.push({ 表題: sec.title || sec.id,
+                      ページ: pages.size ? Math.min(...pages) : null,
+                      項目: items });
+    }
+    return {
+      様式: schema.formName,
+      様式ID: rec.templateId,
+      定義の版: schema.version,
+      読取日時: rec.readAt || new Date().toISOString(),
+      読み取りに使ったOCR: rec.ocrEngine || 'none',
+      匿名化済み: !!rec.anonymized,
+      元ファイル: (rec.pages || []).map(p => ({
+        ファイル: p.source, ページ: p.sourcePage,
+        様式のページ: p.pageIndex, 判別できた: p.matched })),
+      注意: rec.warnings || [],
+      節: sections,
+    };
+  }
+
+  function exportFormJson(records, schema, filename) {
+    const payload = {
+      書き出し日時: new Date().toISOString(),
+      件数: records.length,
+      意見書: records.map(r => toFormJson(r, schema)),
+    };
+    download(filename || `ikensho_様式の形_${stamp()}.json`,
+             JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+  }
+
+  global.IkenshoExport = { exportJson, exportCsv, exportFormJson, importJson,
+                           toRecordJson, toFormJson, download, flatValue };
 })(window);

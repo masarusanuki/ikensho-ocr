@@ -81,6 +81,8 @@
         () => this.exportAll('json'));
       document.getElementById('btn-export-csv').addEventListener('click',
         () => this.exportAll('csv'));
+      document.getElementById('btn-export-form-json').addEventListener('click',
+        () => this.exportAll('form'));
       document.getElementById('btn-export-json-one').addEventListener('click', () => {
         const r = this.records[this.current];
         if (!r) return this.toast('出力する件がありません', true);
@@ -404,9 +406,13 @@
       if (!this.records.length) return this.setExportStatus('出力する件がありません', true);
       if (global.IkenshoOpLog) global.IkenshoOpLog.flush();   // 打ちかけの修正も記録に残す
       this.op('export', { count: this.records.length, note: kind.toUpperCase() });
-      if (kind === 'json') global.IkenshoExport.exportJson(this.records, this.schema);
-      else global.IkenshoExport.exportCsv(this.records, this.schema);
-      this.setExportStatus(`${this.records.length} 件を${kind === 'json' ? 'JSON' : 'CSV'}で保存しました`);
+
+      const E = global.IkenshoExport;
+      if (kind === 'json') E.exportJson(this.records, this.schema);
+      else if (kind === 'form') E.exportFormJson(this.records, this.schema);
+      else E.exportCsv(this.records, this.schema);
+      const name = { json: 'JSON', form: '様式の形のJSON', csv: 'CSV' }[kind] || kind;
+      this.setExportStatus(`${this.records.length} 件を${name}で保存しました`);
     }
 
     async importJson(ev) {

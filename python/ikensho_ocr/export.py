@@ -109,3 +109,139 @@ def write_csv(records: List[Any], schema: Schema, path: str) -> None:
     # Excel で開けるよう BOM 付き UTF-8 にする
     with open(path, "w", encoding="utf-8-sig", newline="") as fp:
         fp.write(csv_text(records, schema))
+
+# ------------------------------------------------------- 様式の形そのままのJSON
+
+# 項目の種類を、様式を見ている人に分かる言葉にする
+_KIND_JA = {
+    "text": "記述",
+    "textarea": "記述（複数行）",
+    "choice": "択一",
+    "multi": "複数選択",
+    "circle": "丸囲み",
+    "flag": "有無",
+}
+
+
+def _option_words(entry: Dict[str, Any], f) -> List[str]:
+    """選択肢の言葉。実物を OCR で読んだ／管理画面で直したものを優先する。"""
+    words = entry.get("option_words")
+    if isinstance(words, list) and len(words) == len(f.options or []):
+        return [str(w) for w in words]
+    return [str(o) for o in (f.options or [])]
+
+
+def _form_item(entry: Dict[str, Any], f) -> Dict[str, Any]:
+    """様式の1項目を、そのまま読める形にする。
+
+    チェック欄は**言葉**が要なので、選択肢の言葉と、どれに印が付いたかを返す。
+    """
+    item: Dict[str, Any] = {
+        "項目": f.label,
+        "種類": _KIND_JA.get(f.type, f.type),
+        "値": entry.get("value"),
+    }
+    if f.options:
+        words = _option_words(entry, f)
+        item["選択肢"] = words
+        detail = entry.get("detail") or []
+        picked = entry.get("value")
+        if isinstance(picked, list):
+            chosen = set(picked)
+        elif isinstance(picked, str):
+            chosen = {picked}
+        else:
+            chosen = set()
+        marks = []
+        for i, word in enumerate(words):
+            d = next((x for x in detail if x.get("opt") == i), {})
+            m = {"言葉": word, "印": bool(d.get("checked")) or word in chosen}
+            if d.get("struck"):
+                m["二重線で訂正"] = True
+            if d.get("circled"):
+                m["丸囲み"] = True
+            marks.append(m)
+        if marks:
+            item["チェック"] = marks
+        if entry.get("option_words"):
+            item["定義の選択肢"] = [str(o) for o in f.options]
+    if f.is_date:
+        item["西暦"] = entry.get("gregorian")
+        if entry.get("era"):
+            item["元号"] = entry.get("era")
+    item["確信度"] = entry.get("confidence")
+    item["確信度の段階"] = {"high": "高", "medium": "中", "low": "低",
+                            "edited": "修正", "done": "確定"}.get(
+        entry.get("level"), entry.get("level"))
+    if entry.get("confirmed"):
+        item["確認済み"] = True
+    if entry.get("edited"):
+        item["人が直した"] = True
+    if entry.get("note"):
+        item["注記"] = entry["note"]
+    for note in (entry.get("label_notes") or []):
+        if note.get("changed"):
+            item.setdefault("言葉の食い違い", []).append(
+                {"定義": note.get("expected"), "読めた言葉": note.get("read")})
+    item["項目ID"] = f.id
+    return item
+
+
+def record_to_form_json(rec, schema: Schema) -> Dict[str, Any]:
+    """様式（PDF）の並びそのままの JSON。
+
+    節 → まとまり → 項目 の順に入れ子にしてあり、上から読めば様式と同じ順になる。
+    チェック欄は**言葉**で返す（どの選択肢に印が付いたかが要なので）。
+    """
+    sections: List[Dict[str, Any]] = []
+    for sec in schema.sections:
+        items: List[Dict[str, Any]] = []
+        groups: Dict[str, Dict[str, Any]] = {}
+        pages = set()
+        for sf in sec.get("fields", []):
+            f = schema.get(sf.get("id"))
+            entry = rec.fields.get(sf.get("id"))
+            if f is None or entry is None:
+                continue
+            pages.add(f.page)
+            item = _form_item(entry, f)
+            if f.group:
+                g = groups.get(f.group)
+                if g is None:
+                    g = {"まとまり": f.group_label or f.group, "項目": []}
+                    groups[f.group] = g
+                    items.append(g)
+                g["項目"].append(item)
+            else:
+                items.append(item)
+        if not items:
+            continue
+        sections.append({
+            "表題": sec.get("title") or sec.get("id"),
+            "ページ": sorted(pages)[0] if pages else None,
+            "項目": items,
+        })
+    return {
+        "様式": schema.form_name,
+        "様式ID": rec.template_id,
+        "定義の版": schema.version,
+        "読取日時": getattr(rec, "read_at", None) or
+                    datetime.datetime.now().astimezone().isoformat(),
+        "読み取りに使ったOCR": rec.ocr_engine,
+        "匿名化済み": getattr(rec, "anonymized", False),
+        "元ファイル": [dict(ファイル=p.source, ページ=p.source_page,
+                            様式のページ=p.page_index, 判別できた=p.matched)
+                       for p in rec.pages],
+        "注意": list(rec.warnings),
+        "節": sections,
+    }
+
+
+def write_form_json(records: List[Any], schema: Schema, path: str) -> None:
+    payload = dict(
+        書き出し日時=datetime.datetime.now().astimezone().isoformat(),
+        件数=len(records),
+        意見書=[record_to_form_json(r, schema) for r in records],
+    )
+    with open(path, "w", encoding="utf-8") as fp:
+        json.dump(payload, fp, ensure_ascii=False, indent=2)
