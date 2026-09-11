@@ -8,6 +8,7 @@ import argparse
 import base64
 import json
 import os
+import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WEB = os.path.join(ROOT, "web")
@@ -65,12 +66,15 @@ def main():
 
     html = read(os.path.join(WEB, "index.html"))
     css = read(os.path.join(WEB, "style.css"))
-    app_js = "\n".join(read(os.path.join(WEB, "js", n)) for n in
-                       ("session.js", "oplog.js",
-                        "engine.js", "ppocr.js",
-                        "dicts.js", "anonymize.js", "dates.js", "speech.js",
-                        "pipeline.js",
-                        "exporters.js", "review.js", "admin.js", "app.js"))
+    # 読み込む順は index.html から取る。ここに並べ直すと、
+    # 新しいファイルを足したときに**単一HTML版だけ壊れる**（実際に起きた）
+    names = re.findall(r'<script src="js/([a-z0-9_.-]+\.js)"></script>', html)
+    if not names:
+        raise SystemExit("index.html から読み込むスクリプトを見つけられません。")
+    missing = [n for n in names if not os.path.exists(os.path.join(WEB, "js", n))]
+    if missing:
+        raise SystemExit("見つからないスクリプト: " + "、".join(missing))
+    app_js = "\n".join(read(os.path.join(WEB, "js", n)) for n in names)
     opencv = read(os.path.join(WEB, "vendor", "opencv.js"))
     tesseract = read(os.path.join(WEB, "vendor", "tesseract.min.js"))
     pdfjs = read(os.path.join(WEB, "vendor", "pdf.min.mjs"))
