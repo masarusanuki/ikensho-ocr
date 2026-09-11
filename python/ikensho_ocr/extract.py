@@ -8,8 +8,8 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 
 from . import (align, anonymize, checkbox, dates as dates_mod, imaging,
-               hospitals, llm as llm_mod, ocr as ocr_mod, proofread,
-               text_check, textbox)
+               hospitals, labels as labels_mod, llm as llm_mod, ocr as ocr_mod,
+               proofread, text_check, textbox)
 from .dictionaries import Dictionaries, DEFAULT_DICTIONARIES
 from .schema import Schema, load_schema
 from .templates import Template, load_templates
@@ -259,6 +259,22 @@ def _apply_hospital_list(text_results: Dict[str, dict], assist) -> Optional[str]
     return top["name"]
 
 
+def _resolve_labels(box_values: Dict[str, dict], schema: Schema,
+                    reads: Dict[str, str],
+                    overrides: Dict[str, str]) -> Dict[str, dict]:
+    """チェック欄ごとに、使う言葉（定義 / 管理画面で直したもの）を決める。"""
+    out: Dict[str, dict] = {}
+    for fid in box_values:
+        f = schema.get(fid)
+        if f is None or not f.options:
+            continue
+        for i, opt in enumerate(f.options):
+            key = f"{fid}.{i}"
+            out[key] = labels_mod.resolve(fid, i, opt, reads.get(key),
+                                          overrides, f.options)
+    return out
+
+
 def extract_record(paths: List[str],
                    schema: Optional[Schema] = None,
                    templates: Optional[Dict[str, Template]] = None,
@@ -267,6 +283,7 @@ def extract_record(paths: List[str],
                    dpi: int = imaging.DEFAULT_DPI,
                    keep_pages: bool = False,
                    anonymized: bool = False,
+                   read_labels: bool = True,
                    use_llm: Optional[bool] = None,
                    llm_model: Optional[str] = None,
                    llm_budget: int = 8) -> Record:
@@ -274,6 +291,9 @@ def extract_record(paths: List[str],
 
     PDF は複数ページ、画像・カメラ撮影は1ページずつ渡されることを想定し、
     どのページが様式の何ページ目かは自動判定する。
+
+    read_labels を立てると、チェック欄の**後ろに書いてある言葉**も OCR で読む。
+    様式を Word で作り直すと言葉が変わっていることがあるため。
     """
     schema = schema or load_schema()
     templates = templates or load_templates()
@@ -306,6 +326,7 @@ def extract_record(paths: List[str],
 
     seen_pages: Dict[int, float] = {}
     readings: List[checkbox.BoxReading] = []
+    label_reads: Dict[str, str] = {}
     text_results: Dict[str, dict] = {}
     warped_pages: Dict[int, np.ndarray] = {}
 
@@ -336,7 +357,18 @@ def extract_record(paths: List[str],
         if tp is None:
             continue
         blank = tp.blank_image(tpl.base_dir)
-        readings.extend(checkbox.read_boxes(warped, tp.boxes, blank))
+        page_readings = checkbox.read_boxes(warped, tp.boxes, blank)
+        readings.extend(page_readings)
+        if read_labels and ocr_engine.name != "none":
+            # 印の付いた枠だけを読む。186枠すべてを読むと30秒ほどかかるうえ、
+            # 出力に出るのは印の付いた枠の言葉だけのため。
+            # 様式全体の言葉は管理画面から読み直せる。
+            want = {(r.field, r.opt) for r in page_readings if r.checked}
+            try:
+                label_reads.update(
+                    labels_mod.read_labels(warped, tp.boxes, ocr_engine, only=want))
+            except Exception as exc:      # ラベルが読めなくても本体は続ける
+                rec.warnings.append(f"チェック欄の言葉の読み取りに失敗しました（{exc}）")
         # 書き込みだけを残した差分。欄ごとに作り直すと重いので1ページ1回にする
         mark = text_check.mark_layer(warped, blank)
 
@@ -503,6 +535,12 @@ def extract_record(paths: List[str],
             "未取得のページ: " + "、".join(f"{i}ページ目" for i in missing))
 
     box_values = checkbox.resolve_groups(readings, schema)
+    label_overrides = labels_mod.load_overrides(rec.template_id or "")
+    label_info = _resolve_labels(box_values, schema, label_reads, label_overrides)
+    if any(v.get("changed") for v in label_info.values()):
+        rec.warnings.append(
+            "チェック欄の言葉が定義と違って読めた箇所があります"
+            "（管理画面の「チェック欄の言葉」で直せます）")
 
     # 日付欄は年・月・日に分けておく。確認画面で数字だけ直せるようにするため。
     for f in schema:
@@ -548,6 +586,15 @@ def extract_record(paths: List[str],
         entry["page"] = f.page
         if f.options:
             entry["options"] = f.options
+            words = [label_info.get(f"{f.id}.{i}", {}).get("word", o)
+                     for i, o in enumerate(f.options)]
+            if words != list(f.options):
+                entry["option_words"] = words
+                labels_mod.apply_words(entry, list(f.options), words)
+            marks = [label_info[f"{f.id}.{i}"] for i in range(len(f.options))
+                     if f"{f.id}.{i}" in label_info]
+            if any(m.get("changed") or m.get("source") == "修正" for m in marks):
+                entry["label_notes"] = marks
         rec.fields[f.id] = entry
 
     # 匿名化加工済みデータの扱い（氏名欄が白抜きなら「匿名化済み」）

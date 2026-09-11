@@ -626,6 +626,26 @@
         n.textContent = '※ ' + e.note;
         el.appendChild(n);
       }
+      // チェック欄の後ろの言葉が定義と違って読めた／直されている場合に知らせる
+      const notes = e.labelNotes || e.label_notes;
+      if (Array.isArray(notes) && notes.length) {
+        const changed = notes.filter(m => m.changed);
+        const fixed = notes.filter(m => m.source === '修正');
+        const parts = [];
+        if (changed.length) {
+          parts.push('様式の言葉が定義と違って読めました: '
+            + changed.map(m => `${m.expected}→${m.read}`).join('、')
+            + '（管理画面の「チェック欄の言葉」で直せます）');
+        }
+        if (fixed.length) {
+          parts.push('管理画面で直した言葉を使っています: '
+            + fixed.map(m => `${m.expected}→${m.word}`).join('、'));
+        }
+        const n = document.createElement('div');
+        n.className = 'raw';
+        n.textContent = '※ ' + parts.join(' / ');
+        el.appendChild(n);
+      }
       if (f.kind !== 'date_wareki' && e.raw && String(e.raw) !== String(e.value || '')) {
         const raw = document.createElement('div');
         raw.className = 'raw';
@@ -657,6 +677,10 @@
         this.app.touch();
       };
 
+      // 実物のチェック欄の言葉（OCR で読んだ／管理画面で直した）を使う。
+      // 出力の JSON もこの言葉になるので、画面と出力を揃える。
+      const labelsOf = e.optionWords || f.options || [];
+
       if (f.type === 'choice' || f.type === 'circle') {
         const rows = (f.type === 'choice') ? this.optionRows(f) : null;
         const opts = document.createElement('div');
@@ -681,11 +705,11 @@
           for (const row of rows) {
             const line = document.createElement('div');
             line.className = 'optrow';
-            for (const i of row) line.appendChild(makeBtn(f.options[i], i));
+            for (const i of row) line.appendChild(makeBtn(labelsOf[i], i));
             opts.appendChild(line);
           }
         } else {
-          (f.options || []).forEach((o, i) => opts.appendChild(makeBtn(o, i)));
+          labelsOf.forEach((o, i) => opts.appendChild(makeBtn(o, i)));
         }
         wrap.appendChild(opts);
         return wrap;
@@ -707,7 +731,7 @@
           b.addEventListener('click', () => {
             if (cur.has(o)) { cur.delete(o); b.classList.remove('on'); }
             else { cur.add(o); b.classList.add('on'); }
-            e.value = (f.options || []).filter(x => cur.has(x));
+            e.value = labelsOf.filter(x => cur.has(x));
             mark();
           });
           return b;
@@ -716,11 +740,11 @@
           for (const row of rows) {
             const line = document.createElement('div');
             line.className = 'optrow';
-            for (const i of row) line.appendChild(makeBtn(f.options[i], i));
+            for (const i of row) line.appendChild(makeBtn(labelsOf[i], i));
             opts.appendChild(line);
           }
         } else {
-          (f.options || []).forEach((o, i) => opts.appendChild(makeBtn(o, i)));
+          labelsOf.forEach((o, i) => opts.appendChild(makeBtn(o, i)));
         }
         wrap.appendChild(opts);
         return wrap;

@@ -67,6 +67,7 @@ def cmd_extract(args):
         rec = extract_record(g, schema=schema, templates=templates,
                              engine=args.engine, dpi=args.dpi,
                              anonymized=args.anonymized,
+                             read_labels=args.labels,
                              use_llm=args.llm, llm_model=args.llm_model,
                              llm_budget=args.llm_budget)
         for w in rec.warnings:
@@ -148,6 +149,8 @@ def build_parser():
     e.add_argument("--llm-budget", type=int, default=8,
                    help="1件あたりのLLM呼び出し上限（既定8）")
     e.add_argument("--llm-model", help="GGUFモデルのパス（既定: models/ 内の .gguf）")
+    e.add_argument("--no-labels", dest="labels", action="store_false", default=True,
+                   help="チェック欄の後ろの言葉をOCRで確かめない（そのぶん速い）")
     e.add_argument("--anonymized", action="store_true",
                    help="匿名化加工済みデータとして扱う（住所・連絡先をマスク済みにする）")
     e.add_argument("--group", choices=["pair", "file", "all"], default="pair",

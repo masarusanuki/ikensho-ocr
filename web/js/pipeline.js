@@ -4,6 +4,9 @@
 (function (global) {
   'use strict';
   const E = global.IkenshoEngine;
+  const L = global.IkenshoLabels;
+  // チェック欄の言葉を直した内容の置き場所。様式の設定なので利用者ごとに分けない
+  const LABELS_KEY = 'ikensho.labels.v1';
 
   // 欄ごとの文字種ヒント。書かれる文字が決まっている欄は候補を絞ると精度が上がる。
   const KATAKANA = Array.from({ length: 0x30F6 - 0x30A1 + 1 },
@@ -79,6 +82,8 @@
       this.ocrWorker = null;
       this.ocrReady = false;
       this.ocrEnabled = opts.ocrEnabled !== false;
+      // チェック欄の後ろの言葉も OCR で確かめるか（管理画面から切り替えられる）
+      this.readLabels = opts.readLabels !== false;
       // 日本語のOCRモデル（PP-OCR / ONNX）。置かれていれば tesseract より優先する
       this.pp = global.IkenshoPPOcr
         ? new global.IkenshoPPOcr.PPOcr({ dataBase: this.base, vendorBase: this.vendor })
@@ -140,6 +145,28 @@
      */
     static ocrBlocked() {
       return location.protocol === 'file:';
+    }
+
+    /** 管理画面で直した「チェック欄の言葉」。{"field.opt": "言葉"} */
+    static labelOverrides(templateId) {
+      try {
+        const all = JSON.parse(localStorage.getItem(LABELS_KEY) || '{}');
+        return (all && all[templateId]) || {};
+      } catch (e) { return {}; }
+    }
+
+    /** 直した言葉を保存する。空文字は「直していない」として消す。 */
+    static saveLabelOverrides(templateId, labels) {
+      let all = {};
+      try { all = JSON.parse(localStorage.getItem(LABELS_KEY) || '{}') || {}; }
+      catch (e) { all = {}; }
+      const clean = {};
+      for (const [k, v] of Object.entries(labels || {})) {
+        if (typeof v === 'string' && v.trim()) clean[k] = v.trim();
+      }
+      all[templateId] = clean;
+      try { localStorage.setItem(LABELS_KEY, JSON.stringify(all)); return true; }
+      catch (e) { return false; }
     }
 
     async initOcr(onStatus = () => {}) {
@@ -327,6 +354,44 @@
       }
       const boxValues = E.resolveGroups(readings, this.schema);
 
+      // --- 3.5) チェック欄の「後ろの言葉」を読む
+      // 様式を Word で作り直すと言葉が変わっていることがあるため。
+      // 印の付いた枠だけを読む（186枠すべてでは時間がかかりすぎる）。
+      const labelReads = {};
+      if (this.readLabels !== false && this.ocrEnabled) {
+        await this.initOcr(m => onProgress({ phase: 'ocr', message: m }));
+        if (this.pp && this.pp.ready) {
+          onProgress({ phase: 'ocr', message: 'チェック欄の言葉を読み取っています' });
+          for (const [idx, w] of Object.entries(warped)) {
+            const only = new Set(readings
+              .filter(r => r.checked && w.tplPage.boxes.some(
+                b => b.field === r.field && b.opt === r.opt))
+              .map(r => `${r.field}.${r.opt}`));
+            if (!only.size) continue;
+            try {
+              Object.assign(labelReads,
+                await L.readLabels(w.mat, w.tplPage.boxes, this.pp, only));
+            } catch (e) {
+              warnings.push('チェック欄の言葉の読み取りに失敗しました（' + e.message + '）');
+            }
+          }
+        }
+      }
+      const labelOverrides = Pipeline.labelOverrides(templateId);
+      const labelInfo = {};
+      for (const fid of Object.keys(boxValues)) {
+        const f = this.schema.byId[fid];
+        if (!f || !f.options) continue;
+        f.options.forEach((opt, i) => {
+          labelInfo[`${fid}.${i}`] = L.resolve(fid, i, opt, labelReads[`${fid}.${i}`],
+                                               labelOverrides, f.options);
+        });
+      }
+      if (Object.values(labelInfo).some(v => v.changed)) {
+        warnings.push('チェック欄の言葉が定義と違って読めた箇所があります'
+                      + '（管理画面の「チェック欄の言葉」で直せます）');
+      }
+
       // --- 4) テキスト欄OCR
       const textJobs = [];
       for (const [idx, w] of Object.entries(warped)) {
@@ -415,7 +480,16 @@
         entry.label = f.label; entry.type = f.type;
         entry.section = f.sectionTitle; entry.page = f.page;
         entry.kind = f.kind || '';
-        if (f.options) entry.options = f.options;
+        if (f.options) {
+          entry.options = f.options;
+          const words = f.options.map((o, i) => (labelInfo[`${f.id}.${i}`] || {}).word || o);
+          if (words.some((w, i) => w !== f.options[i])) {
+            entry.optionWords = words;
+            L.applyWords(entry, f.options, words);
+          }
+          const marks = f.options.map((o, i) => labelInfo[`${f.id}.${i}`]).filter(Boolean);
+          if (marks.some(m => m.changed || m.source === '修正')) entry.labelNotes = marks;
+        }
         fields[f.id] = entry;
       }
 

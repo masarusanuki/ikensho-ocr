@@ -24,6 +24,8 @@
       this.selectedField = null;
       this.drag = null;
       this.dictKey = null;
+      this.lblId = null;
+      this.lblReads = {};     // 白紙様式から読み直した言葉（"tid:field.opt" -> 言葉）
       this.bind();
     }
 
@@ -39,6 +41,14 @@
       document.getElementById('btn-tpl-import').addEventListener('click',
         () => document.getElementById('tpl-import-input').click());
       document.getElementById('tpl-import-input').addEventListener('change', e => this.importTemplate(e));
+
+      // チェック欄の言葉
+      document.getElementById('lbl-select').addEventListener('change', e => {
+        this.lblId = e.target.value; this.renderLabels();
+      });
+      document.getElementById('lbl-filter').addEventListener('input', () => this.renderLabels());
+      document.getElementById('btn-lbl-read').addEventListener('click', () => this.readLabelsFromBlank());
+      document.getElementById('btn-lbl-reset').addEventListener('click', () => this.resetLabels());
 
       document.getElementById('dict-select').addEventListener('change', e => {
         this.dictKey = e.target.value; this.renderDict();
@@ -114,7 +124,13 @@
       this.dictKey = this.dictKey && keys.includes(this.dictKey) ? this.dictKey : keys[0];
       dictSel.value = this.dictKey;
 
+      const lblSel = document.getElementById('lbl-select');
+      lblSel.innerHTML = tplSel.innerHTML;
+      this.lblId = this.lblId && ids.includes(this.lblId) ? this.lblId : ids[0];
+      lblSel.value = this.lblId;
+
       this.renderTemplate();
+      this.renderLabels();
       this.renderDict();
       this.renderThresholds();
       this.renderToken();
@@ -542,6 +558,111 @@
     }
 
     // ------------------------------------------------------ テンプレート編集
+    // -------------------------------------------------- チェック欄の言葉
+    /**
+     * 枠の後ろの言葉の一覧。定義・読めた言葉・使う言葉（直せる）を並べる。
+     * 出力の JSON はここで決まった言葉を使うので、直すとそのまま反映される。
+     */
+    renderLabels() {
+      const P = global.IkenshoPipeline;
+      const tid = this.lblId;
+      const tpl = this.app.pipeline.templates[tid];
+      const tbody = document.querySelector('#lbl-table tbody');
+      if (!tpl || !tbody) return;
+      const q = document.getElementById('lbl-filter').value.trim();
+      const schema = this.app.pipeline.schema;
+      const over = P.labelOverrides(tid);
+      const L = global.IkenshoLabels;
+      const rows = [];
+      for (const page of tpl.pages) {
+        for (const b of page.boxes) {
+          const f = schema.byId[b.field];
+          if (!f || !f.options || b.opt >= f.options.length) continue;
+          const key = `${b.field}.${b.opt}`;
+          const expected = f.options[b.opt];
+          const read = this.lblReads[`${tid}:${key}`] || '';
+          const info = L.resolve(b.field, b.opt, expected, read, over, f.options);
+          if (q && !f.label.includes(q) && !expected.includes(q)
+              && !b.field.includes(q) && !read.includes(q)) continue;
+          rows.push({ key, label: f.label, expected, read, info });
+        }
+      }
+      tbody.innerHTML = rows.map(r => `
+        <tr${r.info.changed ? ' class="warn"' : ''}>
+          <td class="muted">${esc(r.label)}</td>
+          <td>${esc(r.expected)}</td>
+          <td class="muted">${esc(r.read) || '<span class="muted">—</span>'}</td>
+          <td><input type="text" data-key="${esc(r.key)}" value="${esc(r.info.word)}"
+                     style="width:100%;border:1px solid var(--border);border-radius:6px;padding:4px 7px"></td>
+        </tr>`).join('') || '<tr><td colspan="4" class="muted">該当する枠がありません</td></tr>';
+      tbody.querySelectorAll('input[data-key]').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const cur = P.labelOverrides(tid);
+          const schemaWord = this.expectedWord(tid, inp.dataset.key);
+          const v = inp.value.trim();
+          // 定義と同じ言葉に戻したら「直していない」状態にする
+          if (!v || v === schemaWord) delete cur[inp.dataset.key];
+          else cur[inp.dataset.key] = v;
+          const ok = P.saveLabelOverrides(tid, cur);
+          this.labelStatus(ok ? '直した内容を保存しました' : 'この環境では保存できません', !ok);
+          this.renderLabels();
+        });
+      });
+    }
+
+    /** 定義（スキーマ）に書いてある言葉。 */
+    expectedWord(tid, key) {
+      const i = key.lastIndexOf('.');
+      const f = this.app.pipeline.schema.byId[key.slice(0, i)];
+      const opt = +key.slice(i + 1);
+      return (f && f.options && f.options[opt]) || '';
+    }
+
+    labelStatus(msg, isError) {
+      const el = document.getElementById('lbl-status');
+      if (!el) return;
+      el.hidden = false;
+      el.textContent = msg;
+      el.style.color = isError ? 'var(--low)' : '';
+      clearTimeout(this._lblTimer);
+      this._lblTimer = setTimeout(() => { el.hidden = true; }, 4000);
+    }
+
+    /** 白紙様式の画像から、枠の後ろの言葉をまとめて読み直す。 */
+    async readLabelsFromBlank() {
+      const tid = this.lblId;
+      const pipe = this.app.pipeline;
+      const L = global.IkenshoLabels;
+      if (!pipe.pp || !pipe.pp.ready) {
+        await pipe.initOcr(m => this.labelStatus(m));
+      }
+      if (!pipe.pp || !pipe.pp.ready) {
+        this.labelStatus('OCR が使えないため読み直せません', true);
+        return;
+      }
+      this.labelStatus('白紙様式から読み取っています…');
+      const tpl = pipe.templates[tid];
+      try {
+        for (const page of tpl.pages) {
+          const blank = pipe.blanks[`${tid}:${page.index}`];
+          if (!blank) continue;
+          const got = await L.readLabels(blank, page.boxes, pipe.pp);
+          for (const [k, v] of Object.entries(got)) this.lblReads[`${tid}:${k}`] = v;
+        }
+        this.labelStatus('読み直しました。違っている行は色が付いています');
+      } catch (e) {
+        this.labelStatus('読み直しに失敗しました: ' + e.message, true);
+      }
+      this.renderLabels();
+    }
+
+    resetLabels() {
+      if (!confirm('この様式で直した言葉をすべて消します。よろしいですか？')) return;
+      global.IkenshoPipeline.saveLabelOverrides(this.lblId, {});
+      this.labelStatus('直した内容を消しました');
+      this.renderLabels();
+    }
+
     renderTemplate() {
       const tpl = this.app.pipeline.templates[this.tplId];
       if (!tpl) return;

@@ -252,6 +252,31 @@
   </div>
 
   <div class="panel">
+    <h2>チェック欄の言葉</h2>
+    <p class="hint">
+      チェック欄の<strong>後ろに書いてある言葉</strong>です。読み取りのときに
+      OCR でも読んで、定義と違っていれば確認画面に出します。様式を Word で
+      作り直すと言葉が変わっていることがあるためです。
+      読み違えることもあるので、ここで直せます（直した内容はこの端末に残ります）。
+    </p>
+    <div class="row" style="margin-bottom:12px">
+      <select id="lbl-select" class="btn" style="font-weight:600"></select>
+      <input type="text" id="lbl-filter" placeholder="項目名・言葉で絞り込み"
+             style="flex:1;border:1px solid var(--border);border-radius:7px;padding:6px 9px">
+      <span class="spacer"></span>
+      <button class="btn" id="btn-lbl-read">白紙様式から読み直す</button>
+      <button class="btn" id="btn-lbl-reset">直した内容を消す</button>
+    </div>
+    <div id="lbl-status" class="hint" hidden></div>
+    <div class="tplfields" style="max-height:420px">
+      <table id="lbl-table">
+        <thead><tr><th>項目</th><th>定義の言葉</th><th>読めた言葉</th><th>使う言葉</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
     <h2>医療辞書</h2>
     <p class="hint">
       テキスト欄のOCR結果を補正し、確認画面で入力候補を出すために使います。
@@ -394,6 +419,7 @@
 <script src="js/dicts.js"></script>
 <script src="js/anonymize.js"></script>
 <script src="js/dates.js"></script>
+<script src="js/labels.js"></script>
 <script src="js/speech.js"></script>
 <script src="js/pipeline.js"></script>
 <script src="js/exporters.js"></script>

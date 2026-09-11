@@ -16,6 +16,7 @@ import urllib.request
 import webbrowser
 from typing import Optional
 
+from . import labels as labels_mod
 from .dictionaries import DEFAULT_DICTIONARIES
 from .export import csv_text, record_to_json
 from .extract import extract_record
@@ -363,6 +364,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                             as_of=p.get("as_of", "")) for p in idx["prefectures"]],
                 progress=progress,
             ))
+        if path == "/api/labels":
+            # チェック欄の後ろの言葉。定義のものと、直したものを返す
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            tid = q.get("template", ["official_v1"])[0]
+            return self._json(dict(template=tid,
+                                   overrides=labels_mod.load_overrides(tid)))
         if path == "/api/suggest":
             q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
             return self._json(dict(items=Handler.dicts.suggest(
@@ -405,6 +412,22 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             threading.Thread(target=_fetch_hospitals, args=(bureaus,),
                              daemon=True).start()
             return self._json(dict(started=True, bureaus=bureaus or "すべて"))
+        if path == "/api/labels":
+            # チェック欄の後ろの言葉を直す。{"template": ..., "labels": {...}}
+            length = int(self.headers.get("Content-Length") or 0)
+            try:
+                body = json.loads(self.rfile.read(length) or b"{}")
+            except Exception:
+                body = {}
+            tid = str(body.get("template") or "")
+            if not tid or tid not in Handler.templates:
+                return self._json(dict(error="知らない様式です"), 400)
+            got = body.get("labels")
+            if not isinstance(got, dict):
+                return self._json(dict(error="labels がありません"), 400)
+            path_saved = labels_mod.save_overrides(tid, got)
+            return self._json(dict(saved=os.path.basename(path_saved),
+                                   count=len(labels_mod.load_overrides(tid))))
         if path != "/api/extract":
             return self._json(dict(error="not found"), 404)
         length = int(self.headers.get("Content-Length") or 0)
