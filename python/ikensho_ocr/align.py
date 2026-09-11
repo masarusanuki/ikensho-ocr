@@ -12,6 +12,9 @@ from .templates import Template, TemplatePage
 # 管理画面のしきい値と対応させるため、環境変数で上書きできるようにする
 MIN_INLIERS = int(os.environ.get("IKENSHO_MIN_INLIERS", "25"))
 MIN_INLIER_RATIO = float(os.environ.get("IKENSHO_MIN_INLIER_RATIO", "0.30"))
+# これ以上の倍率で引き伸ばすときは Lanczos を使う（それ未満は Cubic）。
+# 実測で決める。2.0 にすると 100dpi の入力で悪化した（Lanczos の粒立ちが害）
+LANCZOS_FROM = float(os.environ.get("IKENSHO_LANCZOS_FROM", "2.5"))
 
 
 @dataclass
@@ -61,6 +64,29 @@ def _register(src: np.ndarray, ref: np.ndarray,
     return H, len(good), int(mask.sum())
 
 
+def _warp_interp(gray: np.ndarray, page) -> int:
+    """テンプレートの大きさに合わせるときの、画素の埋め方を選ぶ。
+
+    **ここが解像度の低い入力の要。** 入力が template より小さいと、
+    ここで引き伸ばされる。線形（INTER_LINEAR）だとにじんで細い線が消え、
+    あとの OCR でいくら拡大しても戻らない。
+
+      入力が小さい（＝低解像度）… Cubic。2倍を超えるなら Lanczos
+      入力が大きい             … Area。線形だと縮小で網目が出る
+    """
+    if os.environ.get("IKENSHO_WARP") == "linear":
+        return cv2.INTER_LINEAR          # 以前の動き（効果を測るため）
+    src = max(gray.shape[1], 1)
+    ratio = page.width / src
+    if ratio >= LANCZOS_FROM:
+        return cv2.INTER_LANCZOS4
+    if ratio > 1.02:
+        return cv2.INTER_CUBIC
+    if ratio < 0.98:
+        return cv2.INTER_AREA
+    return cv2.INTER_LINEAR
+
+
 def match_page(gray: np.ndarray, templates: Dict[str, Template],
                restrict_to: Optional[str] = None) -> Optional[PageMatch]:
     """1枚のページ画像がどの様式の何ページ目かを判定し、位置合わせして返す。
@@ -85,7 +111,8 @@ def match_page(gray: np.ndarray, templates: Dict[str, Template],
             S = np.array([[scale, 0, 0], [0, scale, 0], [0, 0, 1]], dtype=np.float64)
             Hf = S @ H
             warped = cv2.warpPerspective(gray, Hf, (tp.width, tp.height),
-                                         flags=cv2.INTER_LINEAR, borderValue=255)
+                                         flags=_warp_interp(gray, tp),
+                                         borderValue=255)
             cand = PageMatch(template_id=tid, page_index=tp.index, warped=warped,
                              homography=Hf, inliers=ninl, matches=nmatch)
             if best is None or cand.score > best.score:

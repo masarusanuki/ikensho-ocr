@@ -673,6 +673,15 @@
       const c = this.dicts.correct(f.id, trimmed.text, conf);
       const entry = { value: c.value, confidence: c.confidence, raw: text,
                       empty: false, candidates: c.candidates };
+      // 医療機関名の欄に法人名が書かれていたら落とす（別物なので）
+      if (f.id === 'clinic_name' && entry.value) {
+        const cp = global.IkenshoDicts.stripCorporate(entry.value);
+        if (cp.reason) {
+          entry.corrections = (entry.corrections || []).concat(
+            [{ before: entry.value, after: cp.value, reason: cp.reason }]);
+          entry.value = cp.value;
+        }
+      }
       // 診断名は ICD のいちばん近い場所を添える。
       // 書かれた名前は置き換えない（「右」「術後」が消えるため）。
       const icd = this.dicts.nearestIcd(f.id, entry.value || '');

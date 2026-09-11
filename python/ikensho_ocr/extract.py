@@ -439,6 +439,14 @@ def extract_record(paths: List[str],
                     entry = dict(value=corrected, confidence=round(conf, 3),
                                  raw=res.text, candidates=cands, empty=False,
                                  engine=res.engine)
+                # 医療機関名の欄に法人名が書かれていたら落とす（別物なので）
+                if f.id == "clinic_name" and entry.get("value"):
+                    fixed, note = proofread.strip_corporate(entry["value"])
+                    if note is not None:
+                        entry["value"] = fixed
+                        entry.setdefault("corrections", []).append(
+                            dict(before=note.before, after=note.after,
+                                 reason=note.reason))
                 # 診断名は ICD のいちばん近い場所を添える。
                 # 書かれた名前は**置き換えない**（「右」「術後」が消えるため）。
                 # コードだけを付けるので、詳しい病名のまま分類に使える。

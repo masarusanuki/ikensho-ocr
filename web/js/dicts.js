@@ -349,6 +349,22 @@
     }
   }
 
+  // 医療機関名の前に書かれる法人名（Python の proofread.py と同じ規則）。
+  // 「医療機関名」欄としては別物なので落とす。
+  // 国立・県立・市立などは施設名の一部なので落とさない。
+  const CORPORATE = /^\s*(社会|特定)?医療法人\s*(社団|財団|社団法人|財団法人)?\s*([^\s]{1,12}?(会|会館|協会))?\s*/;
+
+  /** 医療機関名の前に付いた法人名を落とす。 */
+  function stripCorporate(text) {
+    const t = String(text || '').trim();
+    if (!t || t.indexOf('医療法人') < 0) return { value: t, reason: '' };
+    const m = CORPORATE.exec(t);
+    if (!m || !m[0].trim()) return { value: t, reason: '' };
+    const rest = t.slice(m[0].length).trim();
+    if (rest.length < 3) return { value: t, reason: '' };
+    return { value: rest, reason: '法人名を落としました（医療機関名の欄）' };
+  }
+
   // 小数1桁で書かれる欄の、ありえる範囲（Python の proofread.py と同じ値）。
   // 手書きの小さな小数点は読み落とされやすく、「152.5」が「1525」になる。
   const DECIMAL_RANGES = { height_cm: [100.0, 220.0], weight_kg: [20.0, 200.0] };
@@ -374,5 +390,5 @@
 
   global.IkenshoDicts = { Dictionaries, similarity, normalize, cleanOcr,
                           normalizeVariants, levenshtein, proofread, japaneseScore,
-                          isShortening, fixDecimalPoint };
+                          isShortening, fixDecimalPoint, stripCorporate };
 })(window);

@@ -302,3 +302,28 @@ def fix_decimal_point(field_id: str, text: str) -> Tuple[str, Optional[Correctio
     except ValueError:
         return t, None
     return fixed, Correction(t, fixed, reason="小数点が読めていないと判断しました")
+
+# 医療機関名の前に書かれる法人名。「医療機関名」欄としては別物なので落とす。
+#   医療法人社団 常仁会 牛久愛和総合病院 → 牛久愛和総合病院
+# 「医療法人」で始まり、「〜会」までを法人名とみなす。
+# 国立・県立・市立などは施設名の一部なので**落とさない**。
+_CORPORATE = re.compile(
+    r"^\s*(社会|特定)?医療法人\s*(社団|財団|社団法人|財団法人)?\s*"
+    r"([^\s]{1,12}?(会|会館|協会))?\s*")
+
+
+def strip_corporate(text: str) -> Tuple[str, Optional[Correction]]:
+    """医療機関名の前に付いた法人名を落とす。
+
+    落とした結果が短すぎる（施設名が残らない）場合は触らない。
+    """
+    t = (text or "").strip()
+    if not t or "医療法人" not in t:
+        return t, None
+    m = _CORPORATE.match(t)
+    if not m or not m.group(0).strip():
+        return t, None
+    rest = t[m.end():].strip()
+    if len(rest) < 3:
+        return t, None              # 施設名が残らないなら触らない
+    return rest, Correction(t, rest, reason="法人名を落としました（医療機関名の欄）")
