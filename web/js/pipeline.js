@@ -288,6 +288,14 @@
       return best;
     }
 
+    /**
+     * テンプレートの座標系に合わせる。
+     *
+     * **画素の埋め方が解像度の低い入力の要。** 入力がテンプレートより小さいと
+     * ここで引き伸ばされる。線形だとにじんで細い線が消え、
+     * あとの OCR でいくら拡大しても戻らない（Python 版 align._warp_interp と同じ規則）。
+     * 実測では 75dpi 相当の入力で日付の正解が 225 → 241 件になった。
+     */
     warpToTemplate(gray, match) {
       const ref = this.refs[`${match.templateId}:${match.pageIndex}`];
       const scale = match.tplPage.width / ref.cols;
@@ -295,8 +303,11 @@
       const Hf = new cv.Mat();
       cv.gemm(S, match.H, 1, new cv.Mat(), 0, Hf);
       const out = new cv.Mat();
+      const ratio = match.tplPage.width / Math.max(gray.cols, 1);
+      const interp = ratio > 1.02 ? cv.INTER_CUBIC
+                   : (ratio < 0.98 ? cv.INTER_AREA : cv.INTER_LINEAR);
       cv.warpPerspective(gray, out, Hf, new cv.Size(match.tplPage.width, match.tplPage.height),
-                         cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar(255));
+                         interp, cv.BORDER_CONSTANT, new cv.Scalar(255));
       S.delete(); Hf.delete();
       return out;
     }

@@ -12,9 +12,6 @@ from .templates import Template, TemplatePage
 # 管理画面のしきい値と対応させるため、環境変数で上書きできるようにする
 MIN_INLIERS = int(os.environ.get("IKENSHO_MIN_INLIERS", "25"))
 MIN_INLIER_RATIO = float(os.environ.get("IKENSHO_MIN_INLIER_RATIO", "0.30"))
-# これ以上の倍率で引き伸ばすときは Lanczos を使う（それ未満は Cubic）。
-# 実測で決める。2.0 にすると 100dpi の入力で悪化した（Lanczos の粒立ちが害）
-LANCZOS_FROM = float(os.environ.get("IKENSHO_LANCZOS_FROM", "2.5"))
 
 
 @dataclass
@@ -71,15 +68,24 @@ def _warp_interp(gray: np.ndarray, page) -> int:
     ここで引き伸ばされる。線形（INTER_LINEAR）だとにじんで細い線が消え、
     あとの OCR でいくら拡大しても戻らない。
 
-      入力が小さい（＝低解像度）… Cubic。2倍を超えるなら Lanczos
-      入力が大きい             … Area。線形だと縮小で網目が出る
+      引き伸ばす（＝低解像度）… Cubic
+      縮める（＝高解像度）  … Area。線形だと縮小で網目が出る
+      同じ大きさ            … 線形（触らない）
+
+    実測（20通・日付284件、正解数で比較）:
+
+      入力     倍率   Cubic/Area   線形（以前）
+      200dpi  1.00   255          255   ← 同じ大きさなので同一
+      150dpi  1.33   260          256
+      100dpi  2.00   244          249
+      75dpi   2.66   241          225   ← ここが大きい
+
+    Lanczos も試したが 75dpi で 242 対 241 とほぼ差が無かったので使わない。
+    **効いているのは「線形をやめたこと」**で、細かい方式の違いではない。
     """
     if os.environ.get("IKENSHO_WARP") == "linear":
         return cv2.INTER_LINEAR          # 以前の動き（効果を測るため）
-    src = max(gray.shape[1], 1)
-    ratio = page.width / src
-    if ratio >= LANCZOS_FROM:
-        return cv2.INTER_LANCZOS4
+    ratio = page.width / max(gray.shape[1], 1)
     if ratio > 1.02:
         return cv2.INTER_CUBIC
     if ratio < 0.98:
