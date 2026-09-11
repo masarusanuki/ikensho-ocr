@@ -157,7 +157,12 @@
           <span id="zoomlevel">標準</span>
           <button class="btn sm" data-zoom="1">＋</button>
           <span id="zoomhint" hidden>← 横に続きがあります。掴んで動かすか、ホイールで送れます →</span>
+          <span class="spacer"></span>
+          <button class="btn sm" id="btn-vlm-field" hidden
+                  title="この欄だけ、画像を見て答えるLLMで読み直します（数秒かかります）">
+            この欄をVLMで読み直す</button>
         </div>
+        <div class="zoomcap" id="vlm-field-status" hidden></div>
       </div>
     </div>
 

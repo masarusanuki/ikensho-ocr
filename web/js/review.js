@@ -43,6 +43,8 @@
           if (this._lastLoc) this.renderZoom(this._lastLoc);
         });
       });
+      const vlmBtn = document.getElementById('btn-vlm-field');
+      if (vlmBtn) vlmBtn.addEventListener('click', () => this.rereadWithVlm());
       document.getElementById('opt-overlay').addEventListener('change', e => {
         document.getElementById('frame').classList.toggle('plain', !e.target.checked);
       });
@@ -1207,11 +1209,104 @@
       this.marker.style.width = (w * 100) + '%';
       this.marker.style.height = (h * 100) + '%';
       this.renderZoom(loc);
+      this.updateVlmButton(fieldId);
       if (host) {
         host.querySelectorAll('.hot').forEach(h => {
           if (h.dataset.field === fieldId) h.classList.add('sel');
         });
       }
+    }
+
+    /**
+     * 「この欄をVLMで読み直す」ボタンの出し入れ。
+     * VLM は1欄で数秒かかるので、全欄を通すのではなく
+     * **読めていない欄だけを指して読み直す**のが現実的な使い方。
+     */
+    updateVlmButton(fieldId) {
+      const btn = document.getElementById('btn-vlm-field');
+      const box = document.getElementById('vlm-field-status');
+      if (btn) {
+        const f = this.app.schema.byId[fieldId];
+        const ok = !!(this.app.pipeline.vlmEndpoint) && f && f.type !== 'choice'
+                   && f.type !== 'multi' && f.type !== 'flag' && f.type !== 'circle'
+                   && !!(this.record.images || {})[this.currentPage];
+        btn.hidden = !ok;
+        btn.disabled = false;
+        btn.textContent = 'この欄をVLMで読み直す';
+      }
+      if (box) box.hidden = true;
+    }
+
+    /** いま選んでいる欄だけを VLM で読み直す。 */
+    async rereadWithVlm() {
+      const fieldId = this.activeField;
+      const f = this.app.schema.byId[fieldId];
+      const loc = this.locate(fieldId);
+      const src = (this.record.images || {})[loc && loc.page];
+      const btn = document.getElementById('btn-vlm-field');
+      const box = document.getElementById('vlm-field-status');
+      if (!f || !loc || !src) return;
+      const say = (msg, err) => {
+        if (!box) return;
+        box.hidden = false;
+        box.textContent = msg;
+        box.style.color = err ? 'var(--low)' : '';
+      };
+      btn.disabled = true;
+      btn.textContent = '読み直しています…';
+      say('VLMに渡しています（数秒かかります）');
+      try {
+        const url = await this.cropDataUrl(src, loc.rect);
+        const res = await fetch(this.app.pipeline.vlmEndpoint, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: url, charset: f.charset || '',
+                                 multiline: f.type === 'textarea' }),
+        });
+        const got = await res.json();
+        if (!res.ok || got.error) { say(got.error || `HTTP ${res.status}`, true); return; }
+        const text = (got.text || '').trim();
+        if (!text) { say('VLMでも文字を読み取れませんでした', true); return; }
+        const e = this.record.fields[fieldId];
+        const before = e.value;
+        e.value = text;
+        e.raw = text;
+        e.engine = got.engine || 'vlm';
+        e.note = 'VLMで読み直しました（内容を確かめてください）';
+        // VLM は自己申告しないので確信度は上げない。必ず確認してもらう
+        e.confidence = Math.min(e.confidence || 0, got.confidence || 0.5);
+        e.level = 'low';
+        const L = global.IkenshoOpLog;
+        if (L) L.edit(this.record, f, e, before);
+        this.app.touch();
+        this.renderFields();
+        this.focusField(fieldId, null);
+        say(`VLMの読み: ${text}`);
+      } catch (err) {
+        say('読み直しに失敗しました: ' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'この欄をVLMで読み直す';
+      }
+    }
+
+    /** ページ画像から欄の部分だけを切り出し、PNG の data URL にする。 */
+    cropDataUrl(src, rect, pad = 0.004) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        img.onerror = () => rej(new Error('画像を読めません'));
+        img.onload = () => {
+          const x = Math.max(0, (rect[0] - pad) * img.width);
+          const y = Math.max(0, (rect[1] - pad) * img.height);
+          const w = Math.min(img.width - x, (rect[2] + pad * 2) * img.width);
+          const h = Math.min(img.height - y, (rect[3] + pad * 2) * img.height);
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h));
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, x, y, w, h, 0, 0, c.width, c.height);
+          res(c.toDataURL('image/png'));
+        };
+        img.src = src;
+      });
     }
 
     /** テンプレートから、その項目が画像上のどこにあるかを求める。 */
