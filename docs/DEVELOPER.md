@@ -604,6 +604,20 @@ Windows インストーラ（Dockerを使えない場合）は
 [packaging/windows/README.md](../packaging/windows/README.md)。
 OS別の導入手順は [docs/INSTALL.md](INSTALL.md)。
 
+### 9.0 公開先へ置く
+
+```bash
+python3 tools/build_web.py
+python3 tools/build_standalone.py          # 単一HTML版も更新する場合
+bash tools/deploy_web.sh                   # 既定: /var/www/html/test-deploy/kaigo_nintei
+```
+
+**`rsync --delete` を直に叩かないでください。** 配置先にしか無い
+`.htaccess` / `.htpasswd` / `samples/` を消してしまい、
+**サイトのパスワードが外れます**（実際に外しました）。
+`deploy_web.sh` はこれらを除外し、置いたあとにパスワード設定の有無を確かめて、
+無ければ終了コード2で止まります。
+
 ### 9.1 Web版にパスワードをかける（Apache）
 
 ```bash
