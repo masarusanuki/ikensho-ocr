@@ -55,10 +55,17 @@ def parse(text: str) -> Dict[str, Optional[int]]:
     # 「月」より後の数字を日として拾う**。
     # 逆に読み取りが乱れて `8日年11月20` のように余分な字が挟まることもあるので、
     # 数字と区切り文字の間に少しの異物を許す。
+    # 元年は「元」と書かれる（数字ではない）。正解データで実際に出てくる
+    gan = re.search(r"元\s*年", t)
     y = re.search(r"(\d+)\D{0,2}年", t)
-    if y:
+    if gan and (not y or gan.start() <= y.start()):
+        out["year"] = 1
+        after_year = t[gan.end():]
+    elif y:
         out["year"] = int(y.group(1))
-    after_year = t[y.end():] if y else t
+        after_year = t[y.end():]
+    else:
+        after_year = t
 
     mo = re.search(r"(\d+)\D{0,2}月", after_year)
     if mo:

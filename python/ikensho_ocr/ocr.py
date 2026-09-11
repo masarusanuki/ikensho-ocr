@@ -538,6 +538,10 @@ class DigitReader:
                     cur_x = cx0
                 cur += ch
                 continue
+            # 元年は「元」と書かれる。数字ではないので、ここで 1 として扱う
+            if ch == "元" and not cur:
+                cur, cur_x = "1", cx0
+                continue
             if ch in self.MARKS:
                 used_marks = True
                 commit(self.MARKS[ch], cur, cur_x)

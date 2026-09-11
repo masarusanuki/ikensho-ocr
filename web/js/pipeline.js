@@ -13,6 +13,11 @@
   // 欄ごとの文字種ヒント。書かれる文字が決まっている欄は候補を絞ると精度が上がる。
   const KATAKANA = Array.from({ length: 0x30F6 - 0x30A1 + 1 },
                               (_, i) => String.fromCharCode(0x30A1 + i)).join('');
+  // **ひらがなも含める。** 様式の欄は「ふりがな」なので、書かれるのは
+  // ひらがなが普通（正解データ100通すべてがひらがな）。
+  // カタカナだけを許していたため、読めていても全部捨てて空にしていた
+  const HIRAGANA = Array.from({ length: 0x3096 - 0x3041 + 1 },
+                              (_, i) => String.fromCharCode(0x3041 + i)).join('');
   const CHARSETS = {
     digits:  '0123456789',
     // 元号は様式で決まっているので、日付欄では数字だけを読む
@@ -22,7 +27,7 @@
     postal:  '0123456789-〒 ',
     // 電話番号は数字とハイフンだけ。印刷された「（ ）」は市外局番の枠なので残さない
     phone:   '0123456789- ',
-    kana:    KATAKANA + 'ー・ 　',
+    kana:    HIRAGANA + KATAKANA + 'ー゛゜・ 　',
   };
 
   // 日本語の文字（tesseract は文字ごとに空白を入れるので、その除去に使う）

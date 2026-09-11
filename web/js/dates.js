@@ -35,9 +35,19 @@
     // 「日」は欄のいちばん右に印刷されているため、読み取りの都合で落ちることがある
     // （例: `12年3月4`）。そこで **「日」が無くても「月」より後の数字を日として拾う**。
     // 逆に `8日年11月20` のように余分な字が挟まることもあるので、少しの異物を許す。
+    // 元年は「元」と書かれる（数字ではない）。正解データで実際に出てくる
+    const gan = t.match(/元\s*年/);
     const y = t.match(/(\d+)\D{0,2}年/);
-    if (y) out.year = parseInt(y[1], 10);
-    const afterYear = y ? t.slice(y.index + y[0].length) : t;
+    let afterYear;
+    if (gan && (!y || gan.index <= y.index)) {
+      out.year = 1;
+      afterYear = t.slice(gan.index + gan[0].length);
+    } else if (y) {
+      out.year = parseInt(y[1], 10);
+      afterYear = t.slice(y.index + y[0].length);
+    } else {
+      afterYear = t;
+    }
 
     const mo = afterYear.match(/(\d+)\D{0,2}月/);
     if (mo) out.month = parseInt(mo[1], 10);

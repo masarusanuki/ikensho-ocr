@@ -8,6 +8,10 @@ tesseract では whitelist として渡し、それ以外のエンジンでは�
 import re
 
 KATAKANA = "".join(chr(c) for c in range(0x30A1, 0x30F7))
+# **ひらがなも含める。** 様式の欄は「ふりがな」なので、書かれるのは
+# ひらがなが普通（正解データ100通すべてがひらがな）。
+# カタカナだけを許していたため、読めていても全部捨てて空にしていた
+HIRAGANA = "".join(chr(c) for c in range(0x3041, 0x3097))
 
 CHARSETS = {
     "digits":  "0123456789",
@@ -20,7 +24,7 @@ CHARSETS = {
     # 電話番号は数字とハイフンだけ。様式に印刷された「（ ）」は市外局番の枠なので
     # 読み取り結果には残さない（後段で 029-873-3111 の形に整える）。
     "phone":   "0123456789- ",
-    "kana":    KATAKANA + "ー・ 　",
+    "kana":    HIRAGANA + KATAKANA + "ー゛゜・ 　",
 }
 
 
