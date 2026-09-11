@@ -673,6 +673,14 @@
       const c = this.dicts.correct(f.id, trimmed.text, conf);
       const entry = { value: c.value, confidence: c.confidence, raw: text,
                       empty: false, candidates: c.candidates };
+      // 身長・体重は小数1桁。小さな小数点は読み落とされやすいので、
+      // 範囲から外れていて小数点を入れると収まる場合だけ戻す
+      const dec = global.IkenshoDicts.fixDecimalPoint(f.id, entry.value);
+      if (dec.reason) {
+        entry.corrections = (entry.corrections || []).concat(
+          [{ before: entry.value, after: dec.value, reason: dec.reason }]);
+        entry.value = dec.value;
+      }
       if (trimmed.notes.length) {
         entry.corrections = (entry.corrections || []).concat(
           trimmed.notes.map(n => ({ before: '', after: '', reason: n })));

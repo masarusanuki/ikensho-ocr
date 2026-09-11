@@ -439,6 +439,14 @@ def extract_record(paths: List[str],
                     entry = dict(value=corrected, confidence=round(conf, 3),
                                  raw=res.text, candidates=cands, empty=False,
                                  engine=res.engine)
+                # 身長・体重は小数1桁。小さな小数点は読み落とされやすいので、
+                # 範囲から外れていて小数点を入れると収まる場合だけ戻す
+                if entry.get("value"):
+                    fixed, note = proofread.fix_decimal_point(f.id, entry["value"])
+                    if note is not None:
+                        entry["value"] = fixed
+                        entry.setdefault("corrections", []).append(
+                            dict(before=note.before, after=note.after, reason=note.reason))
                 # ふりがな欄はひらがなに揃える（様式が「ふりがな」のため）
                 if f.charset == "kana" and entry.get("value"):
                     fixed, note = proofread.to_furigana(entry["value"])

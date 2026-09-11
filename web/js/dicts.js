@@ -315,7 +315,30 @@
     }
   }
 
+  // 小数1桁で書かれる欄の、ありえる範囲（Python の proofread.py と同じ値）。
+  // 手書きの小さな小数点は読み落とされやすく、「152.5」が「1525」になる。
+  const DECIMAL_RANGES = { height_cm: [100.0, 220.0], weight_kg: [20.0, 200.0] };
+
+  /**
+   * 読み落とされた小数点を戻す。**範囲で判断する**ので、
+   * 「152」のように小数点なしでも筋の通る値はそのままにする。
+   * @returns {{value: string, reason: string}}
+   */
+  function fixDecimalPoint(fieldId, text) {
+    const range = DECIMAL_RANGES[fieldId];
+    const t = String(text || '').trim();
+    if (!range || !t || !/^\d+$/.test(t)) return { value: t, reason: '' };
+    const [lo, hi] = range;
+    const v = parseFloat(t);
+    if (v >= lo && v <= hi) return { value: t, reason: '' };
+    if (t.length < 2) return { value: t, reason: '' };
+    const fixed = `${t.slice(0, -1)}.${t.slice(-1)}`;
+    const fv = parseFloat(fixed);
+    if (!(fv >= lo && fv <= hi)) return { value: t, reason: '' };
+    return { value: fixed, reason: '小数点が読めていないと判断しました' };
+  }
+
   global.IkenshoDicts = { Dictionaries, similarity, normalize, cleanOcr,
                           normalizeVariants, levenshtein, proofread, japaneseScore,
-                          isShortening };
+                          isShortening, fixDecimalPoint };
 })(window);

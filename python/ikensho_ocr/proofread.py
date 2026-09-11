@@ -267,3 +267,38 @@ def proofread_with_llm(assist, text: str, field_label: str) -> Optional[ProofRes
                        corrections=[Correction(t[:24], out[:24], "LLMによる校正")],
                        japanese_score=japanese_score(out),
                        note="LLMが校正した結果です。原文と見比べて確認してください。")
+
+# 小数1桁で書かれる欄の、ありえる範囲。
+# 手書きの小さな小数点は読み落とされやすく、「152.5」が「1525」になる。
+# 範囲から外れていて、小数点を入れると範囲に収まる場合だけ直す。
+DECIMAL_RANGES = {
+    "height_cm": (100.0, 220.0),
+    "weight_kg": (20.0, 200.0),
+}
+
+
+def fix_decimal_point(field_id: str, text: str) -> Tuple[str, Optional[Correction]]:
+    """読み落とされた小数点を戻す。
+
+    身長「152.5」が「1525」と読まれることがある。**範囲で判断する**ので、
+    「152」のように小数点なしでも筋の通る値はそのままにする。
+    """
+    lo, hi = DECIMAL_RANGES.get(field_id, (None, None))
+    t = (text or "").strip()
+    if lo is None or not t or not t.isdigit():
+        return t, None
+    try:
+        value = float(t)
+    except ValueError:
+        return t, None
+    if lo <= value <= hi:
+        return t, None                    # そのままで筋が通る
+    if len(t) < 2:
+        return t, None
+    fixed = f"{t[:-1]}.{t[-1]}"
+    try:
+        if not lo <= float(fixed) <= hi:
+            return t, None                # 入れても筋が通らないなら触らない
+    except ValueError:
+        return t, None
+    return fixed, Correction(t, fixed, reason="小数点が読めていないと判断しました")
