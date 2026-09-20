@@ -451,6 +451,10 @@ def _make(name: str) -> OcrEngine:
     """`rapidocr:ppocrv5_mobile` のようなモデル指定も受ける。"""
     if name.startswith("rapidocr:"):
         return RapidOcr(name.split(":", 1)[1])
+    if name == "ndlocr":
+        # 国立国会図書館の NDLOCR-Lite。読み込みが重いので使い回す
+        from . import ndlocr as ndl_mod
+        return ndl_mod.NdlOcr()
     if name == "vlm" or name.startswith("vlm:"):
         # VLM は読み込みが重いので使い回す。循環 import を避けてここで読む
         from . import vlm as vlm_mod
@@ -465,6 +469,7 @@ def get_engine(name: str = "auto") -> OcrEngine:
       ensemble        … 使えるものを全て使い、良い結果を採る（遅いが精度は上）
       rapidocr        … 日本語モデルが入っていればそれを使う
       rapidocr:<名前>  … 認識モデルを指定する（models/ocr/<名前>）
+      ndlocr          … 国立国会図書館の NDLOCR-Lite（models/ndlocr）
       vlm / vlm:<名前> … 画像を見て答えるLLMで読む（models/vlm/<名前>）
       名前指定         … tesseract / rapidocr / mangaocr / none
 
@@ -496,6 +501,12 @@ def get_engine(name: str = "auto") -> OcrEngine:
 
 def available_engines() -> List[str]:
     out = [f"rapidocr:{m['key']}" for m in installed_ocr_models()]
+    try:
+        from . import ndlocr as ndl_mod
+        if ndl_mod.available():
+            out.append("ndlocr")
+    except Exception:
+        pass
     try:
         from . import vlm as vlm_mod
         # 読み込まずに「入っているか」だけを見る（モデルは数GBある）
