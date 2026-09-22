@@ -64,7 +64,11 @@ CHOICE_MAP = {
 }
 # 複数選択（「・」区切り）
 MULTI_MAP = {
-    "他科受診科目": "other_dept", "特別な医療": "special_med_procedure",
+    "他科受診科目": "other_dept",
+    # 正解データの「特別な医療」は、様式では3つの欄に分かれている。
+    # 1つの欄だけに当てると、残り2つの言葉が丸ごと不正解になる
+    "特別な医療": ("special_med_procedure", "special_med_response",
+                   "special_med_incontinence"),
     "発生可能性の高い状態": "risk_conditions",
 }
 
@@ -124,6 +128,76 @@ def is_exact(fid, want, got):
     return norm_for(fid, want) == norm_for(fid, got)
 
 
+def _fields_of(schema, fid):
+    """項目idは1つとは限らない（正解データの1項目が様式の複数欄に分かれる）。"""
+    ids = fid if isinstance(fid, (list, tuple)) else (fid,)
+    return [(i, schema.get(i)) for i in ids if schema.get(i) is not None]
+
+
+def joined_value(got, fid):
+    """複数の欄に分かれている項目を、正解データと同じ1つの値にまとめる。"""
+    ids = fid if isinstance(fid, (list, tuple)) else (fid,)
+    parts = []
+    for i in ids:
+        v = got.get(i)
+        if isinstance(v, (list, tuple)):
+            parts.extend(str(x) for x in v)
+        elif v not in (None, "", False):
+            parts.append(str(v))
+    if len(ids) == 1:
+        return got.get(ids[0])
+    return parts
+
+
+def expected_opts(pairs, want):
+    """正解データの答えの言葉を、欄ごとの「印を付ける選択肢番号」にする。
+
+    `seigo2` の正解データは**質問ごとの答えの言葉**しか持たないので、
+    枠単位で数えるにはここで展開する。単一選択ならその1枠だけ印あり、
+    複数選択なら挙がった言葉の枠に印あり、残りは印なしとみなす。
+
+    **区切り文字で割ってはいけない。** 「転倒・骨折」のように選択肢そのものに
+    「・」が入っているので、割ると「転倒」「骨折」に崩れる。
+    長い選択肢から順に、文字列の中に出てくるものを拾う。
+
+    どれにも寄せられない言葉が残ったときは None を返し、その項目は数えない
+    （正解が作れないものを不正解として数えると、数字が嘘になる）。
+    """
+    if isinstance(want, (list, tuple)):
+        text = "・".join(str(w) for w in want)
+    else:
+        text = str(want)
+    rest = norm_for("", text)
+    if not rest:
+        return None
+    # (欄id, 選択肢番号, 正規化した言葉) を長い順に
+    cand = []
+    for fid, f in pairs:
+        for i, o in enumerate(f.options or []):
+            no = norm_for("", str(o))
+            if no:
+                cand.append((fid, i, no))
+    if not cand:
+        return None
+    picked = {fid: set() for fid, _ in pairs}
+    for fid, i, no in sorted(cand, key=lambda c: -len(c[2])):
+        if no in rest:
+            picked[fid].add(i)
+            rest = rest.replace(no, "", 1)
+    rest = re.sub(r"[・,、／/\s]", "", rest)
+    if rest:
+        # 残った言葉が選択肢の言い回し違いなら拾う（「主に他人が操作」など）
+        for fid, i, no in cand:
+            if no.startswith(rest) or rest.startswith(no) or \
+                    difflib.SequenceMatcher(None, rest, no).ratio() >= 0.75:
+                picked[fid].add(i)
+                rest = ""
+                break
+    if rest or not any(picked.values()):
+        return None
+    return picked
+
+
 def load_truth():
     with open(os.path.join(DATA, "truth", "ground_truth.json"), encoding="utf-8") as fh:
         rows = json.load(fh)
@@ -150,10 +224,15 @@ def run_one(args_tuple):
                              engine=engine, use_llm=False)
     except Exception as exc:
         return sid, None, str(exc)
-    got = {}
+    got, boxes = {}, {}
     for fid, e in rec.fields.items():
         got[fid] = e.get("value")
-    return sid, got, None
+        detail = e.get("detail")
+        if detail:
+            # 枠ごとの印。**質問単位の文字列比較とは別に、枠単位でも数えるため**
+            boxes[fid] = {int(d["opt"]): bool(d.get("checked"))
+                          for d in detail if d.get("opt") is not None}
+    return sid, (got, boxes), None
 
 
 def main():
@@ -168,6 +247,7 @@ def main():
     args = ap.parse_args()
 
     truth = load_truth()
+    schema_all = load_schema()
     ids = sorted(truth)
     if args.limit:
         # **軸ごとに同じ数ずつ取る。** 単に間引くと偏る
@@ -206,8 +286,10 @@ def main():
     per_field = collections.defaultdict(lambda: [0.0, 0, 0])
     misses = []
     errs = 0
+    box_total = box_ok = box_miss = box_false = 0
     for sid in ids:
-        got, err = results.get(sid, (None, "未実行"))
+        payload, err = results.get(sid, (None, "未実行"))
+        got, boxes = payload if payload else (None, {})
         if got is None:
             errs += 1
             continue
@@ -218,19 +300,39 @@ def main():
             expect = want.get(jname)
             if expect is None or not str(expect).strip():
                 continue
-            mine = got.get(fid)
+            mine = joined_value(got, fid)
             r = ratio(fid, expect, mine)
             exact = int(is_exact(fid, expect, mine))
             kind = ("文字" if jname in TEXT_MAP else "チェック")
-            for bucket in (total[kind], by_axis[kind][axis], per_field[fid]):
+            key = "+".join(fid) if isinstance(fid, (list, tuple)) else fid
+            for bucket in (total[kind], by_axis[kind][axis], per_field[key]):
                 bucket[0] += r
                 bucket[1] += 1
                 bucket[2] += exact
+            if kind == "チェック":
+                pairs = _fields_of(schema_all, fid)
+                exp = expected_opts(pairs, expect) if pairs else None
+                if exp is not None:
+                    for one, _f in pairs:
+                        want_set = exp.get(one, set())
+                        for opt, checked in sorted(boxes.get(one, {}).items()):
+                            box_total += 1
+                            if checked == (opt in want_set):
+                                box_ok += 1
+                            elif opt in want_set:
+                                box_miss += 1
+                            else:
+                                box_false += 1
             if len(misses) < args.detail and not exact:
                 misses.append((sid, want.get("mode"), want.get("読みやすさ"),
                                fid, expect, mine))
 
     print(f"\n■ 全体（{len(ids) - errs} 通・読めなかった {errs} 通）")
+    if box_total:
+        # `seigo/` と同じ数え方（□ひとつを1件・0か1）。
+        # 質問単位の文字列の近さとは**別の数字**なので、並べて出す
+        print(f"  枠単位   正解率 {100 * box_ok / box_total:6.2f}%  "
+              f"（{box_total} 枠・見落とし {box_miss} / 誤検出 {box_false}）")
     for kind in ("チェック", "文字"):
         s = total[kind]
         if not s[1]:
