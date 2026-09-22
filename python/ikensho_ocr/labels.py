@@ -107,6 +107,61 @@ def group_rows(boxes: List[dict]) -> List[List[dict]]:
     return rows
 
 
+def read_labels_ndl(warped: np.ndarray, boxes: List[dict],
+                    reader=None) -> Dict[str, str]:
+    """NDLOCR が読んだ行から、枠ごとの言葉を取り出す。
+
+    NDLOCR は行ごと（印＋言葉）をまとめて読む。
+
+        「□初回 ■2回目以上」 → 印の字で切ると「初回」「2回目以上」
+
+    **印の字で切った数と、その行にある枠の数が合うときだけ**振り分ける。
+    合わないときは何もしない（違う言葉を入れる方が害が大きい）。
+
+    モデルが無い環境では空を返す。
+
+    reader を渡すと、ページの読み直しを省く（同じページを様式の見張りにも
+    使うため。1ページの読みは数秒かかるので二度読まない）。
+    """
+    try:
+        from . import ndlocr as ndl
+    except Exception:
+        return {}
+    if not ndl.available():
+        return {}
+    if reader is None:
+        reader = ndl.PageReader(warped)
+    if not reader:
+        return {}
+    marks = re.compile(f"[{re.escape(ndl.FILLED_CHARS + ndl.EMPTY_CHARS)}]")
+    H, W = warped.shape[:2]
+    placed = []
+    for b in boxes:
+        x, y, w, h = b["rect"]
+        placed.append(dict(key=f"{b['field']}.{b['opt']}",
+                           cx=(x + w / 2) * W, cy=(y + h / 2) * H))
+    out: Dict[str, str] = {}
+    for line in reader.lines:
+        hits = list(marks.finditer(line.text))
+        if not hits:
+            continue
+        words = []
+        for i, m in enumerate(hits):
+            end = hits[i + 1].start() if i + 1 < len(hits) else len(line.text)
+            words.append(line.text[m.end():end].strip())
+        mine = [p for p in placed
+                if line.y0 <= p["cy"] <= line.y1
+                and line.x0 - 12 <= p["cx"] <= line.x1 + 12]
+        mine.sort(key=lambda p: p["cx"])
+        if not mine or len(mine) != len(words):
+            continue
+        for p, word in zip(mine, words):
+            word = normalize(word)
+            if word:
+                out[p["key"]] = word
+    return out
+
+
 def read_labels(warped: np.ndarray, boxes: List[dict], ocr,
                 only: Optional[set] = None) -> Dict[str, str]:
     """枠の右隣を OCR して、読めた言葉を返す。
@@ -218,38 +273,78 @@ def similarity(a: str, b: str) -> float:
 
 
 # 「読めた言葉が定義と違う」と言い切るための条件。
-# ラベルは小さく、OCR は 4割ほど読み違える。安易に読み取りを採用すると
-# かえって出力が壊れるので、**定義とも他の選択肢とも似ていないとき**だけ疑う。
-CHANGED_MAX_SIM = 0.5    # 定義との似かた
+#
+# **2つの読みを突き合わせる。** 1つの読みでは信用できない（実測で
+# PP-OCR 58.8% / NDLOCR 57.8% しか当たらない）。
+# ただし外し方が違うので、**両方が同じ言葉に一致したときは 98.3% 正しい**
+# （正解データ692枠の実測）。そこを食い違いの合図に使う。
+#
+#   2つが一致し、定義と違う  → 紙の言葉が変わっていると知らせる
+#   食い違った・片方が空      → 定義のまま（何も言わない）
+#
+# 食い違ったときは NDLOCR が正しい方が9倍多かった（83対9）ので、
+# 参考として読めた言葉には NDLOCR 側を残す。
+CHANGED_MAX_SIM = 0.5    # 定義との似かた（1つしか読めないときの保険）
 CHANGED_MIN_LEN = 3      # これより短い言葉は読み違えが多いので疑わない
+
+
+def combine(ppocr: Dict[str, str], ndl: Dict[str, str]) -> Dict[str, dict]:
+    """2つの読みを1つにまとめる。
+
+    戻り値は枠ごとに
+        {"read": 参考にする読み, "agreed": 2つが一致したか}
+    """
+    out: Dict[str, dict] = {}
+    for key in set(ppocr) | set(ndl):
+        a, b = normalize(ppocr.get(key, "")), normalize(ndl.get(key, ""))
+        if a and b and a == b:
+            out[key] = dict(read=ndl.get(key, ""), agreed=True)
+        else:
+            # 食い違い・片方が空。実測で NDLOCR の方が当たりやすい
+            out[key] = dict(read=(ndl.get(key) or ppocr.get(key) or ""),
+                            agreed=False)
+    return out
 
 
 def resolve(field_id: str, opt: int, expected: str, read: Optional[str],
             overrides: Dict[str, str],
-            siblings: Optional[List[str]] = None) -> dict:
+            siblings: Optional[List[str]] = None,
+            agreed: bool = False) -> dict:
     """その枠に使う言葉を決める。
 
     優先順位は **管理画面で直した言葉 > 定義の言葉**。
     読めた言葉はそのまま採らず、**定義と食い違うときの合図**として使う。
-    OCR がラベルを読み違える率は実測で4割あり、そのまま採ると
-    出力がかえって壊れるため。食い違いは `changed` を立てて画面に出す。
+    1つの読みでは6割弱しか当たらないので、そのまま採ると出力が壊れる。
+
+    `agreed`（2つの読みが一致した）なら、その読みは 98.3% 正しいので
+    食い違いを強く疑ってよい。一致していないときは、これまでどおり
+    厳しい条件を通す。
     """
     key = f"{field_id}.{opt}"
     out = dict(word=expected, source="定義", expected=expected, read=read or "",
-               changed=False)
+               changed=False, agreed=bool(agreed))
     fixed = overrides.get(key)
     if fixed:
         out.update(word=fixed, source="修正")
         return out
-    if not read or len(normalize(read)) < CHANGED_MIN_LEN:
+    if not read:
         return out
     nr, ne = normalize(read), normalize(expected)
-    # 隣の語まで一緒に読めてしまうことがある。定義の言葉を含むなら同じとみなす
+    if not nr or nr == ne:
+        return out
+    if agreed:
+        # 2つの読みが一致した。**短い言葉でも疑う**
+        # （「有」→「あり」のような言い換えは、ここでしか捕まえられない）
+        out.update(changed=True,
+                   note="2つの読み取りが一致して定義と違いました。確かめてください")
+        return out
+    # 以下は1つしか読めなかった場合。誤爆を抑えるため厳しく見る
+    if len(nr) < CHANGED_MIN_LEN:
+        return out
     if ne and (ne in nr or nr in ne):
         return out
     if similarity(read, expected) > CHANGED_MAX_SIM:
         return out
-    # 同じ項目の他の選択肢に近いなら、振り分けを誤っただけとみなす
     for other in (siblings or []):
         no = normalize(other)
         if other == expected or not no:

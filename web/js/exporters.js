@@ -353,6 +353,13 @@
         ファイル: p.source, ページ: p.sourcePage,
         様式のページ: p.pageIndex, 判別できた: p.matched })),
       注意: rec.warnings || [],
+      // 実物の様式と定義の食い違い。ブラウザ版には見張り（pagequest）が無いので
+      // 常に空だが、**Python版と形を揃える**ために出す
+      様式の食い違い: (rec.formDrift || []).map(d => ({
+        項目: d.label, 項目ID: d.field,
+        定義にあって読めなかった言葉: d.missing || [],
+        実物にあって定義に無い言葉: d.extra || [],
+        読めた行: d.row })),
       節: sections,
     };
   }

@@ -242,6 +242,15 @@ def record_to_form_json(rec, schema: Schema) -> Dict[str, Any]:
                             様式のページ=p.page_index, 判別できた=p.matched)
                        for p in rec.pages],
         "注意": list(rec.warnings),
+        # 実物の様式と定義の食い違い。質問はそのままでも選択肢が変わることがあるので、
+        # 読み取った値とは別に、様式そのものの変化をここに出す
+        "様式の食い違い": [
+            {"項目": d.get("label"), "項目ID": d.get("field"),
+             "定義にあって読めなかった言葉": d.get("missing") or [],
+             "実物にあって定義に無い言葉": d.get("extra") or [],
+             "読めた行": d.get("row")}
+            for d in getattr(rec, "form_drift", [])
+        ],
         "節": sections,
     }
 

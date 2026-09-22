@@ -1,0 +1,2864 @@
+{
+ "id": "seigo2_v1",
+ "name": "主治医意見書（検証用サンプル2）",
+ "schema_version": "1.0.0",
+ "page_count": 2,
+ "aspect": 1.414516,
+ "pages": [
+  {
+   "index": 1,
+   "width": 1654,
+   "height": 2339,
+   "ref": "seigo2_v1_p1.png",
+   "blank": "seigo2_v1_p1.png",
+   "boxes": [
+    {
+     "field": "consent",
+     "opt": 0,
+     "rect": [
+      0.458065,
+      0.150513,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "consent",
+     "opt": 1,
+     "rect": [
+      0.541129,
+      0.150513,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "report_count",
+     "opt": 0,
+     "rect": [
+      0.222581,
+      0.259407,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "report_count",
+     "opt": 1,
+     "rect": [
+      0.269355,
+      0.259407,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept_visit",
+     "opt": 0,
+     "rect": [
+      0.222581,
+      0.278791,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept_visit",
+     "opt": 1,
+     "rect": [
+      0.257258,
+      0.278791,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 0,
+     "rect": [
+      0.135484,
+      0.295325,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 1,
+     "rect": [
+      0.182258,
+      0.295325,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 2,
+     "rect": [
+      0.241129,
+      0.295325,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 3,
+     "rect": [
+      0.287903,
+      0.295325,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 4,
+     "rect": [
+      0.358871,
+      0.295325,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 5,
+     "rect": [
+      0.441935,
+      0.295325,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 6,
+     "rect": [
+      0.500806,
+      0.295325,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 7,
+     "rect": [
+      0.135484,
+      0.311288,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 8,
+     "rect": [
+      0.194355,
+      0.311288,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 9,
+     "rect": [
+      0.241129,
+      0.311288,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 10,
+     "rect": [
+      0.324194,
+      0.311288,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 11,
+     "rect": [
+      0.467742,
+      0.311288,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_dept",
+     "opt": 12,
+     "rect": [
+      0.514516,
+      0.311288,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "symptom_stability",
+     "opt": 0,
+     "rect": [
+      0.222581,
+      0.457241,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "symptom_stability",
+     "opt": 1,
+     "rect": [
+      0.269355,
+      0.457241,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "symptom_stability",
+     "opt": 2,
+     "rect": [
+      0.328226,
+      0.457241,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 0,
+     "rect": [
+      0.183871,
+      0.629418,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 1,
+     "rect": [
+      0.266935,
+      0.629418,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 2,
+     "rect": [
+      0.362097,
+      0.629418,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 3,
+     "rect": [
+      0.408871,
+      0.629418,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 4,
+     "rect": [
+      0.516129,
+      0.629418,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 5,
+     "rect": [
+      0.183871,
+      0.645382,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 6,
+     "rect": [
+      0.291129,
+      0.645382,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 7,
+     "rect": [
+      0.398387,
+      0.645382,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "special_med_procedure",
+     "opt": 8,
+     "rect": [
+      0.481452,
+      0.645382,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "special_med_response",
+     "opt": 0,
+     "rect": [
+      0.183871,
+      0.664766,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "special_med_response",
+     "opt": 1,
+     "rect": [
+      0.448387,
+      0.664766,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "special_med_incontinence",
+     "opt": 0,
+     "rect": [
+      0.183871,
+      0.685291,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 0,
+     "rect": [
+      0.359677,
+      0.742303,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 1,
+     "rect": [
+      0.406452,
+      0.742303,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 2,
+     "rect": [
+      0.441613,
+      0.742303,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 3,
+     "rect": [
+      0.476774,
+      0.742303,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 4,
+     "rect": [
+      0.511935,
+      0.742303,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 5,
+     "rect": [
+      0.547097,
+      0.742303,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 6,
+     "rect": [
+      0.582258,
+      0.742303,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 7,
+     "rect": [
+      0.617419,
+      0.742303,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_disabled",
+     "opt": 8,
+     "rect": [
+      0.652581,
+      0.742303,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 0,
+     "rect": [
+      0.359677,
+      0.758267,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 1,
+     "rect": [
+      0.406452,
+      0.758267,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 2,
+     "rect": [
+      0.441129,
+      0.758267,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 3,
+     "rect": [
+      0.482097,
+      0.758267,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 4,
+     "rect": [
+      0.523065,
+      0.758267,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 5,
+     "rect": [
+      0.564032,
+      0.758267,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 6,
+     "rect": [
+      0.605,
+      0.758267,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "adl_dementia",
+     "opt": 7,
+     "rect": [
+      0.639677,
+      0.758267,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "short_term_memory",
+     "opt": 0,
+     "rect": [
+      0.359677,
+      0.792474,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "short_term_memory",
+     "opt": 1,
+     "rect": [
+      0.430645,
+      0.792474,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "decision_ability",
+     "opt": 0,
+     "rect": [
+      0.359677,
+      0.807298,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "decision_ability",
+     "opt": 1,
+     "rect": [
+      0.406452,
+      0.807298,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "decision_ability",
+     "opt": 2,
+     "rect": [
+      0.501613,
+      0.807298,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "decision_ability",
+     "opt": 3,
+     "rect": [
+      0.596774,
+      0.807298,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "communication_ability",
+     "opt": 0,
+     "rect": [
+      0.359677,
+      0.822121,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "communication_ability",
+     "opt": 1,
+     "rect": [
+      0.442742,
+      0.822121,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "communication_ability",
+     "opt": 2,
+     "rect": [
+      0.537903,
+      0.822121,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "communication_ability",
+     "opt": 3,
+     "rect": [
+      0.681452,
+      0.822121,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_presence",
+     "opt": 0,
+     "rect": [
+      0.056452,
+      0.856328,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_presence",
+     "opt": 1,
+     "rect": [
+      0.091129,
+      0.856328,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 0,
+     "rect": [
+      0.132258,
+      0.856328,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 1,
+     "rect": [
+      0.215323,
+      0.856328,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 2,
+     "rect": [
+      0.262097,
+      0.856328,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 3,
+     "rect": [
+      0.333065,
+      0.856328,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 4,
+     "rect": [
+      0.379839,
+      0.856328,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 5,
+     "rect": [
+      0.426613,
+      0.856328,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 6,
+     "rect": [
+      0.521774,
+      0.856328,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 7,
+     "rect": [
+      0.056452,
+      0.875713,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 8,
+     "rect": [
+      0.139516,
+      0.875713,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 9,
+     "rect": [
+      0.210484,
+      0.875713,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 10,
+     "rect": [
+      0.281452,
+      0.875713,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "bpsd_items",
+     "opt": 11,
+     "rect": [
+      0.376613,
+      0.875713,
+      0.010484,
+      0.007412
+     ]
+    }
+   ],
+   "texts": [
+    {
+     "field": "applicant_furigana",
+     "type": "text",
+     "rect": [
+      0.16129,
+      0.047891,
+      0.306452,
+      0.024515
+     ],
+     "options": null,
+     "charset": "kana",
+     "pii": "name",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "applicant_name",
+     "type": "text",
+     "rect": [
+      0.096774,
+      0.066135,
+      0.33871,
+      0.032497
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "name",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "postal_code",
+     "type": "text",
+     "rect": [
+      0.625806,
+      0.047891,
+      0.137097,
+      0.024515
+     ],
+     "options": null,
+     "charset": "postal",
+     "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "applicant_address",
+     "type": "text",
+     "rect": [
+      0.61129,
+      0.071836,
+      0.370968,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "age",
+     "type": "text",
+     "rect": [
+      0.335484,
+      0.095211,
+      0.037097,
+      0.024515
+     ],
+     "options": null,
+     "charset": "digits",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "applicant_phone",
+     "type": "text",
+     "rect": [
+      0.740323,
+      0.095211,
+      0.145161,
+      0.024515
+     ],
+     "options": null,
+     "charset": "phone",
+     "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "doctor_name",
+     "type": "text",
+     "rect": [
+      0.193548,
+      0.160205,
+      0.33871,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "name",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "clinic_name",
+     "type": "text",
+     "rect": [
+      0.193548,
+      0.18073,
+      0.322581,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "clinic_address",
+     "type": "text",
+     "rect": [
+      0.193548,
+      0.201254,
+      0.322581,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "clinic_phone",
+     "type": "text",
+     "rect": [
+      0.675806,
+      0.18073,
+      0.16129,
+      0.024515
+     ],
+     "options": null,
+     "charset": "phone",
+     "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "clinic_fax",
+     "type": "text",
+     "rect": [
+      0.675806,
+      0.201254,
+      0.16129,
+      0.024515
+     ],
+     "options": null,
+     "charset": "phone",
+     "pii": "mask",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "other_dept_other_text",
+     "type": "text",
+     "rect": [
+      0.576613,
+      0.299886,
+      0.158065,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "diagnosis1_name",
+     "type": "text",
+     "rect": [
+      0.085484,
+      0.374002,
+      0.322581,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "diagnosis2_name",
+     "type": "text",
+     "rect": [
+      0.085484,
+      0.396807,
+      0.322581,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "diagnosis3_name",
+     "type": "text",
+     "rect": [
+      0.085484,
+      0.419612,
+      0.322581,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "stability_detail",
+     "type": "text",
+     "rect": [
+      0.053226,
+      0.476055,
+      0.877419,
+      0.039339
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "treatment_course",
+     "type": "textarea",
+     "rect": [
+      0.054839,
+      0.531927,
+      0.877419,
+      0.058723
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "entry_date",
+     "type": "text",
+     "rect": [
+      0.817742,
+      0.021665,
+      0.141936,
+      0.024515
+     ],
+     "options": null,
+     "charset": "date_digits",
+     "pii": "",
+     "kind": "date_wareki",
+     "era_field": "",
+     "default_era": "令和",
+     "always_pick": false,
+     "placement": "生成元から",
+     "slots": {
+      "year": [
+       0.817742,
+       0.021665,
+       0.035484,
+       0.024515
+      ],
+      "month": [
+       0.870968,
+       0.021665,
+       0.035484,
+       0.024515
+      ],
+      "day": [
+       0.924194,
+       0.021665,
+       0.035484,
+       0.024515
+      ]
+     }
+    },
+    {
+     "field": "birth_date",
+     "type": "text",
+     "rect": [
+      0.153226,
+      0.095211,
+      0.141935,
+      0.024515
+     ],
+     "options": null,
+     "charset": "date_digits",
+     "pii": "",
+     "kind": "date_wareki",
+     "era_field": "birth_era",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から",
+     "slots": {
+      "year": [
+       0.153226,
+       0.095211,
+       0.035484,
+       0.024515
+      ],
+      "month": [
+       0.206452,
+       0.095211,
+       0.035484,
+       0.024515
+      ],
+      "day": [
+       0.259677,
+       0.095211,
+       0.035484,
+       0.024515
+      ]
+     }
+    },
+    {
+     "field": "last_exam_date",
+     "type": "text",
+     "rect": [
+      0.264516,
+      0.22919,
+      0.154839,
+      0.024515
+     ],
+     "options": null,
+     "charset": "date_digits",
+     "pii": "",
+     "kind": "date_wareki",
+     "era_field": "",
+     "default_era": "令和",
+     "always_pick": false,
+     "placement": "生成元から",
+     "slots": {
+      "year": [
+       0.264516,
+       0.22919,
+       0.035484,
+       0.024515
+      ],
+      "month": [
+       0.324194,
+       0.22919,
+       0.035484,
+       0.024515
+      ],
+      "day": [
+       0.383871,
+       0.22919,
+       0.035484,
+       0.024515
+      ]
+     }
+    },
+    {
+     "field": "diagnosis1_date",
+     "type": "text",
+     "rect": [
+      0.632258,
+      0.374002,
+      0.154839,
+      0.024515
+     ],
+     "options": null,
+     "charset": "date_digits",
+     "pii": "",
+     "kind": "date_wareki",
+     "era_field": "diagnosis1_era",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から",
+     "slots": {
+      "year": [
+       0.632258,
+       0.374002,
+       0.035484,
+       0.024515
+      ],
+      "month": [
+       0.691935,
+       0.374002,
+       0.035484,
+       0.024515
+      ],
+      "day": [
+       0.751613,
+       0.374002,
+       0.035484,
+       0.024515
+      ]
+     }
+    },
+    {
+     "field": "diagnosis2_date",
+     "type": "text",
+     "rect": [
+      0.632258,
+      0.396807,
+      0.154839,
+      0.024515
+     ],
+     "options": null,
+     "charset": "date_digits",
+     "pii": "",
+     "kind": "date_wareki",
+     "era_field": "diagnosis2_era",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から",
+     "slots": {
+      "year": [
+       0.632258,
+       0.396807,
+       0.035484,
+       0.024515
+      ],
+      "month": [
+       0.691935,
+       0.396807,
+       0.035484,
+       0.024515
+      ],
+      "day": [
+       0.751613,
+       0.396807,
+       0.035484,
+       0.024515
+      ]
+     }
+    },
+    {
+     "field": "diagnosis3_date",
+     "type": "text",
+     "rect": [
+      0.632258,
+      0.419612,
+      0.154839,
+      0.024515
+     ],
+     "options": null,
+     "charset": "date_digits",
+     "pii": "",
+     "kind": "date_wareki",
+     "era_field": "diagnosis3_era",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から",
+     "slots": {
+      "year": [
+       0.632258,
+       0.419612,
+       0.035484,
+       0.024515
+      ],
+      "month": [
+       0.691935,
+       0.419612,
+       0.035484,
+       0.024515
+      ],
+      "day": [
+       0.751613,
+       0.419612,
+       0.035484,
+       0.024515
+      ]
+     }
+    },
+    {
+     "field": "applicant_sex",
+     "type": "circle",
+     "rect": [
+      0.53871,
+      0.064994,
+      0.043548,
+      0.024515
+     ],
+     "options": [
+      "男",
+      "女"
+     ],
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": true,
+     "placement": "生成元から"
+    },
+    {
+     "field": "birth_era",
+     "type": "circle",
+     "rect": [
+      0.079032,
+      0.095211,
+      0.074194,
+      0.024515
+     ],
+     "options": [
+      "明",
+      "大",
+      "昭"
+     ],
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    }
+   ]
+  },
+  {
+   "index": 2,
+   "width": 1654,
+   "height": 2339,
+   "ref": "seigo2_v1_p2.png",
+   "blank": "seigo2_v1_p2.png",
+   "boxes": [
+    {
+     "field": "other_psych_presence",
+     "opt": 0,
+     "rect": [
+      0.246774,
+      0.04333,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_psych_presence",
+     "opt": 1,
+     "rect": [
+      0.281452,
+      0.04333,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "specialist_consult",
+     "opt": 0,
+     "rect": [
+      0.679032,
+      0.04333,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "specialist_consult",
+     "opt": 1,
+     "rect": [
+      0.842742,
+      0.04333,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "dominant_hand",
+     "opt": 0,
+     "rect": [
+      0.216129,
+      0.066135,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "dominant_hand",
+     "opt": 1,
+     "rect": [
+      0.250806,
+      0.066135,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "weight_change",
+     "opt": 0,
+     "rect": [
+      0.696774,
+      0.066135,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "weight_change",
+     "opt": 1,
+     "rect": [
+      0.743548,
+      0.066135,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "weight_change",
+     "opt": 2,
+     "rect": [
+      0.790323,
+      0.066135,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "limb_defect",
+     "opt": 0,
+     "rect": [
+      0.056452,
+      0.083238,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis",
+     "opt": 0,
+     "rect": [
+      0.056452,
+      0.100342,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_right_upper",
+     "opt": 0,
+     "rect": [
+      0.103226,
+      0.100342,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_right_upper_degree",
+     "opt": 0,
+     "rect": [
+      0.203226,
+      0.100342,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_right_upper_degree",
+     "opt": 1,
+     "rect": [
+      0.237097,
+      0.100342,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_right_upper_degree",
+     "opt": 2,
+     "rect": [
+      0.270968,
+      0.100342,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_left_upper",
+     "opt": 0,
+     "rect": [
+      0.316129,
+      0.100342,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_left_upper_degree",
+     "opt": 0,
+     "rect": [
+      0.416129,
+      0.100342,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_left_upper_degree",
+     "opt": 1,
+     "rect": [
+      0.45,
+      0.100342,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_left_upper_degree",
+     "opt": 2,
+     "rect": [
+      0.483871,
+      0.100342,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_right_lower",
+     "opt": 0,
+     "rect": [
+      0.103226,
+      0.117446,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_right_lower_degree",
+     "opt": 0,
+     "rect": [
+      0.203226,
+      0.117446,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_right_lower_degree",
+     "opt": 1,
+     "rect": [
+      0.237097,
+      0.117446,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_right_lower_degree",
+     "opt": 2,
+     "rect": [
+      0.270968,
+      0.117446,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_left_lower",
+     "opt": 0,
+     "rect": [
+      0.316129,
+      0.117446,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_left_lower_degree",
+     "opt": 0,
+     "rect": [
+      0.416129,
+      0.117446,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_left_lower_degree",
+     "opt": 1,
+     "rect": [
+      0.45,
+      0.117446,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_left_lower_degree",
+     "opt": 2,
+     "rect": [
+      0.483871,
+      0.117446,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_other",
+     "opt": 0,
+     "rect": [
+      0.072581,
+      0.13455,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_other_degree",
+     "opt": 0,
+     "rect": [
+      0.349194,
+      0.13455,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_other_degree",
+     "opt": 1,
+     "rect": [
+      0.383065,
+      0.13455,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "paralysis_other_degree",
+     "opt": 2,
+     "rect": [
+      0.416935,
+      0.13455,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "muscle_weakness",
+     "opt": 0,
+     "rect": [
+      0.056452,
+      0.152794,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "muscle_weakness_degree",
+     "opt": 0,
+     "rect": [
+      0.389516,
+      0.152794,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "muscle_weakness_degree",
+     "opt": 1,
+     "rect": [
+      0.423387,
+      0.152794,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "muscle_weakness_degree",
+     "opt": 2,
+     "rect": [
+      0.457258,
+      0.152794,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "joint_contracture",
+     "opt": 0,
+     "rect": [
+      0.056452,
+      0.169897,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "joint_contracture_degree",
+     "opt": 0,
+     "rect": [
+      0.389516,
+      0.169897,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "joint_contracture_degree",
+     "opt": 1,
+     "rect": [
+      0.423387,
+      0.169897,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "joint_contracture_degree",
+     "opt": 2,
+     "rect": [
+      0.457258,
+      0.169897,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "joint_pain",
+     "opt": 0,
+     "rect": [
+      0.056452,
+      0.187001,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "joint_pain_degree",
+     "opt": 0,
+     "rect": [
+      0.389516,
+      0.187001,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "joint_pain_degree",
+     "opt": 1,
+     "rect": [
+      0.423387,
+      0.187001,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "joint_pain_degree",
+     "opt": 2,
+     "rect": [
+      0.457258,
+      0.187001,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "ataxia",
+     "opt": 0,
+     "rect": [
+      0.056452,
+      0.204105,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "ataxia_upper",
+     "opt": 0,
+     "rect": [
+      0.212903,
+      0.204105,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "ataxia_upper",
+     "opt": 1,
+     "rect": [
+      0.246774,
+      0.204105,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "ataxia_lower",
+     "opt": 0,
+     "rect": [
+      0.317742,
+      0.204105,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "ataxia_lower",
+     "opt": 1,
+     "rect": [
+      0.351613,
+      0.204105,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "ataxia_trunk",
+     "opt": 0,
+     "rect": [
+      0.422581,
+      0.204105,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "ataxia_trunk",
+     "opt": 1,
+     "rect": [
+      0.456452,
+      0.204105,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "pressure_ulcer",
+     "opt": 0,
+     "rect": [
+      0.056452,
+      0.221209,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "pressure_ulcer_degree",
+     "opt": 0,
+     "rect": [
+      0.353226,
+      0.221209,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "pressure_ulcer_degree",
+     "opt": 1,
+     "rect": [
+      0.387097,
+      0.221209,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "pressure_ulcer_degree",
+     "opt": 2,
+     "rect": [
+      0.420968,
+      0.221209,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_skin_disease",
+     "opt": 0,
+     "rect": [
+      0.056452,
+      0.238312,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_skin_disease_degree",
+     "opt": 0,
+     "rect": [
+      0.425806,
+      0.238312,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_skin_disease_degree",
+     "opt": 1,
+     "rect": [
+      0.459677,
+      0.238312,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "other_skin_disease_degree",
+     "opt": 2,
+     "rect": [
+      0.493548,
+      0.238312,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "outdoor_walking",
+     "opt": 0,
+     "rect": [
+      0.396774,
+      0.296465,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "outdoor_walking",
+     "opt": 1,
+     "rect": [
+      0.443548,
+      0.296465,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "outdoor_walking",
+     "opt": 2,
+     "rect": [
+      0.587097,
+      0.296465,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "wheelchair",
+     "opt": 0,
+     "rect": [
+      0.396774,
+      0.311288,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "wheelchair",
+     "opt": 1,
+     "rect": [
+      0.491935,
+      0.311288,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "wheelchair",
+     "opt": 2,
+     "rect": [
+      0.647581,
+      0.311288,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "walking_aid",
+     "opt": 0,
+     "rect": [
+      0.396774,
+      0.326112,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "walking_aid",
+     "opt": 1,
+     "rect": [
+      0.491935,
+      0.326112,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "walking_aid",
+     "opt": 2,
+     "rect": [
+      0.575,
+      0.326112,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "eating",
+     "opt": 0,
+     "rect": [
+      0.253226,
+      0.345496,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "eating",
+     "opt": 1,
+     "rect": [
+      0.469355,
+      0.345496,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "nutrition_status",
+     "opt": 0,
+     "rect": [
+      0.303226,
+      0.366021,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "nutrition_status",
+     "opt": 1,
+     "rect": [
+      0.35,
+      0.366021,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 0,
+     "rect": [
+      0.056452,
+      0.415051,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 1,
+     "rect": [
+      0.115323,
+      0.415051,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 2,
+     "rect": [
+      0.198387,
+      0.415051,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 3,
+     "rect": [
+      0.305645,
+      0.415051,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 4,
+     "rect": [
+      0.352419,
+      0.415051,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 5,
+     "rect": [
+      0.459677,
+      0.415051,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 6,
+     "rect": [
+      0.542742,
+      0.415051,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 7,
+     "rect": [
+      0.61371,
+      0.415051,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 8,
+     "rect": [
+      0.056452,
+      0.428734,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 9,
+     "rect": [
+      0.115323,
+      0.428734,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 10,
+     "rect": [
+      0.246774,
+      0.428734,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 11,
+     "rect": [
+      0.293548,
+      0.428734,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 12,
+     "rect": [
+      0.364516,
+      0.428734,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "risk_conditions",
+     "opt": 13,
+     "rect": [
+      0.483871,
+      0.428734,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "service_outlook",
+     "opt": 0,
+     "rect": [
+      0.416129,
+      0.461802,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "service_outlook",
+     "opt": 1,
+     "rect": [
+      0.499194,
+      0.461802,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "service_outlook",
+     "opt": 2,
+     "rect": [
+      0.594355,
+      0.461802,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 0,
+     "rect": [
+      0.056452,
+      0.494869,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 1,
+     "rect": [
+      0.258065,
+      0.494869,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 2,
+     "rect": [
+      0.459677,
+      0.494869,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 3,
+     "rect": [
+      0.669355,
+      0.494869,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 4,
+     "rect": [
+      0.056452,
+      0.509692,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 5,
+     "rect": [
+      0.258065,
+      0.509692,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 6,
+     "rect": [
+      0.459677,
+      0.509692,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 7,
+     "rect": [
+      0.669355,
+      0.509692,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 8,
+     "rect": [
+      0.056452,
+      0.524515,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 9,
+     "rect": [
+      0.258065,
+      0.524515,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 10,
+     "rect": [
+      0.459677,
+      0.524515,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 11,
+     "rect": [
+      0.669355,
+      0.524515,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "medical_management",
+     "opt": 12,
+     "rect": [
+      0.056452,
+      0.537058,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 0,
+     "rect": [
+      0.056452,
+      0.567845,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 1,
+     "rect": [
+      0.356452,
+      0.567845,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 2,
+     "rect": [
+      0.656452,
+      0.567845,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 3,
+     "rect": [
+      0.056452,
+      0.582668,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 4,
+     "rect": [
+      0.356452,
+      0.582668,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 5,
+     "rect": [
+      0.656452,
+      0.582668,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "service_caution",
+     "opt": 6,
+     "rect": [
+      0.056452,
+      0.594071,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "infection",
+     "opt": 0,
+     "rect": [
+      0.416129,
+      0.612315,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "infection",
+     "opt": 1,
+     "rect": [
+      0.450806,
+      0.612315,
+      0.010484,
+      0.007412
+     ]
+    },
+    {
+     "field": "infection",
+     "opt": 2,
+     "rect": [
+      0.690323,
+      0.612315,
+      0.010484,
+      0.007412
+     ]
+    }
+   ],
+   "texts": [
+    {
+     "field": "other_psych_symptom_name",
+     "type": "text",
+     "rect": [
+      0.393548,
+      0.031927,
+      0.16129,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "specialist_consult_detail",
+     "type": "text",
+     "rect": [
+      0.720161,
+      0.031927,
+      0.104839,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "height_cm",
+     "type": "text",
+     "rect": [
+      0.345161,
+      0.054732,
+      0.048387,
+      0.024515
+     ],
+     "options": null,
+     "charset": "decimal",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "weight_kg",
+     "type": "text",
+     "rect": [
+      0.474194,
+      0.054732,
+      0.048387,
+      0.024515
+     ],
+     "options": null,
+     "charset": "decimal",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "limb_defect_site",
+     "type": "text",
+     "rect": [
+      0.174194,
+      0.071836,
+      0.177419,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "paralysis_other_site",
+     "type": "text",
+     "rect": [
+      0.178226,
+      0.123147,
+      0.120968,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "muscle_weakness_site",
+     "type": "text",
+     "rect": [
+      0.18629,
+      0.141391,
+      0.153226,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "joint_contracture_site",
+     "type": "text",
+     "rect": [
+      0.18629,
+      0.158495,
+      0.153226,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "joint_pain_site",
+     "type": "text",
+     "rect": [
+      0.18629,
+      0.175599,
+      0.153226,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "pressure_ulcer_site",
+     "type": "text",
+     "rect": [
+      0.15,
+      0.209806,
+      0.153226,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "other_skin_disease_site",
+     "type": "text",
+     "rect": [
+      0.222581,
+      0.22691,
+      0.153226,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "nutrition_note",
+     "type": "text",
+     "rect": [
+      0.359677,
+      0.370582,
+      0.5,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "risk_other_text",
+     "type": "text",
+     "rect": [
+      0.549194,
+      0.417332,
+      0.137097,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "risk_policy",
+     "type": "text",
+     "rect": [
+      0.158065,
+      0.432155,
+      0.693548,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "caution_bp_text",
+     "type": "text",
+     "rect": [
+      0.104839,
+      0.556442,
+      0.18871,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "caution_eating_text",
+     "type": "text",
+     "rect": [
+      0.404839,
+      0.556442,
+      0.18871,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "caution_swallow_text",
+     "type": "text",
+     "rect": [
+      0.704839,
+      0.556442,
+      0.18871,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "caution_move_text",
+     "type": "text",
+     "rect": [
+      0.104839,
+      0.571266,
+      0.18871,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "caution_exercise_text",
+     "type": "text",
+     "rect": [
+      0.404839,
+      0.571266,
+      0.18871,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "caution_other_text",
+     "type": "text",
+     "rect": [
+      0.716935,
+      0.571266,
+      0.18871,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "infection_detail",
+     "type": "text",
+     "rect": [
+      0.495161,
+      0.600912,
+      0.174194,
+      0.024515
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    },
+    {
+     "field": "special_notes",
+     "type": "textarea",
+     "rect": [
+      0.056452,
+      0.698404,
+      0.877419,
+      0.145382
+     ],
+     "options": null,
+     "charset": "",
+     "pii": "",
+     "kind": "",
+     "era_field": "",
+     "default_era": "",
+     "always_pick": false,
+     "placement": "生成元から"
+    }
+   ]
+  }
+ ]
+}

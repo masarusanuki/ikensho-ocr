@@ -16,6 +16,11 @@
   const SAME_ROW = 0.6;          // 同じ行とみなす縦のずれ（枠の高さ比）
   const CHANGED_MAX_SIM = 0.5;   // 定義との似かたがこれ以下なら「違う言葉」
   const CHANGED_MIN_LEN = 3;     // これより短い言葉は読み違えが多いので疑わない
+  // Python 版は2つの読み（PP-OCR と NDLOCR）を突き合わせ、一致したときだけ
+  // 短い言葉でも疑う（一致すれば 98.3% 正しいと実測）。
+  // **ブラウザ版に NDLOCR は積んでいない**（モデル75MB・onnxruntime-web 未対応）
+  // ので、2つめの読みは無い。`agreed` は常に false になる。
+  // 判定の作りだけ Python 版と同じにしてある（将来2つめを積んだときに揃う）。
 
   const KILL = /[\s　:：・.,、。()（）\[\]【】「」]+/g;
   const BOXCHAR = /^[口ロ□■☐▢〇○●]+|[口ロ□■☐▢]+$/g;
@@ -171,13 +176,21 @@
    * 読めた言葉はそのまま採らず、定義と食い違うときの合図として使う
    * （ラベルは小さく、OCR は4割ほど読み違えるため）。
    */
-  function resolve(fieldId, opt, expected, read, overrides, siblings) {
+  function resolve(fieldId, opt, expected, read, overrides, siblings, agreed) {
     const key = `${fieldId}.${opt}`;
-    const out = { word: expected, source: '定義', expected, read: read || '', changed: false };
+    const out = { word: expected, source: '定義', expected, read: read || '',
+                  changed: false, agreed: !!agreed };
     const fixed = overrides && overrides[key];
     if (fixed) { out.word = fixed; out.source = '修正'; return out; }
     const nr = normalize(read), ne = normalize(expected);
-    if (!nr || nr.length < CHANGED_MIN_LEN) return out;
+    if (!nr || nr === ne) return out;
+    if (agreed) {
+      // 2つの読みが一致した。短い言葉でも疑う
+      out.changed = true;
+      out.note = '2つの読み取りが一致して定義と違いました。確かめてください';
+      return out;
+    }
+    if (nr.length < CHANGED_MIN_LEN) return out;
     if (ne && (nr.indexOf(ne) >= 0 || ne.indexOf(nr) >= 0)) return out;
     if (similarity(read, expected) > CHANGED_MAX_SIM) return out;
     for (const other of (siblings || [])) {

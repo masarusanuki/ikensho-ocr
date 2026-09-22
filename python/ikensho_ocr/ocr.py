@@ -51,6 +51,11 @@ class OcrResult:
 class OcrEngine:
     name = "none"
     available = False
+    # 切り抜きの渡し方。既定は「書き込みの範囲に詰めて、ノイズ取りをかける」
+    # （PP-OCR 向けに実測で調整したもの）。
+    # **これが合わないエンジンもある。** NDLOCR は先に行を見つける作りなので、
+    # 詰めた小さい画像を渡すと1行も見つからない。その場合は素の切り抜きを渡す。
+    wants_raw_crop = False
 
     def read(self, image: np.ndarray, multiline: bool = False,
              charset: str = "") -> OcrResult:
@@ -726,6 +731,10 @@ def prepare_roi(warped: np.ndarray, rect: List[float], pad: float = 0.0,
     if x1 - x0 < 4 or y1 - y0 < 4:
         return np.full((8, 8), 255, np.uint8)
     roi = warped[y0:y1, x0:x1]
+    if target_height <= 0:
+        # 素のまま渡す（拡大もノイズ取りもしない）。
+        # 自分で行を見つけるエンジン向け
+        return roi
     return upscale_for_ocr(roi, target_height)
 
 

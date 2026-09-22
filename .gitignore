@@ -19,6 +19,8 @@ models/
 master/
 sample/
 seigo/
+seigo2/
+*.zip
 data/
 uploads/
 out/

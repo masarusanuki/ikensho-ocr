@@ -9,7 +9,7 @@ import numpy as np
 
 from . import (align, anonymize, checkbox, dates as dates_mod, imaging,
                hospitals, labels as labels_mod, llm as llm_mod, ocr as ocr_mod,
-               proofread, text_check, textbox)
+               pagequest, proofread, text_check, textbox)
 from .dictionaries import Dictionaries, DEFAULT_DICTIONARIES
 from .schema import Schema, load_schema
 from .templates import Template, load_templates
@@ -48,6 +48,8 @@ class Record:
     ocr_engine: str = "none"
     anonymized: bool = False
     read_at: str = ""
+    # 実物の様式と定義の食い違い（質問はそのままでも選択肢が変わることがある）
+    form_drift: List[dict] = dc_field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return dict(
@@ -56,6 +58,7 @@ class Record:
             anonymized=self.anonymized,
             pages=[vars(p) for p in self.pages],
             warnings=self.warnings,
+            form_drift=self.form_drift,
             fields=self.fields,
         )
 
@@ -260,7 +263,7 @@ def _apply_hospital_list(text_results: Dict[str, dict], assist) -> Optional[str]
 
 
 def _resolve_labels(box_values: Dict[str, dict], schema: Schema,
-                    reads: Dict[str, str],
+                    reads: Dict[str, dict],
                     overrides: Dict[str, str]) -> Dict[str, dict]:
     """チェック欄ごとに、使う言葉（定義 / 管理画面で直したもの）を決める。"""
     out: Dict[str, dict] = {}
@@ -270,9 +273,23 @@ def _resolve_labels(box_values: Dict[str, dict], schema: Schema,
             continue
         for i, opt in enumerate(f.options):
             key = f"{fid}.{i}"
-            out[key] = labels_mod.resolve(fid, i, opt, reads.get(key),
-                                          overrides, f.options)
+            got = reads.get(key) or {}
+            out[key] = labels_mod.resolve(fid, i, opt, got.get("read"),
+                                          overrides, f.options,
+                                          agreed=bool(got.get("agreed")))
     return out
+
+
+def _page_reader(warped: np.ndarray):
+    """ページを文章として読む読み手。モデルが無い環境では None。"""
+    try:
+        from . import ndlocr as ndl
+    except Exception:
+        return None
+    if not ndl.available():
+        return None
+    reader = ndl.PageReader(warped)
+    return reader or None
 
 
 def extract_record(paths: List[str],
@@ -326,7 +343,8 @@ def extract_record(paths: List[str],
 
     seen_pages: Dict[int, float] = {}
     readings: List[checkbox.BoxReading] = []
-    label_reads: Dict[str, str] = {}
+    label_reads: Dict[str, dict] = {}
+    drift: List[dict] = []
     text_results: Dict[str, dict] = {}
     warped_pages: Dict[int, np.ndarray] = {}
 
@@ -365,8 +383,21 @@ def extract_record(paths: List[str],
             # 様式全体の言葉は管理画面から読み直せる。
             want = {(r.field, r.opt) for r in page_readings if r.checked}
             try:
-                label_reads.update(
-                    labels_mod.read_labels(warped, tp.boxes, ocr_engine, only=want))
+                by_ppocr = labels_mod.read_labels(warped, tp.boxes, ocr_engine,
+                                                  only=want)
+                # 2つめの読み。NDLOCR は行ごと（印＋言葉）をまとめて読むので、
+                # 外し方が PP-OCR と違う。**両方が一致したときは 98.3% 正しい**
+                # （実測）ので、そこを食い違いの合図に使う
+                # ページを1回だけ文章として読み、ラベルの振り分けと
+                # 様式の見張り（pagequest）で使い回す
+                reader = _page_reader(warped)
+                by_ndl = labels_mod.read_labels_ndl(warped, tp.boxes, reader=reader)
+                label_reads.update(labels_mod.combine(by_ppocr, by_ndl))
+                if reader is not None:
+                    # 質問文はそのままでも選択肢が変わることがある。
+                    # 実物の行と定義を突き合わせて、食い違いを報告する
+                    drift.extend(pagequest.drift_notes(
+                        pagequest.check(reader, tp.boxes, schema), schema))
             except Exception as exc:      # ラベルが読めなくても本体は続ける
                 rec.warnings.append(f"チェック欄の言葉の読み取りに失敗しました（{exc}）")
         # 書き込みだけを残した差分。欄ごとに作り直すと重いので1ページ1回にする
@@ -404,9 +435,16 @@ def extract_record(paths: List[str],
                         note="この欄に書き込みが見当たりません（印刷の罫線だけです）")
                     continue
                 # 罫線・カッコ・単位を含めたまま読むと精度が落ちるので、
-                # 書き込みのある範囲に詰めてから認識に回す（検算には元の矩形を使う）
-                roi = ocr_mod.prepare_roi(
-                    warped, textbox.ink_crop(warped, blank, rect), pad=0.02)
+                # 書き込みのある範囲に詰めてから認識に回す（検算には元の矩形を使う）。
+                # ただし**エンジンによってはこれが不利**（`wants_raw_crop`）。
+                # 先に行を見つける作りのエンジンは、詰めた小さい画像だと
+                # 1行も見つけられない
+                if getattr(ocr_engine, "wants_raw_crop", False):
+                    roi = ocr_mod.prepare_roi(warped, rect, pad=0.18,
+                                              target_height=0)
+                else:
+                    roi = ocr_mod.prepare_roi(
+                        warped, textbox.ink_crop(warped, blank, rect), pad=0.02)
                 charset = t.get("charset") or getattr(f, "charset", "")
                 multiline = f.type == "textarea"
 
@@ -632,6 +670,14 @@ def extract_record(paths: List[str],
         rec.anonymized = True   # type: ignore[attr-defined]
         if anonymized:
             rec.warnings.append("匿名化加工済みデータとして処理しました（住所・連絡先はマスク済み）")
+
+    # 様式の食い違い。**自動では直さない**（読み崩れと区別が付かないため）。
+    # 人に「確かめてください」と伝えるところまでが役目
+    rec.form_drift = drift
+    if drift:
+        rec.warnings.append(
+            f"様式の選択肢が定義と食い違って見える欄が {len(drift)} 件あります"
+            "（実物の言葉を確かめてください）")
 
     if keep_pages:
         rec.warped_pages = warped_pages    # type: ignore[attr-defined]
