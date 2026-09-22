@@ -17,6 +17,7 @@
 それをページ単位でやると検出が1回で済む。
 """
 import os
+import re
 import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
@@ -276,3 +277,58 @@ class NdlOcr(OcrEngine):
             return []
         return [Token(p.text, float(p.x0), float(p.x1), p.score)
                 for p in self._m.lines(image, min_score=0.3)]
+
+
+# ------------------------------------------------ チェック欄の照合
+
+# 塗られた印として読まれる字
+FILLED_CHARS = "■☑▣✓✔☒×✗"
+# 空の枠として読まれる字。**`口`（漢字のくち）も入れる。**
+# NDLOCR は □ をしばしば 口 と読む（『口内科』『口歯科』が実際に出た）
+EMPTY_CHARS = "□☐▢口ロ"
+
+_FILLED = re.compile(f"[{re.escape(FILLED_CHARS)}]")
+_EMPTY = re.compile(f"[{re.escape(EMPTY_CHARS)}]")
+
+
+@dataclass
+class MarkLine:
+    """チェック欄が並んだ1行ぶんの、読めた印の数。"""
+    text: str
+    y0: int
+    y1: int
+    x0: int
+    x1: int
+    filled: int
+    empty: int
+
+    @property
+    def boxes(self) -> int:
+        return self.filled + self.empty
+
+
+def mark_lines(reader: "PageReader") -> List[MarkLine]:
+    """ページの中から、チェック欄が並んだ行を拾う。"""
+    out = []
+    for line in reader.lines:
+        f = len(_FILLED.findall(line.text))
+        e = len(_EMPTY.findall(line.text))
+        if f + e == 0:
+            continue
+        out.append(MarkLine(line.text, line.y0, line.y1, line.x0, line.x1, f, e))
+    return out
+
+
+# チェック欄の照合は**入れていない。** 実測で空振りだった。
+#
+#   NDLOCR が読んだ「その行に塗られた印の数」と、こちらの判定を突き合わせ、
+#   食い違う行を要確認にする——という案を実装して測った。
+#   結果は **40行を知らせて、実際に誤りを含む行は0件**（正解データ4通）。
+#   1通あたり10行の空振りで、捕まえたものは無い。
+#
+#   理由はこちらの判定の方がずっと正確なこと（99.08%）。
+#   食い違いはほぼ NDLOCR 側の読み違いで、`□` を `口` と読む、
+#   『安定□□定□不明』のように崩れる、といった揺れが乗る。
+#
+#   `mark_lines()` は残してある（同じ検証をやり直せるように）。
+#   確かめ直すには `tools/check_ndl_marks.py` を使う。
