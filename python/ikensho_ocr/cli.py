@@ -11,7 +11,7 @@ import os
 import sys
 
 from . import __version__
-from .export import write_csv, write_form_json, write_json
+from .export import write_csv, write_form_json, write_json, write_markdown
 from .extract import extract_record
 from .ocr import available_engines
 from .schema import load_schema
@@ -83,7 +83,10 @@ def cmd_extract(args):
     if args.form_json:
         write_form_json(records, schema, args.form_json)
         print(f"様式の形の JSON を書き出しました: {args.form_json}", file=sys.stderr)
-    if not args.json and not args.csv and not args.form_json:
+    if args.md:
+        write_markdown(records, schema, args.md)
+        print(f"Markdown を書き出しました: {args.md}", file=sys.stderr)
+    if not args.json and not args.csv and not args.form_json and not args.md:
         import json as _json
         from .export import record_to_json
         _json.dump(dict(count=len(records),
@@ -143,6 +146,9 @@ def build_parser():
     e.add_argument("inputs", nargs="+", help="PDF・画像ファイル（ワイルドカード可）")
     e.add_argument("--json", help="JSON の出力先")
     e.add_argument("--csv", help="CSV の出力先")
+    e.add_argument("--md", metavar="FILE",
+                   help="Markdown の出力先（そのまま読ませられる形。"
+                        "選択肢に付いている記入欄まで含めた答えで書く）")
     e.add_argument("--form-json", dest="form_json",
                    help="様式（PDF）の並びそのままの JSON の出力先。"
                         "チェック欄は印の付いた言葉で返す")

@@ -99,6 +99,13 @@
     return labels;
   }
 
+  function flatAny(v) {
+    if (v === null || v === undefined) return '';
+    if (Array.isArray(v)) return v.join('；');
+    if (typeof v === 'boolean') return v ? '該当' : '';
+    return String(v);
+  }
+
   function flatValue(entry) {
     const v = entry ? entry.value : null;
     if (v === null || v === undefined) return '';
@@ -109,11 +116,12 @@
 
   /** 1件分を、保存用の素直な形にする。 */
   function toRecordJson(rec, schema) {
-    const values = {}, meta = {};
+    const values = {}, meta = {}, answers = {};
     for (const id of schema.order) {
       const e = rec.fields[id];
       if (!e) continue;
       values[id] = e.value === undefined ? null : e.value;
+      answers[id] = global.IkenshoAnswers.resolve(rec.fields, schema, schema.byId[id]);
       meta[id] = {
         label: e.label, type: e.type, section: e.section, page: e.page,
         confidence: e.confidence, level: e.level,
@@ -144,7 +152,14 @@
         score: p.score, dewarped: p.dewarped,
       })),
       warnings: rec.warnings || [],
+      // 実物の様式と定義の食い違い（ブラウザ版には見張りが無いので常に空）
+      form_drift: (rec.formDrift || []).map(d => ({
+        field: d.field, label: d.label,
+        missing: d.missing || [], extra: d.extra || [], row: d.row })),
       values,
+      // values は**選択肢の言葉**。answers は「その他（　）」に書かれた中身まで
+      // 含めた、人が読む形（診療科の「その他」は書かれた名前そのものになる）
+      answers,
       // 機械学習や集計に使いやすい形（西暦に直した日付など）
       derived: buildDerived(rec, schema),
       meta,
@@ -190,7 +205,10 @@
       ];
       for (const id of schema.order) {
         const e = rec.fields[id];
-        row.push(flatValue(e), e ? e.confidence : '');
+        // JSON の answers と同じ読み方にする。CSV だけ「その他」のままだと
+        // 同じ読み取りが出力ごとに違って見えてしまう
+        row.push(e ? flatAny(global.IkenshoAnswers.resolve(rec.fields, schema, schema.byId[id]))
+                   : '', e ? e.confidence : '');
       }
       const d = buildDerived(rec, schema);
       for (const k of dkeys) {
@@ -263,9 +281,16 @@
    * 様式の1項目を、そのまま読める形にする。
    * チェック欄は**言葉**が要なので、選択肢の言葉と、どれに印が付いたかを返す。
    */
-  function formItem(entry, f) {
+  function formItem(entry, f, fields, schema) {
+    const A = global.IkenshoAnswers;
     const item = { 項目: f.label, 種類: KIND_JA[f.type] || f.type,
+                   答え: A.resolve(fields, schema, f),
                    値: entry.value === undefined ? null : entry.value };
+    const links = f.optionTexts || f.option_texts || {};
+    if (f.type === 'flag' && links[A.FLAG_KEY]) {
+      const note = (fields[links[A.FLAG_KEY]] || {}).value;
+      if (note) item['内容'] = note;
+    }
     if (f.options) {
       const words = optionWords(entry, f);
       item['選択肢'] = words;
@@ -276,6 +301,9 @@
       const marks = words.map((word, i) => {
         const d = detail.find(x => x.opt === i) || {};
         const m = { 言葉: word, 印: !!d.checked || chosen.has(word) };
+        // 「その他（　　）」のように、選択肢に記入欄が付いていることがある
+        const note = (fields[links[String((f.options || [])[i])]] || {}).value;
+        if (note) m['内容'] = note;
         if (d.struck) m['二重線で訂正'] = true;
         if (d.circled) m['丸囲み'] = true;
         return m;
@@ -323,7 +351,7 @@
         const entry = rec.fields[sf.id];
         if (!f || !entry) continue;
         pages.add(f.page);
-        const item = formItem(entry, f);
+        const item = formItem(entry, f, rec.fields, schema);
         const gid = f.group || f.groupId;
         if (gid) {
           let g = groups[gid];
@@ -374,6 +402,125 @@
              JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
   }
 
-  global.IkenshoExport = { exportJson, exportCsv, exportFormJson, importJson,
-                           toRecordJson, toFormJson, download, flatValue };
+  // -------------------------------------------------------------------------
+  // Markdown。**そのまま読ませられる文書**にする。Python 版 export.py と対。
+  // -------------------------------------------------------------------------
+  const MD_LOW = 0.80;          // これより下は「要確認」の印を付ける
+  const MD_MARK = '⚠';
+  const MD_EMPTY = '（空欄）';   // 行の抜けと取り違えられないようにする
+
+  function mdCell(value) {
+    if (value === null || value === undefined || value === false) return '';
+    if (value === true) return '該当';
+    if (Array.isArray(value)) value = value.filter(v => String(v) !== '').join('、');
+    return String(value).replace(/\|/g, '｜').replace(/\n/g, ' ').trim();
+  }
+
+  function mdLevel(entry) {
+    const lv = LEVEL_JA[entry.level] || entry.level || '';
+    if (entry.confidence === null || entry.confidence === undefined) return lv;
+    const low = entry.confidence < MD_LOW && entry.level !== 'edited' && entry.level !== 'done';
+    return `${lv} ${entry.confidence.toFixed(2)}${low ? MD_MARK : ''}`.trim();
+  }
+
+  /** 表に入れる答え。日付は西暦も添える（和暦だけでは比べられないため）。 */
+  function mdAnswer(rec, schema, f, entry) {
+    let ans = mdCell(global.IkenshoAnswers.resolve(rec.fields, schema, f));
+    if (!ans) return MD_EMPTY;
+    if (f.kind === 'date_wareki') {
+      const era = entry.era || '';
+      if (era && ans.indexOf(era) !== 0) ans = era + ans;
+      if (entry.gregorian) ans = `${ans}（${entry.gregorian}）`;
+    }
+    return ans;
+  }
+
+  function toMarkdown(rec, schema) {
+    const A = global.IkenshoAnswers;
+    const absorbed = A.usedTextFields(schema);
+    const out = [];
+    out.push(`# ${schema.formName} 読み取り結果`, '');
+    out.push('これは紙の主治医意見書を OCR で読み取った結果です。' +
+             '**読み取りには誤りが含まれます。**');
+    out.push(`確信度が ${MD_LOW.toFixed(2)} 未満の欄には ${MD_MARK} を付けてあります。` +
+             '原本と照らして確かめてください。', '');
+    out.push(`- 様式: ${rec.templateId || '不明'}`);
+    out.push(`- 読み取り日時: ${rec.readAt || new Date().toISOString()}`);
+    out.push(`- 読み取りに使った OCR: ${rec.ocrEngine || 'none'}`);
+    if (rec.anonymized) out.push('- **匿名化加工済み**（氏名・住所・連絡先はマスクしてあります）');
+    out.push('');
+
+    for (const sec of (schema.sections || [])) {
+      const rows = [];
+      for (const sf of (sec.fields || [])) {
+        const f = schema.byId[sf.id];
+        const e = f && rec.fields[sf.id];
+        if (!f || !e) continue;
+        if (absorbed[sf.id]) continue;   // 答えの中に出ているので繰り返さない
+        rows.push(`| ${mdCell(f.label)} | ${mdAnswer(rec, schema, f, e)} | ${mdLevel(e)} |`);
+      }
+      if (!rows.length) continue;
+      out.push(`## ${sec.title || sec.id}`, '', '| 項目 | 答え | 確信度 |', '|---|---|---|');
+      out.push.apply(out, rows);
+      out.push('');
+    }
+
+    // 空欄で確信度が低いものまで並べると埋もれるので、**読めた値があるもの**だけ
+    const check = schema.order.map(id => schema.byId[id]).filter(f => {
+      const e = rec.fields[f.id];
+      if (!e || e.confidence === null || e.confidence === undefined) return false;
+      if (e.confidence >= MD_LOW || e.level === 'edited' || e.level === 'done') return false;
+      return !!mdCell(A.resolve(rec.fields, schema, f));
+    });
+    if (check.length) {
+      out.push('## 確かめてほしいところ', '');
+      for (const f of check) {
+        const e = rec.fields[f.id];
+        const extra = [];
+        if (e.raw && e.raw !== String(e.value === undefined ? '' : e.value)) {
+          extra.push(`OCRの生読み「${mdCell(e.raw)}」`);
+        }
+        if (e.note) extra.push(mdCell(e.note));
+        const tail = extra.length ? `（${extra.join(' / ')}）` : '';
+        out.push(`- **${f.label}**: ${mdAnswer(rec, schema, f, e)}${tail}`);
+      }
+      out.push('');
+    }
+
+    for (const d of (rec.formDrift || [])) {
+      if (out[out.length - 1] !== '' || out.indexOf('## 様式が定義と食い違って見えるところ') < 0) {
+        out.push('## 様式が定義と食い違って見えるところ', '',
+                 '**実物の様式と、こちらが持っている選択肢の定義が食い違って見えます。**',
+                 '読み崩れのこともあるので、自動では直していません。', '');
+      }
+      out.push(`- **${d.label}**`);
+      if ((d.missing || []).length) out.push(`  - 定義にあって読めなかった言葉: ${d.missing.join('、')}`);
+      if ((d.extra || []).length) out.push(`  - 実物にあって定義に無い言葉: ${d.extra.join('、')}`);
+      if (d.row) out.push(`  - 読めた行: \`${mdCell(d.row)}\``);
+    }
+    if ((rec.formDrift || []).length) out.push('');
+
+    if ((rec.warnings || []).length) {
+      out.push('## 注意', '');
+      for (const w of rec.warnings) out.push(`- ${mdCell(w)}`);
+      out.push('');
+    }
+    out.push('## 元ファイル', '');
+    for (const p of (rec.pages || [])) {
+      out.push(`- ${p.source} の ${p.sourcePage} ページ目 ` +
+               `→ 様式の ${p.pageIndex} ページ目（${p.matched ? '判別できた' : '**判別できなかった**'}）`);
+    }
+    out.push('');
+    return out.join('\n');
+  }
+
+  function exportMarkdown(records, schema, filename) {
+    let body = records.map(r => toMarkdown(r, schema)).join('\n\n---\n\n');
+    if (records.length > 1) body = `# 読み取り結果 ${records.length} 件\n\n---\n\n` + body;
+    download(filename || `ikensho_${stamp()}.md`, body, 'text/markdown;charset=utf-8');
+  }
+
+  global.IkenshoExport = { exportJson, exportCsv, exportFormJson, exportMarkdown,
+                           importJson, toRecordJson, toFormJson, toMarkdown,
+                           download, flatValue };
 })(window);

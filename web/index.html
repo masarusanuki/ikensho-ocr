@@ -177,7 +177,7 @@
 <section class="view" id="view-records" hidden>
   <div class="panel">
     <h2>読み取り済みの一覧</h2>
-    <p class="hint">確認・編集が済んだものから出力してください。JSON と CSV に対応しています。</p>
+    <p class="hint">確認・編集が済んだものから出力してください。JSON・CSV・Markdown に対応しています。</p>
     <table class="records" id="records-table">
       <thead><tr>
         <th>#</th><th>申請者氏名</th><th>様式</th><th>元ファイル</th>
@@ -189,12 +189,16 @@
       <button class="btn primary" id="btn-export-json">JSONで保存</button>
       <button class="btn primary" id="btn-export-csv">CSVで保存</button>
       <button class="btn primary" id="btn-export-form-json">様式の形のJSONで保存</button>
+      <button class="btn primary" id="btn-export-md">Markdownで保存</button>
       <button class="btn" id="btn-export-json-one">選択中の1件をJSONで保存</button>
       <span class="spacer"></span>
       <button class="btn" id="btn-import">保存したJSONを読み込む</button>
       <input type="file" id="import-input" accept="application/json" hidden>
     </div>
     <p class="hint" style="margin:10px 0 0">
+      「Markdown」は、そのまま読める文章の形です。生成AIに読ませる下書きにも使えます。
+      「その他（　　）」に書かれた診療科などは、選択肢の言葉ではなく
+      <strong>書かれた名前そのもの</strong>で出ます。<br>
       「様式の形のJSON」は、意見書の紙の並び（節 → まとまり → 項目）そのままに
       入れ子にしたものです。チェック欄は<strong>印の付いた言葉</strong>で入ります。
     </p>
@@ -475,6 +479,7 @@ ikensho serve --allow-origin <span id="vlm-origin"></span></code></pre>
 <script src="js/labels.js"></script>
 <script src="js/speech.js"></script>
 <script src="js/pipeline.js"></script>
+<script src="js/answers.js"></script>
 <script src="js/exporters.js"></script>
 <script src="js/review.js"></script>
 <script src="js/admin.js"></script>

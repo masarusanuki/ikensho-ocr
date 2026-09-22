@@ -17,6 +17,10 @@ class Field:
     type: str
     page: int
     options: Optional[List[str]] = None
+    # 選択肢の言葉 → その選択肢に付いている記入欄のid。
+    # 「その他（　　）」のように、印だけでは中身が分からない選択肢がある。
+    # flag 型（単独の□）では鍵に "該当" を使う
+    option_texts: Optional[Dict[str, str]] = None
     hint: str = ""
     dictionary: str = ""
     charset: str = ""
@@ -67,6 +71,7 @@ def load_schema(path: str = DEFAULT_SCHEMA) -> Schema:
         for f in sec["fields"]:
             fl = Field(id=f["id"], label=f["label"], type=f["type"], page=f.get("page", 1),
                        options=f.get("options"), hint=f.get("hint", ""),
+                       option_texts=f.get("option_texts"),
                        dictionary=f.get("dictionary", ""),
                        charset=f.get("charset", ""), pii=f.get("pii", ""),
                        kind=f.get("kind", ""), era_field=f.get("era_field", ""),

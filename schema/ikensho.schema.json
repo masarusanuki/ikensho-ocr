@@ -192,6 +192,9 @@
       "歯科",
       "その他"
      ],
+     "option_texts": {
+      "その他": "other_dept_other_text"
+     },
      "group": "other_dept",
      "group_label": "(3) 他科受診"
     },
@@ -463,6 +466,9 @@
       "性的問題行動",
       "その他"
      ],
+     "option_texts": {
+      "その他": "bpsd_other_text"
+     },
      "group": "bpsd",
      "group_label": "(3) 認知症の行動・心理症状（BPSD）"
     },
@@ -483,6 +489,9 @@
       "無",
       "有"
      ],
+     "option_texts": {
+      "有": "other_psych_symptom_name"
+     },
      "group": "other_psych",
      "group_label": "(4) その他の精神・神経症状"
     },
@@ -669,6 +678,9 @@
      "type": "flag",
      "page": 2,
      "match": "その他",
+     "option_texts": {
+      "該当": "paralysis_other_site"
+     },
      "group": "body_paralysis",
      "group_label": "(5) 麻痺"
     },
@@ -864,6 +876,9 @@
      "type": "flag",
      "page": 2,
      "match": "その他の皮膚疾患",
+     "option_texts": {
+      "該当": "other_skin_disease_site"
+     },
      "group": "body_skin",
      "group_label": "(5) その他の皮膚疾患"
     },
@@ -980,6 +995,9 @@
       "がん等による疼痛",
       "その他"
      ],
+     "option_texts": {
+      "その他": "risk_other_text"
+     },
      "group": "risk",
      "group_label": "(3) 発生の可能性の高い状態と対処方針"
     },
@@ -1030,6 +1048,9 @@
       "その他の医療系サービス",
       "特記すべき項目なし"
      ],
+     "option_texts": {
+      "その他の医療系サービス": "medical_management_other_text"
+     },
      "group": "medmgmt",
      "group_label": "(5) 医学的管理の必要性"
     },
@@ -1055,6 +1076,14 @@
       "その他",
       "特記すべき項目なし"
      ],
+     "option_texts": {
+      "血圧": "caution_bp_text",
+      "摂食": "caution_eating_text",
+      "嚥下": "caution_swallow_text",
+      "移動": "caution_move_text",
+      "運動": "caution_exercise_text",
+      "その他": "caution_other_text"
+     },
      "group": "caution",
      "group_label": "(6) サービス提供時の留意事項"
     },
@@ -1116,6 +1145,9 @@
       "有",
       "不明"
      ],
+     "option_texts": {
+      "有": "infection_detail"
+     },
      "group": "infection",
      "group_label": "(7) 感染症の有無"
     },

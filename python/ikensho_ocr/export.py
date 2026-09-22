@@ -6,7 +6,7 @@ import io
 import json
 from typing import Any, Dict, List
 
-from . import derive
+from . import answers as answers_mod, derive
 from .schema import Schema
 
 
@@ -21,12 +21,13 @@ def _flat(value: Any) -> str:
 
 
 def record_to_json(rec, schema: Schema) -> Dict[str, Any]:
-    values, meta = {}, {}
+    values, meta, answersplain = {}, {}, {}
     for f in schema:
         e = rec.fields.get(f.id)
         if e is None:
             continue
         values[f.id] = e.get("value")
+        answersplain[f.id] = answers_mod.resolve(rec.fields, schema, f)
         meta[f.id] = dict(label=e.get("label"), type=e.get("type"),
                           section=e.get("section"), page=e.get("page"),
                           confidence=e.get("confidence"), level=e.get("level"),
@@ -56,7 +57,16 @@ def record_to_json(rec, schema: Schema) -> Dict[str, Any]:
                       page_index=p.page_index, matched=p.matched,
                       score=p.score, dewarped=p.dewarped) for p in rec.pages],
         warnings=rec.warnings,
+        # 実物の様式と定義の食い違い（様式順JSONの「様式の食い違い」と同じ中身）
+        form_drift=[dict(field=d.get("field"), label=d.get("label"),
+                         missing=d.get("missing") or [],
+                         extra=d.get("extra") or [], row=d.get("row"))
+                    for d in getattr(rec, "form_drift", [])],
         values=values,
+        # values は**選択肢の言葉**。answers は「その他（　）」に書かれた中身まで
+        # 含めた、人が読む形（診療科の「その他」は書かれた名前そのものになる）。
+        # どちらも answers.py の同じ関数で作るので、食い違うことはない
+        answers=answersplain,
         # 機械学習や集計に使いやすい形（西暦に直した日付など）
         derived=derive.build(rec.fields, schema),
         meta=meta,
@@ -98,7 +108,10 @@ def csv_text(records: List[Any], schema: Schema) -> str:
                srcs, "；".join(rec.warnings)]
         for f in schema:
             e = rec.fields.get(f.id) or {}
-            row += [_flat(e.get("value")), e.get("confidence", "")]
+            # JSON の answers と同じ読み方にする。CSV だけ「その他」のままだと
+            # 同じ読み取りが出力ごとに違って見えてしまう
+            row += [_flat(answers_mod.resolve(rec.fields, schema, f)),
+                    e.get("confidence", "")]
         d = derive.build(rec.fields, schema)
         for k in dkeys:
             v = d.get(k)
@@ -134,16 +147,27 @@ def _option_words(entry: Dict[str, Any], f) -> List[str]:
     return [str(o) for o in (f.options or [])]
 
 
-def _form_item(entry: Dict[str, Any], f) -> Dict[str, Any]:
+def _form_item(entry: Dict[str, Any], f, fields: Dict[str, Any],
+               schema: Schema) -> Dict[str, Any]:
     """様式の1項目を、そのまま読める形にする。
 
     チェック欄は**言葉**が要なので、選択肢の言葉と、どれに印が付いたかを返す。
+
+    「答え」は、選択肢に付いている記入欄まで含めた読み方（`answers.py`）。
+    診療科の「その他」は、そこに書かれた名前そのものになる。
+    「値」は印の付いた選択肢の言葉のままなので、両方を見比べられる。
     """
     item: Dict[str, Any] = {
         "項目": f.label,
         "種類": _KIND_JA.get(f.type, f.type),
+        "答え": answers_mod.resolve(fields, schema, f),
         "値": entry.get("value"),
     }
+    links = f.option_texts or {}
+    if f.type == "flag" and links.get(answers_mod.FLAG_KEY):
+        note = (fields.get(links[answers_mod.FLAG_KEY]) or {}).get("value")
+        if note:
+            item["内容"] = note
     if f.options:
         words = _option_words(entry, f)
         item["選択肢"] = words
@@ -159,6 +183,10 @@ def _form_item(entry: Dict[str, Any], f) -> Dict[str, Any]:
         for i, word in enumerate(words):
             d = next((x for x in detail if x.get("opt") == i), {})
             m = {"言葉": word, "印": bool(d.get("checked")) or word in chosen}
+            # 「その他（　　）」のように、選択肢に記入欄が付いていることがある
+            note = (fields.get(links.get(str(f.options[i]), "")) or {}).get("value")
+            if note:
+                m["内容"] = note
             if d.get("struck"):
                 m["二重線で訂正"] = True
             if d.get("circled"):
@@ -213,7 +241,7 @@ def record_to_form_json(rec, schema: Schema) -> Dict[str, Any]:
             if f is None or entry is None:
                 continue
             pages.add(f.page)
-            item = _form_item(entry, f)
+            item = _form_item(entry, f, rec.fields, schema)
             if f.group:
                 g = groups.get(f.group)
                 if g is None:
@@ -263,3 +291,165 @@ def write_form_json(records: List[Any], schema: Schema, path: str) -> None:
     )
     with open(path, "w", encoding="utf-8") as fp:
         json.dump(payload, fp, ensure_ascii=False, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# Markdown
+# ---------------------------------------------------------------------------
+# **そのまま LLM への指示文（プロンプト）として読める形**にする。
+# 表は Markdown の表にし、確信度の低いところに印を付ける。
+# 読み取りの誤りが混じることを、文書の先頭で必ず断る。
+
+_LEVEL_JA = {"high": "高", "medium": "中", "low": "低",
+             "edited": "修正", "done": "確定"}
+# この確信度より下は「要確認」として印を付ける
+MD_LOW = 0.80
+MD_MARK = "⚠"
+# 空欄であることを、行の抜けと取り違えられないようにする
+MD_EMPTY = "（空欄）"
+
+
+def _md_cell(value: Any) -> str:
+    """表のマスに入れる文字。改行と縦棒は表を壊すので置き換える。"""
+    if value is None or value is False:
+        return ""
+    if value is True:
+        return "該当"
+    if isinstance(value, (list, tuple)):
+        value = "、".join(str(v) for v in value if str(v) != "")
+    return str(value).replace("|", "｜").replace("\n", " ").strip()
+
+
+def _md_level(entry: Dict[str, Any]) -> str:
+    lv = _LEVEL_JA.get(entry.get("level"), entry.get("level") or "")
+    conf = entry.get("confidence")
+    if conf is None:
+        return lv
+    mark = MD_MARK if (conf < MD_LOW and entry.get("level") not in ("edited", "done")) else ""
+    return f"{lv} {conf:.2f}{mark}".strip()
+
+
+def _md_answer(rec, schema: Schema, f, entry: Dict[str, Any]) -> str:
+    """表に入れる答え。日付は西暦も添える（和暦だけでは比べられないため）。"""
+    ans = _md_cell(answers_mod.resolve(rec.fields, schema, f))
+    if not ans:
+        return MD_EMPTY
+    if f.is_date:
+        era = entry.get("era") or ""
+        greg = entry.get("gregorian") or ""
+        if era and not ans.startswith(era):
+            ans = f"{era}{ans}"
+        if greg:
+            ans = f"{ans}（{greg}）"
+    return ans
+
+
+def markdown_text(rec, schema: Schema) -> str:
+    """読み取り結果を Markdown にする。そのまま読ませられる文書にする。"""
+    out: List[str] = []
+    add = out.append
+    # 選択肢の答えに取り込んだ記入欄。答えの中に出ているので表では繰り返さない
+    absorbed = answers_mod.used_text_fields(schema)
+    read_at = getattr(rec, "read_at", None) or \
+        datetime.datetime.now().astimezone().isoformat()
+
+    add(f"# {schema.form_name} 読み取り結果")
+    add("")
+    add("これは紙の主治医意見書を OCR で読み取った結果です。"
+        "**読み取りには誤りが含まれます。**")
+    add(f"確信度が {MD_LOW:.2f} 未満の欄には {MD_MARK} を付けてあります。"
+        "原本と照らして確かめてください。")
+    add("")
+    add(f"- 様式: {rec.template_id or '不明'}")
+    add(f"- 読み取り日時: {read_at}")
+    add(f"- 読み取りに使った OCR: {rec.ocr_engine}")
+    if getattr(rec, "anonymized", False):
+        add("- **匿名化加工済み**（氏名・住所・連絡先はマスクしてあります）")
+    add("")
+
+    for sec in schema.sections:
+        rows: List[str] = []
+        for sf in sec.get("fields", []):
+            f = schema.get(sf.get("id"))
+            entry = rec.fields.get(sf.get("id")) if f else None
+            if f is None or entry is None:
+                continue
+            # 選択肢に取り込んだ記入欄は、答えの中に出ているので繰り返さない
+            if sf.get("id") in absorbed:
+                continue
+            ans = _md_answer(rec, schema, f, entry)
+            rows.append(f"| {_md_cell(f.label)} | {ans} | {_md_level(entry)} |")
+        if not rows:
+            continue
+        add(f"## {sec.get('title') or sec.get('id')}")
+        add("")
+        add("| 項目 | 答え | 確信度 |")
+        add("|---|---|---|")
+        out.extend(rows)
+        add("")
+
+    # 空欄で確信度が低いものまで並べると、どの様式でも十数行になって埋もれる。
+    # **読めた値があるのに確信が持てないもの**だけを挙げる（空欄は表に印が付く）
+    check = [f for f in schema
+             if (rec.fields.get(f.id) or {}).get("confidence") is not None
+             and (rec.fields.get(f.id) or {}).get("confidence") < MD_LOW
+             and (rec.fields.get(f.id) or {}).get("level") not in ("edited", "done")
+             and _md_cell(answers_mod.resolve(rec.fields, schema, f))]
+    if check:
+        add("## 確かめてほしいところ")
+        add("")
+        for f in check:
+            e = rec.fields[f.id]
+            note = e.get("note") or ""
+            raw = e.get("raw") or ""
+            extra = []
+            if raw and raw != str(e.get("value") or ""):
+                extra.append(f"OCRの生読み「{_md_cell(raw)}」")
+            if note:
+                extra.append(_md_cell(note))
+            tail = f"（{' / '.join(extra)}）" if extra else ""
+            add(f"- **{f.label}**: "
+                f"{_md_answer(rec, schema, f, e)}{tail}")
+        add("")
+
+    drift = getattr(rec, "form_drift", [])
+    if drift:
+        add("## 様式が定義と食い違って見えるところ")
+        add("")
+        add("**実物の様式と、こちらが持っている選択肢の定義が食い違って見えます。**")
+        add("読み崩れのこともあるので、自動では直していません。")
+        add("")
+        for d in drift:
+            add(f"- **{d.get('label')}**")
+            if d.get("missing"):
+                add(f"  - 定義にあって読めなかった言葉: {'、'.join(d['missing'])}")
+            if d.get("extra"):
+                add(f"  - 実物にあって定義に無い言葉: {'、'.join(d['extra'])}")
+            if d.get("row"):
+                add(f"  - 読めた行: `{_md_cell(d['row'])}`")
+        add("")
+
+    if rec.warnings:
+        add("## 注意")
+        add("")
+        for w in rec.warnings:
+            add(f"- {_md_cell(w)}")
+        add("")
+
+    add("## 元ファイル")
+    add("")
+    for p in rec.pages:
+        ok = "判別できた" if p.matched else "**判別できなかった**"
+        add(f"- {p.source} の {p.source_page} ページ目 "
+            f"→ 様式の {p.page_index} ページ目（{ok}）")
+    add("")
+    return "\n".join(out)
+
+
+def write_markdown(records: List[Any], schema: Schema, path: str) -> None:
+    parts = [markdown_text(r, schema) for r in records]
+    body = "\n\n---\n\n".join(parts)
+    if len(records) > 1:
+        body = f"# 読み取り結果 {len(records)} 件\n\n---\n\n" + body
+    with open(path, "w", encoding="utf-8") as fp:
+        fp.write(body)

@@ -147,6 +147,7 @@ ikensho extract sample/*.pdf --no-llm               # LLM候補提示を切る�
 ikensho extract sample/*.pdf --no-labels            # チェック欄の言葉を確かめない（18秒速い）
 ikensho extract sample/*.pdf --engine vlm           # 画像を見て答えるLLMで読む（遅い）
 ikensho extract sample/*.pdf --form-json form.json  # 様式の並びそのままのJSON
+ikensho extract sample/*.pdf --md out.md            # そのまま読ませられる Markdown
 ikensho extract sample/*.pdf --anonymized           # 匿名化加工済みデータとして扱う
 ikensho extract sample/*.pdf --group file           # 1ファイル1件として扱う
 
@@ -808,12 +809,13 @@ JSON には要約（`summary`）と全件（`entries`）が入り、`blen` / `al
 
 ---
 
-## 9.4 様式の形のJSON
+## 9.4 様式の形のJSON と Markdown
 
 ```bash
-ikensho extract 意見書.pdf --form-json out.json
+ikensho extract 意見書.pdf --form-json out.json   # 様式の並びそのままのJSON
+ikensho extract 意見書.pdf --md out.md            # そのまま読ませられる Markdown
 ```
-ブラウザ版は一覧画面の「様式の形のJSONで保存」。
+ブラウザ版は一覧画面の「様式の形のJSONで保存」「Markdownで保存」。
 
 意見書の並び（**節 → まとまり → 項目**）そのままに入れ子にしたもので、
 **チェック欄は言葉で返します**（選択肢の言葉を全部並べ、それぞれに印の有無を付ける）。
@@ -821,6 +823,40 @@ ikensho extract 意見書.pdf --form-json out.json
 機械処理向けの平らな JSON は従来どおり `--json` で出せます。
 
 実装は `export.record_to_form_json` / `exporters.toFormJson`。
+
+### 答えの読み方は1か所に集める
+
+「その他（　　）」のように、**印だけでは中身の分からない選択肢**がある。
+診療科がその代表で、13個の選択肢に収まらない科は「その他」に名前が書かれる。
+
+どの選択肢にどの記入欄が付いているかは項目定義の `option_texts`
+（`tools/form_definition.py` が正典。9欄・14記入欄）。
+組み立ては **`answers.py` / `answers.js` の1か所だけ**で行い、
+平らなJSON・様式の形のJSON・CSV・Markdown の**4つ全部がそこを通る**。
+
+| 選択肢 | やり方 | 例 |
+|---|---|---|
+| 「その他」で始まる | 言葉に中身が無いので**置き換える** | `その他` → `循環器内科` |
+| それ以外 | 言葉に意味があるので**括弧で足す** | `血圧` → `血圧（140/90）` |
+
+平らなJSONは両方を出す。`values` が印の付いた選択肢の言葉（機械向け）、
+`answers` が人が読む形。
+
+**出力を1つ足すときは、必ずこの関数を通すこと。** 通さないと、
+同じ読み取りが出力ごとに違って見える。
+
+### Markdown
+
+そのまま生成AIに読ませられる文書として出す。
+
+- 先頭で「**読み取りには誤りが含まれます**」と断る
+- 確信度 0.80 未満に `⚠`。空欄は「（空欄）」（行の抜けと取り違えないため）
+- 日付は西暦を添える（`令和7年2月2日（2025-02-02）`）
+- 「確かめてほしいところ」には**読めた値があるものだけ**並べる
+  （空欄まで入れるとどの様式でも十数行になって埋もれる）
+
+Python 版とブラウザ版の Markdown は、同じ読み取り結果を渡すと
+**1行も違わずに一致する**。直したら差分で突き合わせること。
 **両方を直したら、同じ形になるか突き合わせてください**（キーの集合・節・項目数）。
 
 ---
