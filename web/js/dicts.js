@@ -169,6 +169,11 @@
   };
   const NOISE = '|｜!！"\'`^~*#$%&@={}<>\\';
 
+  // 機械で作った誤字表（dict/word_fixes.json）。`tools/build_word_fixes.py` が作る。
+  // Dictionaries.load() が入れる。読み込む前でも動くよう、空で始める
+  let GENERATED_FIXES = {};
+  function setGeneratedFixes(map) { GENERATED_FIXES = map || {}; }
+
   // カタカナと紛らわしい字（漢字・記号）。読み違えると、ここに挙げた字になる
   const KATA_LOOKALIKE = {
     '力':'カ','口':'ロ','二':'ニ','卜':'ト','夕':'タ','工':'エ','才':'オ',
@@ -230,8 +235,14 @@
     const runs = fixKatakanaRuns(out);
     out = runs.text;
     for (const f of runs.fixes) corrections.push([f.before, f.after]);
-    for (const [wrong, right] of Object.entries(WORD_FIXES)) {
-      if (out.includes(wrong)) { out = out.split(wrong).join(right); corrections.push([wrong, right]); }
+    // 機械で作ったぶん → 手書きのぶん の順に当てる（手書きを後に当てて優先させる）
+    for (const table of [GENERATED_FIXES, WORD_FIXES]) {
+      for (const [wrong, right] of Object.entries(table)) {
+        if (wrong !== right && out.includes(wrong)) {
+          out = out.split(wrong).join(right);
+          corrections.push([wrong, right]);
+        }
+      }
     }
     return { text: out, corrections, score: japaneseScore(out) };
   }
@@ -264,7 +275,12 @@
     async load(baseUrl) {
       const R = global.IkenshoResolveUrl || (u => u);
       const names = ['departments', 'diseases', 'body_sites', 'infections',
-                     'clinic_suffix', 'prefectures', 'boilerplate'];
+                     'clinic_suffix', 'prefectures', 'municipalities', 'boilerplate'];
+      // 誤字表は形が違う（entries が語の対）ので、別に読む
+      try {
+        const wf = await fetch(R(`${baseUrl}/word_fixes.json`)).then(r => r.json());
+        setGeneratedFixes(wf.entries || {});
+      } catch (e) { /* 無くても動く */ }
       this.fieldMap = await fetch(R(`${baseUrl}/field_map.json`)).then(r => r.json());
       await Promise.all(names.map(async n => {
         try {
@@ -441,6 +457,7 @@
   }
 
   global.IkenshoDicts = { Dictionaries, similarity, normalize, cleanOcr,
+                          setGeneratedFixes,
                           normalizeVariants, levenshtein, proofread, japaneseScore,
                           isShortening, fixDecimalPoint, stripCorporate };
 })(window);

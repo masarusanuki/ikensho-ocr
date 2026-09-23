@@ -37,3 +37,4 @@ bench/seigo_features.json
 
 # 検証用スクリーンショット（記入済み様式が写るため公開しない）
 docs/screenshots/
+bench/seigo2_text_pairs.json

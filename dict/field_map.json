@@ -14,6 +14,6 @@
  "pressure_ulcer_site": "body_sites",
  "other_skin_disease_site": "body_sites",
  "clinic_name": "clinic_suffix",
- "clinic_address": "prefectures",
- "applicant_address": "prefectures"
+ "clinic_address": "municipalities",
+ "applicant_address": "municipalities"
 }

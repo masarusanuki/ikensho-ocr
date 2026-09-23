@@ -135,9 +135,37 @@ def _apply_context_fixes(text: str) -> Tuple[str, List[Correction]]:
     return text, fixes
 
 
+# 機械で作った誤字表（dict/word_fixes.json）。`tools/build_word_fixes.py` が作る。
+# 手書きの WORD_FIXES と合わせて使う。ファイルが無くても動く
+_GENERATED: Optional[Dict[str, str]] = None
+
+
+def generated_fixes() -> Dict[str, str]:
+    """dict/word_fixes.json を読む（1回だけ）。"""
+    global _GENERATED
+    if _GENERATED is None:
+        import json
+        import os
+        path = os.path.join(os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__)))), "dict", "word_fixes.json")
+        try:
+            with open(path, encoding="utf-8") as fp:
+                _GENERATED = dict(json.load(fp).get("entries") or {})
+        except Exception:
+            _GENERATED = {}
+    return _GENERATED
+
+
+def all_word_fixes() -> Dict[str, str]:
+    """手書きと機械生成を合わせた誤字表。手書きを優先する。"""
+    merged = dict(generated_fixes())
+    merged.update(WORD_FIXES)
+    return merged
+
+
 def _apply_word_fixes(text: str) -> Tuple[str, List[Correction]]:
     fixes = []
-    for wrong, right in WORD_FIXES.items():
+    for wrong, right in all_word_fixes().items():
         if wrong == right or wrong not in text:
             continue
         text = text.replace(wrong, right)

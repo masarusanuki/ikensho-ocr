@@ -210,11 +210,24 @@ class Dictionaries:
             key = path[:-5]
             with open(os.path.join(self.directory, path), encoding="utf-8") as fp:
                 raw = json.load(fp)
-            entries = [Entry(name=e["name"], icd10=e.get("icd10", ""),
-                             tokutei=bool(e.get("tokutei")),
-                             extra={k: v for k, v in e.items()
-                                    if k not in ("name", "icd10", "tokutei")})
-                       for e in raw.get("entries", [])]
+            # 辞書によって entries の形が違う。
+            #   [{"name": ...}]        … 傷病名・市区町村など
+            #   ["語", "語", ...]      … care_terms.json（誤字表の種）
+            #   {"誤": "正", ...}      … word_fixes.json（語の対。辞書としては使わない）
+            raw_entries = raw.get("entries") or []
+            if isinstance(raw_entries, dict):
+                raw_entries = []
+            entries = []
+            for e in raw_entries:
+                if isinstance(e, str):
+                    entries.append(Entry(name=e))
+                    continue
+                if not isinstance(e, dict) or not e.get("name"):
+                    continue
+                entries.append(Entry(name=e["name"], icd10=e.get("icd10", ""),
+                                     tokutei=bool(e.get("tokutei")),
+                                     extra={k: v for k, v in e.items()
+                                            if k not in ("name", "icd10", "tokutei")}))
             self.lexicons[key] = Lexicon(key=key, label=raw.get("label", key),
                                          entries=entries)
 
