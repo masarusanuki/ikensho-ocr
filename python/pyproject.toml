@@ -6,7 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "ikensho-ocr"
 version = "0.1.0"
 description = "主治医意見書（介護保険）の読み取り・確認・出力ツール"
-readme = "../README.md"
+# README は python/ の外にあり、そのまま指すと wheel を作れない
+# （pip install ./python が "Cannot access ../README.md" で落ちる）
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [

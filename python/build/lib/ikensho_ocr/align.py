@@ -1,0 +1,159 @@
+# -*- coding: utf-8 -*-
+"""ページ画像をテンプレート座標系に位置合わせし、様式とページ番号を判定する。"""
+import os
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
+import cv2
+import numpy as np
+
+from .templates import Template, TemplatePage
+
+# 管理画面のしきい値と対応させるため、環境変数で上書きできるようにする
+MIN_INLIERS = int(os.environ.get("IKENSHO_MIN_INLIERS", "25"))
+MIN_INLIER_RATIO = float(os.environ.get("IKENSHO_MIN_INLIER_RATIO", "0.30"))
+
+
+@dataclass
+class PageMatch:
+    """1ページの照合結果。"""
+    template_id: str
+    page_index: int
+    warped: np.ndarray
+    homography: np.ndarray
+    inliers: int
+    matches: int
+
+    @property
+    def score(self) -> float:
+        """0..1 の照合スコア。インライア数と比率の両方を反映する。"""
+        if self.matches == 0:
+            return 0.0
+        ratio = self.inliers / self.matches
+        volume = min(self.inliers / 120.0, 1.0)
+        return round(ratio * 0.6 + volume * 0.4, 4)
+
+
+def _prep(gray: np.ndarray) -> np.ndarray:
+    g = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)
+    return cv2.GaussianBlur(g, (3, 3), 0)
+
+
+def _register(src: np.ndarray, ref: np.ndarray,
+              nfeatures: int = 4000) -> Tuple[Optional[np.ndarray], int, int]:
+    orb = cv2.ORB_create(nfeatures, scaleFactor=1.2, nlevels=8, fastThreshold=8)
+    k1, d1 = orb.detectAndCompute(_prep(src), None)
+    k2, d2 = orb.detectAndCompute(_prep(ref), None)
+    if d1 is None or d2 is None or len(k1) < 12 or len(k2) < 12:
+        return None, 0, 0
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING)
+    pairs = bf.knnMatch(d1, d2, k=2)
+    # 対応候補が1つしか返らない組があるので、組ごとに長さを確かめる
+    good = [p[0] for p in pairs
+            if len(p) == 2 and p[0].distance < 0.75 * p[1].distance]
+    if len(good) < 12:
+        return None, len(good), 0
+    sp = np.float32([k1[m.queryIdx].pt for m in good]).reshape(-1, 1, 2)
+    dp = np.float32([k2[m.trainIdx].pt for m in good]).reshape(-1, 1, 2)
+    H, mask = cv2.findHomography(sp, dp, cv2.RANSAC, 4.0)
+    if H is None or mask is None:
+        return None, len(good), 0
+    return H, len(good), int(mask.sum())
+
+
+def _warp_interp(gray: np.ndarray, page) -> int:
+    """テンプレートの大きさに合わせるときの、画素の埋め方を選ぶ。
+
+    **ここが解像度の低い入力の要。** 入力が template より小さいと、
+    ここで引き伸ばされる。線形（INTER_LINEAR）だとにじんで細い線が消え、
+    あとの OCR でいくら拡大しても戻らない。
+
+      引き伸ばす（＝低解像度）… Cubic
+      同じ大きさ・縮める      … 線形
+
+    **縮小は warpPerspective では直せない。** この関数に INTER_AREA を渡しても
+    黙って線形に落とされる（OpenCV 5.0 で確認。CUBIC は効くが AREA は効かない）。
+    高解像度の入力は `_prescale` で先に縮めてから写す。
+
+    実測（20通・日付284件、正解数で比較）:
+
+      入力     倍率   Cubic/Area   線形（以前）
+      200dpi  1.00   255          255   ← 同じ大きさなので同一
+      150dpi  1.33   260          256
+      100dpi  2.00   244          249
+      75dpi   2.66   241          225   ← ここが大きい
+
+    Lanczos も試したが 75dpi で 242 対 241 とほぼ差が無かったので使わない。
+    **効いているのは「線形をやめたこと」**で、細かい方式の違いではない。
+    """
+    if os.environ.get("IKENSHO_WARP") == "linear":
+        return cv2.INTER_LINEAR          # 以前の動き（効果を測るため）
+    ratio = page.width / max(gray.shape[1], 1)
+    return cv2.INTER_CUBIC if ratio > 1.02 else cv2.INTER_LINEAR
+
+
+def _prescale(gray: np.ndarray, page, Hf: np.ndarray):
+    """入力がテンプレートより大きいときだけ、先に縮めてから写す。
+
+    `warpPerspective` は INTER_AREA を受け付けない（黙って線形になる）。
+    線形のまま間引くと網目が出るので、`resize` で面積平均をかけてから渡す。
+    縮めたぶんは射影行列で戻す。
+    """
+    ratio = page.width / max(gray.shape[1], 1)
+    if ratio >= 0.98:
+        return gray, Hf
+    small = cv2.resize(gray, (max(1, int(round(gray.shape[1] * ratio))),
+                              max(1, int(round(gray.shape[0] * ratio)))),
+                       interpolation=cv2.INTER_AREA)
+    inv = np.array([[1 / ratio, 0, 0], [0, 1 / ratio, 0], [0, 0, 1]],
+                   dtype=np.float64)
+    return small, Hf @ inv
+
+
+def match_page(gray: np.ndarray, templates: Dict[str, Template],
+               restrict_to: Optional[str] = None) -> Optional[PageMatch]:
+    """1枚のページ画像がどの様式の何ページ目かを判定し、位置合わせして返す。
+
+    カメラ撮影のように1枚ずつ入る場合でも、ページ番号を自動判別できる。
+    """
+    best: Optional[PageMatch] = None
+    for tid, tpl in templates.items():
+        if restrict_to and tid != restrict_to:
+            continue
+        for tp in tpl.pages:
+            ref = tp.ref_image(tpl.base_dir)
+            if ref is None:
+                continue
+            # 参照画像は縮小保存しているのでテンプレート座標系へ拡大する
+            scale = tp.width / ref.shape[1]
+            H, nmatch, ninl = _register(gray, ref)
+            if H is None or ninl < MIN_INLIERS:
+                continue
+            if ninl / max(nmatch, 1) < MIN_INLIER_RATIO:
+                continue
+            S = np.array([[scale, 0, 0], [0, scale, 0], [0, 0, 1]], dtype=np.float64)
+            Hf = S @ H
+            src, Hw = _prescale(gray, tp, Hf)
+            warped = cv2.warpPerspective(src, Hw, (tp.width, tp.height),
+                                         flags=_warp_interp(src, tp),
+                                         borderValue=255)
+            cand = PageMatch(template_id=tid, page_index=tp.index, warped=warped,
+                             homography=Hf, inliers=ninl, matches=nmatch)
+            if best is None or cand.score > best.score:
+                best = cand
+    return best
+
+
+def assign_pages(matches: List[Optional[PageMatch]]) -> List[Optional[PageMatch]]:
+    """複数ページの照合結果を突き合わせ、様式を多数決で揃える。
+
+    1ページずつ撮影された場合でも、同じ様式に属するページとして扱えるようにする。
+    """
+    votes: Dict[str, float] = {}
+    for m in matches:
+        if m:
+            votes[m.template_id] = votes.get(m.template_id, 0) + m.score
+    if not votes:
+        return matches
+    winner = max(votes, key=votes.get)
+    return [m if (m is None or m.template_id == winner) else None for m in matches]
