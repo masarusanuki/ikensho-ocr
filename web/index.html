@@ -35,13 +35,16 @@
 
     <div class="drop" id="drop">
       <strong>ここにファイルをドラッグ＆ドロップ</strong>
-      PDF / JPEG / PNG（複数選択可）
+      PDF / JPEG / PNG（複数選択可・フォルダごとでも可）
       <div class="row" style="justify-content:center;margin-top:14px">
         <button class="btn primary" id="btn-pick">ファイルを選ぶ</button>
+        <button class="btn primary" id="btn-pick-folder">フォルダを選ぶ</button>
         <button class="btn" id="btn-camera">カメラで撮影</button>
       </div>
     </div>
     <input type="file" id="file-input" accept="application/pdf,image/*" multiple hidden>
+    <!-- フォルダごと選ぶ。中の PDF・画像だけを拾う（webkitdirectory は主要ブラウザで動く） -->
+    <input type="file" id="folder-input" webkitdirectory directory multiple hidden>
     <input type="file" id="camera-input" accept="image/*" capture="environment" multiple hidden>
 
     <ul class="filelist" id="filelist"></ul>

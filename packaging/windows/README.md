@@ -50,13 +50,30 @@ git push origin v0.1.0
 ```
 ikensho info
 ikensho extract "C:\scans\*.pdf" --csv C:\scans\out.csv
+ikensho extract "C:\scans" --csv C:\scans\out.csv     ← フォルダごと読む
 ```
+
+## GPU は要りません
+
+文字の認識は onnxruntime の **CPU 版**で動きます。
+ビデオカードや CUDA の用意は不要です。
+1通あたりの目安は、事務用のノートPCで 10〜30 秒です。
+
+## 同梱するもの
+
+| | なぜ |
+|---|---|
+| Python ランタイム | 利用者側に Python を入れさせないため |
+| 日本語の認識モデル（japan_v4・14MB） | **これが無いと中国語向けの既定モデルになり、文字正解率が 78.0% → 66.7% に落ちます** |
+| onnxruntime（CPU版） | 上のモデルを動かすため |
+| 様式テンプレート・辞書・確認画面 | |
+| tesseract + 日本語データ | 予備の認識エンジン（実測では japan_v4 の方が良い） |
 
 ## 確認事項
 
 - **同梱ライセンス**: tesseract は Apache-2.0 です。インストーラに含めて再配布できますが、
   ライセンス表記を同梱してください（`LICENSE` と `web/vendor/README.md` に記載）
-- **配布サイズ**: 約 250〜350 MB（Python ランタイム・OpenCV・tesseract・日本語データを含む）
+- **配布サイズ**: 約 300〜400 MB（Python ランタイム・OpenCV・onnxruntime・日本語の認識モデル・tesseract を含む）
 - **署名**: 社内配布でも SmartScreen の警告が出ます。必要ならコード署名証明書で署名してください
 
 ```powershell

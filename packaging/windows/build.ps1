@@ -4,7 +4,8 @@
 #   使い方: packaging\windows で  .\build.ps1
 #
 # 出来上がるもの: dist\ikensho-ocr-setup-<version>.exe
-#   Python も tesseract も同梱するため、利用者側の別途インストールは不要。
+#   Python も日本語OCRも同梱するため、利用者側の別途インストールは不要。
+#   **GPU は要りません。** 認識は onnxruntime の CPU 版で動きます。
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path "$PSScriptRoot\..\..").Path
@@ -19,8 +20,15 @@ New-Item -ItemType Directory -Force -Path $work, $dist | Out-Null
 Write-Host '== Python 依存関係を導入 =='
 python -m venv "$work\venv"
 & "$work\venv\Scripts\python.exe" -m pip install --upgrade pip wheel
-& "$work\venv\Scripts\python.exe" -m pip install "$root\python"
+# [ocr] を付けないと日本語の認識モデルが動かない（既定エンジンが使えなくなる）。
+# rapidocr-onnxruntime が入れる onnxruntime は CPU 版なので GPU は要らない
+& "$work\venv\Scripts\python.exe" -m pip install "$root\python[ocr]"
 & "$work\venv\Scripts\python.exe" -m pip install pyinstaller
+
+Write-Host '== 日本語の認識モデルを取得 =='
+# 実測でいちばん良かった japan_v4（PP-OCRv4 日本語専用・14MB）。
+# これが無いと中国語向けの既定モデルになり、文字正解率が 78.0% → 66.7% に落ちる
+& "$work\venv\Scripts\python.exe" "$root\tools\fetch_ocr_model.py" --model japan_v4
 
 Write-Host '== 配信用のWebファイルを生成 =='
 & "$work\venv\Scripts\python.exe" "$root\tools\build_web.py"
@@ -53,12 +61,15 @@ Push-Location $work
     --add-data "$root\schema;schema" `
     --add-data "$root\templates;templates" `
     --add-data "$root\dict;dict" `
+    --add-data "$root\models\ocr;models\ocr" `
     --add-data "$root\dist\web;dist\web" `
     --add-data "$root\README.md;." `
     --add-data "$root\DEVNOTES.md;." `
     --add-data "$tessDir;tesseract" `
     --collect-all pypdfium2 `
     --collect-all cv2 `
+    --collect-all rapidocr_onnxruntime `
+    --collect-all onnxruntime `
     "$PSScriptRoot\launcher.py"
 Pop-Location
 

@@ -10,7 +10,7 @@ import glob
 import os
 import sys
 
-from . import __version__
+from . import __version__, imaging
 from .export import write_csv, write_form_json, write_json, write_markdown
 from .extract import extract_record
 from .ocr import available_engines
@@ -18,12 +18,56 @@ from .schema import load_schema
 from .templates import load_templates
 
 
-def _expand(patterns):
+# 読み込めるファイルの拡張子。フォルダを渡されたとき、これだけを拾う
+READABLE_EXT = {".pdf"} | imaging.IMAGE_EXT
+
+
+def _walk_folder(folder, recursive=True):
+    """フォルダの中の、読み込めるファイルを並べる。
+
+    **名前の順に並べる。** 2枚1組の画像（1ページ目・2ページ目）を
+    正しい順で組にするため、並びが変わってはいけない。
+    """
+    out = []
+    if recursive:
+        for root, dirs, files in os.walk(folder):
+            dirs.sort()
+            for name in sorted(files):
+                if os.path.splitext(name)[1].lower() in READABLE_EXT:
+                    out.append(os.path.join(root, name))
+    else:
+        for name in sorted(os.listdir(folder)):
+            path = os.path.join(folder, name)
+            if os.path.isfile(path) and \
+                    os.path.splitext(name)[1].lower() in READABLE_EXT:
+                out.append(path)
+    return out
+
+
+def _expand(patterns, recursive=True):
+    """ファイル名・ワイルドカード・**フォルダ**を、ファイルの並びにする。"""
     out = []
     for p in patterns:
-        hits = sorted(glob.glob(p)) if any(c in p for c in "*?[") else [p]
-        out.extend(hits)
-    return [p for p in out if os.path.isfile(p)]
+        if any(c in p for c in "*?["):
+            hits = sorted(glob.glob(p))
+        else:
+            hits = [p]
+        for h in hits:
+            if os.path.isdir(h):
+                found = _walk_folder(h, recursive)
+                if not found:
+                    print(f"読み込めるファイルがありません: {h}", file=sys.stderr)
+                out.extend(found)
+            elif os.path.isfile(h):
+                out.append(h)
+    # 同じファイルを2回渡されても1回にする（並びは保つ）
+    seen, uniq = set(), []
+    for p in out:
+        key = os.path.abspath(p)
+        if key not in seen:
+            seen.add(key)
+            uniq.append(p)
+    return uniq
 
 
 def _group_by_record(paths, group):
@@ -53,7 +97,7 @@ def _group_by_record(paths, group):
 def cmd_extract(args):
     schema = load_schema(args.schema) if args.schema else load_schema()
     templates = load_templates(args.templates)
-    paths = _expand(args.inputs)
+    paths = _expand(args.inputs, recursive=not args.no_recursive)
     if not paths:
         sys.exit("入力ファイルが見つかりません")
 
@@ -144,7 +188,11 @@ def build_parser():
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     e = sub.add_parser("extract", help="ファイルを読み取って出力する")
-    e.add_argument("inputs", nargs="+", help="PDF・画像ファイル（ワイルドカード可）")
+    e.add_argument("inputs", nargs="+",
+                   help="PDF・画像ファイル、または**フォルダ**"
+                        "（ワイルドカードも使えます）")
+    e.add_argument("--no-recursive", action="store_true",
+                   help="フォルダを渡したとき、その直下だけを見る（既定は下の階層も見る）")
     e.add_argument("--json", help="JSON の出力先")
     e.add_argument("--csv", help="CSV の出力先")
     e.add_argument("--md", metavar="FILE",

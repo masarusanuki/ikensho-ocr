@@ -106,6 +106,22 @@ ikensho extract scans/*.pdf --anonymized --csv out.csv
 
 ---
 
+## フォルダごと読み込む
+
+フォルダを指定すると、その中の PDF・画像をまとめて読みます（下の階層も見ます）。
+
+```bash
+ikensho extract /path/to/folder --csv out.csv --md out.md
+ikensho extract /path/to/folder --no-recursive   # 直下だけ
+```
+
+ブラウザ版は「**フォルダを選ぶ**」ボタンです。
+どちらも、読み込めない拡張子（.txt や .docx など）は自動で除きます。
+
+ファイルの並び順は名前順に揃えます。画像を2枚で1件として扱うため、
+**1ページ目・2ページ目の順になる名前**を付けてください
+（`001_p1.jpg` `001_p2.jpg` のように）。
+
 ## 使い方（Python 版）
 
 ```bash

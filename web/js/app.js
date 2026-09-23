@@ -1,6 +1,9 @@
 /** アプリ全体の制御。画面切り替え、ファイル受け取り、読み取り実行、保存。 */
 (function (global) {
   'use strict';
+
+  // フォルダから拾う拡張子。Python 版 cli.READABLE_EXT と揃えること
+  const READABLE_EXT = /\.(pdf|png|jpe?g|bmp|tiff?|webp|heic)$/i;
   const esc = s => global.IkenshoUtil.esc(s);
   // 保存先は利用者のトークンごとに分ける（同じ端末を複数人が使っても履歴が混ざらない）
   const S = () => global.IkenshoSession;
@@ -66,10 +69,16 @@
 
       document.getElementById('btn-pick').addEventListener('click',
         () => document.getElementById('file-input').click());
+      document.getElementById('btn-pick-folder').addEventListener('click',
+        () => document.getElementById('folder-input').click());
       document.getElementById('btn-camera').addEventListener('click',
         () => document.getElementById('camera-input').click());
       document.getElementById('file-input').addEventListener('change', e => this.addFiles(e.target.files));
       document.getElementById('camera-input').addEventListener('change', e => this.addFiles(e.target.files));
+      document.getElementById('folder-input').addEventListener('change', e => {
+        this.addFolder(e.target.files);
+        e.target.value = '';      // 同じフォルダをもう一度選べるようにする
+      });
       document.getElementById('btn-clear').addEventListener('click', () => { this.files = []; this.renderFiles(); });
       document.getElementById('btn-run').addEventListener('click', () => this.run());
 
@@ -295,6 +304,27 @@
     addFiles(list) {
       for (const f of list) this.files.push(f);
       this.renderFiles();
+    }
+
+    /**
+     * フォルダごと選ばれたとき。中の **PDF・画像だけ** を拾う。
+     * 並びはフォルダ内の道順（webkitRelativePath）で揃える。
+     * 2枚1組の画像を正しい順で組にするため、**並びが変わってはいけない**。
+     */
+    addFolder(list) {
+      const all = Array.from(list);
+      const ok = all.filter(f => READABLE_EXT.test(f.name));
+      ok.sort((a, b) => (a.webkitRelativePath || a.name)
+        .localeCompare(b.webkitRelativePath || b.name, 'ja'));
+      for (const f of ok) this.files.push(f);
+      this.renderFiles();
+      const skipped = all.length - ok.length;
+      if (!ok.length) {
+        this.toast('読み込めるファイルがフォルダにありません', true);
+      } else {
+        this.toast(`${ok.length} 件を読み込みました` +
+                   (skipped ? `（対象外の ${skipped} 件は除きました）` : ''));
+      }
     }
 
     renderFiles() {
