@@ -33,6 +33,28 @@
 
 導入手順は **[docs/INSTALL.md](docs/INSTALL.md)** にまとめています。
 
+### Windows で使う
+
+**インストーラ（exe）を実行するだけ**です。Python も日本語OCRも同梱しています。
+**GPU は要りません**（認識は onnxruntime の CPU 版で動きます）。
+
+- 最新のインストーラ: [リリースページ](https://github.com/masarusanuki/ikensho-ocr/releases)
+- 作り直すとき: タグを打つと GitHub Actions が作ります（`git tag v0.1.1 && git push origin v0.1.1`）。
+  手元の Windows で作る場合は [packaging/windows/README.md](packaging/windows/README.md)
+
+インストーラを使わず **Python を入れて動かす**こともできます。
+必要なパッケージはすべて Windows 用のビルド済みのものがあるので、コンパイラは要りません。
+
+```powershell
+py -3.12 -m venv venv
+venv\Scripts\pip install ".\python[ocr]"
+venv\Scripts\python tools\fetch_ocr_model.py japan_v4
+venv\Scripts\ikensho serve
+```
+
+`[ocr]` を付けないと日本語の認識モデルが入りません（中国語向けの既定モデルになり、
+文字正解率が 78.0% → 66.7% に落ちます）。
+
 **OSごとに手順を分けたくない場合は Docker が一番簡単です。**
 Python も tesseract（日本語OCR）もイメージに入っているため、
 Windows / macOS / Linux のどれでも同じ1行で動きます。
