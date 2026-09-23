@@ -164,8 +164,51 @@
     '高血庄':'高血圧','血庄':'血圧','骨析':'骨折','内脹':'内服','脹薬':'服薬','排洩':'排泄',
     '更依':'更衣','人浴':'入浴','転倒':'転倒','頼倒':'転倒','安走':'安定','経渦':'経過',
     '痘状':'症状','治僚':'治療','糠尿病':'糖尿病','見寺り':'見守り','リハビリテーシヨン':'リハビリテーション',
+    '痺痛':'疼痛','落痛':'疼痛','冬痛':'疼痛',
+    '柵ね':'概ね','機ね':'概ね','慨ね':'概ね',
   };
   const NOISE = '|｜!！"\'`^~*#$%&@={}<>\\';
+
+  // カタカナと紛らわしい字（漢字・記号）。読み違えると、ここに挙げた字になる
+  const KATA_LOOKALIKE = {
+    '力':'カ','口':'ロ','二':'ニ','卜':'ト','夕':'タ','工':'エ','才':'オ',
+    '八':'ハ','千':'チ','一':'ー','厶':'ム','巳':'ミ','乂':'メ','又':'マ',
+  };
+  const KATA_RE = new RegExp(`[${KATA}]`);
+
+  /**
+   * カタカナ語の中に紛れ込んだ「カタカナに似た字」を直す。
+   *
+   * 1字ずつ前後を見る規則では、**隣も誤認字だと連鎖が止まる**。
+   * 「コソ卜口一ル」は 卜 の右が 口（誤認字）なので条件を満たさない。
+   * そこで「カタカナ＋紛らわしい字」のひと続きを取り出し、
+   * その中に本物のカタカナが含まれていればまとめて直す。
+   * 本物のカタカナが1つも無い並び（「二千八百」など）は触らない。
+   */
+  function fixKatakanaRuns(text) {
+    const fixes = [];
+    let out = '', i = 0;
+    while (i < text.length) {
+      let j = i;
+      while (j < text.length &&
+             (KATA_RE.test(text[j]) || KATA_LOOKALIKE[text[j]])) j++;
+      if (j === i) { out += text[i]; i++; continue; }
+      const run = text.slice(i, j);
+      const real = [...run].filter(c => KATA_RE.test(c)).length;
+      if (run.length >= 2 && real >= 1) {
+        const fixed = [...run].map(c => KATA_LOOKALIKE[c] || c).join('');
+        if (fixed !== run) {
+          fixes.push({ before: run, after: fixed,
+                       reason: 'カタカナ語に紛れ込んだ、形の似た字を直した' });
+        }
+        out += fixed;
+      } else {
+        out += run;
+      }
+      i = j;
+    }
+    return { text: out, fixes };
+  }
 
   /**
    * 日本語として妥当か調べ、誤字を直す。
@@ -184,6 +227,9 @@
     for (const [reason, re, rep] of CONTEXT_FIXES) {
       out = out.replace(re, m => { corrections.push([m, rep]); return rep; });
     }
+    const runs = fixKatakanaRuns(out);
+    out = runs.text;
+    for (const f of runs.fixes) corrections.push([f.before, f.after]);
     for (const [wrong, right] of Object.entries(WORD_FIXES)) {
       if (out.includes(wrong)) { out = out.split(wrong).join(right); corrections.push([wrong, right]); }
     }

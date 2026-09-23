@@ -408,6 +408,7 @@
   const MD_LOW = 0.80;          // これより下は「要確認」の印を付ける
   const MD_MARK = '⚠';
   const MD_EMPTY = '（空欄）';   // 行の抜けと取り違えられないようにする
+  const MD_LLM = '✎';           // LLM が読み崩れを直した欄。**直したことを隠さない**
 
   function mdCell(value) {
     if (value === null || value === undefined || value === false) return '';
@@ -418,9 +419,12 @@
 
   function mdLevel(entry) {
     const lv = LEVEL_JA[entry.level] || entry.level || '';
-    if (entry.confidence === null || entry.confidence === undefined) return lv;
-    const low = entry.confidence < MD_LOW && entry.level !== 'edited' && entry.level !== 'done';
-    return `${lv} ${entry.confidence.toFixed(2)}${low ? MD_MARK : ''}`.trim();
+    let mark = entry.llm_applied ? MD_LLM : '';
+    if (entry.confidence === null || entry.confidence === undefined) return `${lv}${mark}`.trim();
+    if (entry.confidence < MD_LOW && entry.level !== 'edited' && entry.level !== 'done') {
+      mark = MD_MARK + mark;
+    }
+    return `${lv} ${entry.confidence.toFixed(2)}${mark}`.trim();
   }
 
   /** 表に入れる答え。日付は西暦も添える（和暦だけでは比べられないため）。 */
@@ -442,7 +446,8 @@
     out.push(`# ${schema.formName} 読み取り結果`, '');
     out.push('これは紙の主治医意見書を OCR で読み取った結果です。' +
              '**読み取りには誤りが含まれます。**');
-    out.push(`確信度が ${MD_LOW.toFixed(2)} 未満の欄には ${MD_MARK} を付けてあります。` +
+    out.push(`確信度が ${MD_LOW.toFixed(2)} 未満の欄には ${MD_MARK} を、` +
+             `読み崩れをLLMが直した欄には ${MD_LLM} を付けてあります。` +
              '原本と照らして確かめてください。', '');
     out.push(`- 様式: ${rec.templateId || '不明'}`);
     out.push(`- 読み取り日時: ${rec.readAt || new Date().toISOString()}`);

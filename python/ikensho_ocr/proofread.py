@@ -77,7 +77,8 @@ WORD_FIXES: Dict[str, str] = {
     "経過": "経過", "経渦": "経過",
     "症状": "症状", "痘状": "症状",
     "治療": "治療", "治僚": "治療",
-    "疼痛": "疼痛", "痺痛": "疼痛",
+    "疼痛": "疼痛", "痺痛": "疼痛", "落痛": "疼痛", "冬痛": "疼痛",
+    "概ね": "概ね", "柵ね": "概ね", "機ね": "概ね", "慨ね": "概ね",
 }
 
 # 明らかにゴミな文字（OCR が罫線や汚れを拾ったもの）
@@ -144,6 +145,54 @@ def _apply_word_fixes(text: str) -> Tuple[str, List[Correction]]:
     return text, fixes
 
 
+# カタカナと紛らわしい字（漢字・記号）。読み違えると、ここに挙げた字になる
+KATA_LOOKALIKE = {
+    "力": "カ", "口": "ロ", "二": "ニ", "卜": "ト", "夕": "タ", "工": "エ",
+    "才": "オ", "八": "ハ", "千": "チ", "一": "ー", "ロ": "ロ", "厶": "ム",
+    "巳": "ミ", "乂": "メ", "又": "マ", "ヰ": "ヰ",
+}
+# 並びとして直すのに要る、**本物のカタカナ**の最少個数。
+# これを求めないと「二千八百」を「二チ八百」にしてしまう
+RUN_MIN_REAL_KANA = 1
+RUN_MIN_LENGTH = 2
+
+
+def _fix_katakana_runs(text: str) -> Tuple[str, List[Correction]]:
+    """カタカナ語の中に紛れ込んだ「カタカナに似た字」を直す。
+
+    1字ずつ前後を見る規則では、**隣も誤認字だと連鎖が止まる**。
+    「コソ卜口一ル」は 卜 の右が 口（誤認字）なので、前後カタカナの条件を満たさない。
+
+    そこで「カタカナ＋紛らわしい字」の**ひと続き**を取り出し、
+    その中に本物のカタカナが含まれていれば、まとめて直す。
+    本物のカタカナが1つも無い並び（「二千八百」など）は触らない。
+    """
+    out = []
+    fixes: List[Correction] = []
+    i, n = 0, len(text)
+    kata = re.compile(rf"[{KATAKANA}]")
+    while i < n:
+        j = i
+        while j < n and (kata.match(text[j]) or text[j] in KATA_LOOKALIKE):
+            j += 1
+        run = text[i:j]
+        if len(run) >= RUN_MIN_LENGTH and \
+                sum(1 for ch in run if kata.match(ch)) >= RUN_MIN_REAL_KANA:
+            fixed = "".join(KATA_LOOKALIKE.get(ch, ch) for ch in run)
+            if fixed != run:
+                fixes.append(Correction(run, fixed,
+                                        "カタカナ語に紛れ込んだ、形の似た字を直した"))
+            out.append(fixed)
+        else:
+            out.append(run)
+        if j == i:
+            out.append(text[i])
+            i += 1
+        else:
+            i = j
+    return "".join(out), fixes
+
+
 def japanese_score(text: str) -> float:
     """日本語として成立している度合い 0..1。
 
@@ -204,6 +253,8 @@ def proofread_text(text: str, multiline: bool = False) -> ProofResult:
     corrections += f
     text, f = _apply_context_fixes(text)
     corrections += f
+    text, f = _fix_katakana_runs(text)
+    corrections += f
     text, f = _apply_word_fixes(text)
     corrections += f
 
@@ -219,18 +270,62 @@ def proofread_text(text: str, multiline: bool = False) -> ProofResult:
 # 3. LLM による文章校正（任意）
 # ---------------------------------------------------------------------------
 
+# **OCR の誤りは「字の形の取り違え」だと明示する。** これを言わないと、
+# モデルは意味から推測して書き換えてしまう。実測では
+# 「本重」→「本の」、「リ八ビリ」→「リビリ」と**悪化**した。
+#
+# **形の似た字を「A⇔B」と並べてはいけない。** 向きが分からなくなり、
+# 「落痛」を「疼痛」ではなく「落疼」にした（実測）。
+# 直し方は手本（PROOF_EXAMPLES）だけで見せる。
 PROOF_SYSTEM = (
-    "あなたは日本語の医療文書の校正者です。"
-    "与えられた文は、紙の書類をOCRで読み取ったものです。"
-    "誤字・脱字・変換ミスだけを直し、校正後の文だけを出力します。"
-    "書かれていない内容を足してはいけません。"
-    "内容の言い換え・要約・敬語への変換もしてはいけません。"
-    "直すところが無ければ、そのまま出力します。"
-    "説明や前置きは書きません。"
+    "あなたは、紙の医療文書をOCRで読み取った日本語を直す校正者です。\n"
+    "\n"
+    "OCRの誤りは、**字の形が似ているための取り違え**です。"
+    "1文字を1文字に置き換えて直します。次の決まりを必ず守ってください。\n"
+    "・文字を足したり削ったりしません。文字数は変えません\n"
+    "・数字・単位・アルファベットはそのまま写します（5mg、130/80mmHg、週2回）\n"
+    "・言い回しや語順は変えません。要約も敬語への変換もしません\n"
+    "・意味の通らないところが残っても、**分からなければ原文のまま**にします\n"
+    "・直すところが無ければ、原文をそのまま出力します\n"
+    "\n"
+    "校正後の文だけを出力します。説明や前置きは書きません。"
 )
+
+# 手本。**1文字を1文字に置き換える**やり方だけを見せる。
+# 測る対象に寄せて選ばないこと（寄せると測定が意味を失う）。
+# 「直さない例」と「分からないので触らない例」を入れて、
+# 無理に直さない振る舞いを見せる。
+PROOF_EXAMPLES = (
+    ("(1) 診断名1", "脳梗基後遺症", "脳梗塞後遺症"),
+    ("(3) 経過及び治療内容", "週2回の訪問リ八ビリを継続。", "週2回の訪問リハビリを継続。"),
+    ("(5) 関節の痛み 部位", "両膝関節", "両膝関節"),
+    ("(6) その他 内容", "ほのく足初所の理とおしてな時", "ほのく足初所の理とおしてな時"),
+)
+
+
+# **校正に使えない小さいモデル。** 実測で、直らないうえに壊す
+# （1.5B は「わたなべ さくえ」を「わたくし さくえ」にした）。
+# 3B 以上でないと、この用途では役に立たない。
+TOO_SMALL = ("0.5b", "1b", "1.5b", "1.7b", "2b")
+
+
+def too_small_for_proofreading(model_path: str) -> bool:
+    """このモデルで校正させてよいか。名前で判断する（実測に基づく足切り）。"""
+    name = (model_path or "").lower()
+    return any(k in name for k in TOO_SMALL)
+
 
 # 校正で変わってよい文字数の上限（元の文に対する割合）
 MAX_EDIT_RATIO = 0.25
+# これより短い文は直さない。手がかりが少なく、作文になりやすい
+PROOF_MIN_LENGTH = 4
+# 長さがこの割合より変わったら棄却する（語の足し引きを疑う）
+MAX_LENGTH_SHIFT = 0.25
+
+# 数字の並び。**用量や血圧なので1文字も変えさせない**
+_DIGITS = re.compile(r"\d")
+# 半角の英字のまとまり（mg / mmHg / H など）
+_LATIN = re.compile(r"[A-Za-z]+")
 
 
 def _edit_ratio(a: str, b: str) -> float:
@@ -240,33 +335,85 @@ def _edit_ratio(a: str, b: str) -> float:
     return _levenshtein(a, b) / max(len(a), len(b), 1)
 
 
-def proofread_with_llm(assist, text: str, field_label: str) -> Optional[ProofResult]:
-    """自由記述欄を小型LLMで校正する。
+def _keeps_numbers(before: str, after: str) -> bool:
+    """数字と単位が作り変えられていないか。
 
-    元の文から大きく変わった場合は棄却する。LLM は書かれていない内容を
-    作り出すことがあるため、「小さな直し」しか受け入れない。
+    用量（5mg）・血圧（130/80mmHg）・回数（週2回）は、直されては困るところ。
+    **数字の並びは完全一致**を求める。
+    英字は、元に無いものが現れたときだけ弾く（`右H麻痺` → `右片麻痺` は通す。
+    `mg` → `ml` は元に `ml` が無いので弾く）。
+    """
+    if _DIGITS.findall(before) != _DIGITS.findall(after):
+        return False
+    src = before.lower()
+    return all(w.lower() in src for w in _LATIN.findall(after))
+
+
+def _build_proof_prompt(field_label: str, text: str) -> str:
+    parts = [f"項目: {l}\n原文: {a}\n校正後: {b}" for l, a, b in PROOF_EXAMPLES]
+    parts.append(f"項目: {field_label}\n原文: {text}\n校正後:")
+    return "\n\n".join(parts)
+
+
+def proofread_with_llm(assist, text: str, field_label: str) -> Optional[ProofResult]:
+    """OCR で読んだ文を、小型LLMに直させる。
+
+    **既定では呼ばれない**（`extract_record(proof_budget=0)`）。
+    正解データで3通りのしきい値で測ったが、**一度も精度が上がらなかった**。
+
+      関門なし        58.40% → 57.97%   上0 / 下1
+      確信度0.80以上  96.10% → 96.10%   上0 / 下0（直すものが無い）
+      確信度0.70以上  92.50% → 91.61%   上0 / 下1
+
+    下がった1件はいつも同じで、読み崩れた文に**書かれていない言葉を足した**。
+
+      読み  疼痛評価を続し、 山要に血じて処方調整
+      校正  疼痛評価を続し、山要に血圧を測って処方調整   ←「血圧を測って」は作文
+
+    確信度が高い欄はすでに9割以上合っていて直すものが無く、
+    低い欄では作文する。**使いどころが見つからなかった**というのが結論。
+    手元の環境で試したいときは `--proof-budget 14` のように明示する。
+
+
+    **直しすぎ・作文を弾く関門を通す。** LLM は読めない字から
+    それらしい言葉を作るので、通すのは「小さな直し」だけにする。
+
+      - 長さが 25% より変わったら棄却（語の足し引きを疑う）
+      - 編集距離が 25% を超えたら棄却
+      - **数字の並びが1文字でも変わったら棄却**（用量・血圧・回数）
+      - 元に無い英字が現れたら棄却（mg → ml のような単位の作り替え）
+      - 日本語として悪くなったら棄却
+
+    実測では、この関門を通る直しは**部分的な直し**になる
+    （「膝の屈伸は落痛の範囲内て」→「膝の屈伸は疼痛の範囲内て」のように、
+    直せるところだけ直って、残りは読みのまま）。それでよい。
     """
     if assist is None or not assist.available:
         return None
     t = (text or "").strip()
-    if len(t) < 8:
+    if len(t) < PROOF_MIN_LENGTH:
         return None
-    prompt = f"項目: {field_label}\n原文:\n{t}\n\n校正後:"
-    out = assist.complete(PROOF_SYSTEM, prompt, max_tokens=min(512, len(t) * 3))
+    out = assist.complete(PROOF_SYSTEM, _build_proof_prompt(field_label, t),
+                          max_tokens=min(512, len(t) * 3 + 32))
     if not out:
         return None
-    out = out.strip().strip("「」\"'` ")
+    # 手本に続けて書かせているので、2件目以降が出てきたら最初の行だけ採る
+    out = out.strip().split("\n")[0].strip().strip("「」\"'` ")
     if not out or out == t:
         return None
-    ratio = _edit_ratio(t, out)
-    if ratio > MAX_EDIT_RATIO:
+    if abs(len(out) - len(t)) > max(2, len(t) * MAX_LENGTH_SHIFT):
+        return None                     # 語が足された／削られた
+    if _edit_ratio(t, out) > MAX_EDIT_RATIO:
         return None                     # 変わりすぎ＝作文された可能性
+    if not _keeps_numbers(t, out):
+        return None                     # 用量・血圧・単位を作り変えている
     if japanese_score(out) < japanese_score(t):
         return None                     # 日本語として悪化しているなら採らない
     return ProofResult(text=out,
                        corrections=[Correction(t[:24], out[:24], "LLMによる校正")],
                        japanese_score=japanese_score(out),
-                       note="LLMが校正した結果です。原文と見比べて確認してください。")
+                       note="LLMが読み崩れを直しました。原文と見比べて確認してください。")
+
 
 # 小数1桁で書かれる欄の、ありえる範囲。
 # 手書きの小さな小数点は読み落とされやすく、「152.5」が「1525」になる。

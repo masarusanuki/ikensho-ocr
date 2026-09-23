@@ -125,6 +125,48 @@ def _read_date_slots(warped: np.ndarray, t: dict) -> dict:
                 date=parts, slots_used=True)
 
 
+# 読み崩れの校正を**させない**欄。氏名・住所・電話・数字・かなは、
+# 文脈から直しようが無く、LLM に触らせると壊す
+# （実測: 1.5B が「わたなべ さくえ」を「わたくし さくえ」にした）。
+# 診断名は辞書（ICD）で決める欄なので、辞書に任せる。
+NO_PROOFREAD = {
+    "diagnosis1_name", "diagnosis2_name", "diagnosis3_name",
+    "other_psych_symptom_name",
+}
+
+
+# **読めていない欄は LLM に触らせない。** 崩れた読みは見れば誤りと分かるが、
+# LLM が直した「それらしい日本語」は**見ても誤りと分からない**。
+# 診療記録では後者の方が危ない。実測でも、崩れた欄では
+# 「山要に血じて」を「山要に血圧を測って」と作文した。
+#
+# **しきい値は確信度ごとの文字正解率を測って決めた**（73欄）。
+#   0.0〜0.5 … 0〜46%   読めていない。触らせない
+#   0.5〜0.7 … 53〜58%  半分しか合っていない。触らせない
+#   0.7〜0.8 … 87.45%   ← ここが「読めてはいるが少し違う」帯
+#   0.8〜1.0 … 91〜97%  ほぼ合っている
+PROOFREAD_MIN_CONFIDENCE = 0.70
+
+
+def _wants_proofread(f, entry, enabled: bool) -> bool:
+    """この欄の読み崩れを LLM に直させるか。
+
+    対象は**自由に日本語を書く欄**で、かつ**そこそこ読めている**ものだけ。
+    文字種の決まった欄（数字・かな・電話）と、個人を指す欄（氏名・住所）は外す。
+    """
+    if not enabled or f.id in NO_PROOFREAD:
+        return False
+    if f.type not in ("text", "textarea"):
+        return False
+    if f.pii or f.charset or f.is_date:
+        return False
+    if entry.get("empty"):
+        return False
+    if (entry.get("confidence") or 0.0) < PROOFREAD_MIN_CONFIDENCE:
+        return False
+    return len((entry.get("value") or "").strip()) >= proofread.PROOF_MIN_LENGTH
+
+
 def _llm_worth_asking(entry) -> bool:
     """LLM に聞く価値がある欄か。
 
@@ -303,7 +345,8 @@ def extract_record(paths: List[str],
                    read_labels: bool = True,
                    use_llm: Optional[bool] = None,
                    llm_model: Optional[str] = None,
-                   llm_budget: int = 8) -> Record:
+                   llm_budget: int = 8,
+                   proof_budget: int = 0) -> Record:
     """複数の入力ファイルから1件のレコードを読み取る。
 
     PDF は複数ページ、画像・カメラ撮影は1ページずつ渡されることを想定し、
@@ -321,11 +364,25 @@ def extract_record(paths: List[str],
     want_llm = llm_mod.available() if use_llm is None else bool(use_llm)
     assist = llm_mod.get_assist(want_llm, llm_model)
     llm_left = llm_budget
+    # 読み崩れの校正は別枠で数える。候補出しと同じ枠にすると、
+    # 先に候補出しで使い切って肝心の校正が回らない。
+    #
+    # **既定は 0（校正しない）。** 実測で一度も良くならなかったため
+    # （proofread.py の説明と開発メモ 7.9 を参照）。
+    # 使うときは --proof-budget で明示する
+    proof_left = proof_budget
+    can_proofread = bool(
+        assist and assist.available
+        and not proofread.too_small_for_proofreading(getattr(assist, "model_path", "")))
 
     src_pages: List[imaging.SourcePage] = []
     import datetime as _dt
     rec = Record(ocr_engine=ocr_engine.name,
                  read_at=_dt.datetime.now().astimezone().isoformat())
+    if assist and assist.available and not can_proofread:
+        rec.warnings.append(
+            "LLMモデルが小さいため、文章の校正は行いませんでした"
+            "（実測で直らないうえに壊すため。3B以上のモデルを使ってください）")
     if use_llm and assist is None:
         rec.warnings.append(
             "LLM候補は使えません（llama-cpp-python とGGUFモデルを用意してください）")
@@ -544,9 +601,11 @@ def extract_record(paths: List[str],
                     entry["confidence"] = round(entry["confidence"] * 0.6, 3)
                     _add_note(entry, pr.note)
 
-                # 自由記述はLLMに校正させ、結果は候補として並べる（自動採用はしない）
-                if assist and llm_left > 0 and multiline and len(entry["value"]) >= 20:
-                    llm_left -= 1
+                # 読み崩れをLLMに直させる。**自由記述の欄すべてが対象。**
+                # 以前は「複数行かつ20文字以上」に限っていたが、
+                # 「膝の屈伸は落痛の範囲内て」のような短い欄こそ直したかった
+                if proof_left > 0 and _wants_proofread(f, entry, can_proofread):
+                    proof_left -= 1
                     lp = proofread.proofread_with_llm(assist, entry["value"], f.label)
                     if lp:
                         entry.setdefault("candidates", []).insert(

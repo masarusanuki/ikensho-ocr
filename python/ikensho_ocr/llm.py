@@ -42,10 +42,17 @@ MIN_OCR_LENGTH = 3
 
 # 万一「思考」を出すモデルが指定された場合に備えて取り除く
 THINK_RE = re.compile(r"<think>.*?</think>", re.S)
-# 思考モードを持たないモデルを優先し、その中では軽いものを先に選ぶ。
-# この機能は「候補を出すだけ」なので、精度より処理時間を優先する。
-# より正確な大きいモデルを使いたい場合は --llm-model で明示する。
-PREFERRED = ("qwen2.5-1.5b", "qwen2.5-3b", "qwen3-1.7b", "instruct-2507", "instruct")
+# 思考モードを持たないモデルを優先する。**大きさの順は実測で決めた。**
+# 読み崩れの校正（proofread.py）で10件を測ると:
+#
+#   qwen2.5-1.5b   89.1% → 89.1%（直らず、2件を壊した。氏名まで書き換えた）
+#   qwen2.5-3b     89.1% → 95.0%（1件だけ言い回しが変わった）
+#   Qwen3-4B       89.1% → 95.1%（壊した件 0）
+#
+# 1.5B 級は校正に使えない。小さいモデルしか無い環境では校正を飛ばす
+# （`proofread.too_small_for_proofreading` を参照）。
+PREFERRED = ("instruct-2507", "qwen3-4b", "qwen2.5-3b", "qwen2.5-1.5b",
+             "qwen3-1.7b", "instruct")
 
 
 def strip_thinking(text: str) -> str:

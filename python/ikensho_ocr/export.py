@@ -307,6 +307,8 @@ MD_LOW = 0.80
 MD_MARK = "⚠"
 # 空欄であることを、行の抜けと取り違えられないようにする
 MD_EMPTY = "（空欄）"
+# LLM が読み崩れを直した欄。**直したことを隠さない**
+MD_LLM = "✎"
 
 
 def _md_cell(value: Any) -> str:
@@ -323,9 +325,11 @@ def _md_cell(value: Any) -> str:
 def _md_level(entry: Dict[str, Any]) -> str:
     lv = _LEVEL_JA.get(entry.get("level"), entry.get("level") or "")
     conf = entry.get("confidence")
+    mark = MD_LLM if entry.get("llm_applied") else ""
     if conf is None:
-        return lv
-    mark = MD_MARK if (conf < MD_LOW and entry.get("level") not in ("edited", "done")) else ""
+        return f"{lv}{mark}".strip()
+    if conf < MD_LOW and entry.get("level") not in ("edited", "done"):
+        mark = MD_MARK + mark
     return f"{lv} {conf:.2f}{mark}".strip()
 
 
@@ -357,7 +361,8 @@ def markdown_text(rec, schema: Schema) -> str:
     add("")
     add("これは紙の主治医意見書を OCR で読み取った結果です。"
         "**読み取りには誤りが含まれます。**")
-    add(f"確信度が {MD_LOW:.2f} 未満の欄には {MD_MARK} を付けてあります。"
+    add(f"確信度が {MD_LOW:.2f} 未満の欄には {MD_MARK} を、"
+        f"読み崩れをLLMが直した欄には {MD_LLM} を付けてあります。"
         "原本と照らして確かめてください。")
     add("")
     add(f"- 様式: {rec.template_id or '不明'}")

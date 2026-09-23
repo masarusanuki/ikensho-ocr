@@ -69,7 +69,8 @@ def cmd_extract(args):
                              anonymized=args.anonymized,
                              read_labels=args.labels,
                              use_llm=args.llm, llm_model=args.llm_model,
-                             llm_budget=args.llm_budget)
+                             llm_budget=args.llm_budget,
+                             proof_budget=args.proof_budget)
         for w in rec.warnings:
             print(f"      ! {w}", file=sys.stderr)
         records.append(rec)
@@ -162,6 +163,10 @@ def build_parser():
                    help="小型LLMで読み取り候補を提示する（既定: 使える環境なら自動で有効）")
     e.add_argument("--no-llm", dest="llm", action="store_false",
                    help="LLMによる候補提示を使わない（最も速い）")
+    e.add_argument("--proof-budget", dest="proof_budget", type=int, default=0,
+                   help="読み崩れの文章をLLMに直させる回数の上限（1通あたり）。"
+                        "**既定は0（使わない）。** 実測で一度も精度が上がらず、"
+                        "書かれていない文を作ることがあったため（開発メモ 7.9）")
     e.add_argument("--llm-budget", type=int, default=8,
                    help="1件あたりのLLM呼び出し上限（既定8）")
     e.add_argument("--llm-model", help="GGUFモデルのパス（既定: models/ 内の .gguf）")
