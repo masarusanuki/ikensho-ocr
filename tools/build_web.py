@@ -56,7 +56,7 @@ def main():
         src = os.path.join(ROOT, doc)
         if os.path.exists(src):
             shutil.copy2(src, os.path.join(data, doc))
-    for doc in ("DEVELOPER.md", "INSTALL.md"):
+    for doc in ("DEVELOPER.md", "INSTALL.md", "CONCERNS.md"):
         src = os.path.join(ROOT, "docs", doc)
         if os.path.exists(src):
             shutil.copy2(src, os.path.join(data, doc))

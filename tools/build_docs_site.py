@@ -17,6 +17,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS = [
     ("index.html",     "README.md",          "使い方",       "何ができるか、画面の流れ、出力形式"),
     ("developer.html", "docs/DEVELOPER.md",  "技術者向け",   "構成、全コマンド、新しい様式の追加手順"),
+    ("concerns.html",  "docs/CONCERNS.md",   "懸念事項",     "精度の限界、政府系クラウド、導入前に決めること"),
     ("devnotes.html",  "DEVNOTES.md",        "開発メモ",     "設計の経緯、試して駄目だった方法、既知の限界"),
     ("install.html",   "docs/INSTALL.md",    "インストール", "Rocky / Ubuntu / macOS / Windows / Docker"),
 ]
@@ -25,6 +26,8 @@ DOCS = [
 EXTRA = [
     ("主治医意見書読み取り_概要.pptx", "docs/主治医意見書読み取り_概要.pptx",
      "概要スライド", "PowerPoint。構成・ベンチマーク・記録"),
+    ("主治医意見書読み取り_経過と精度.pptx", "docs/主治医意見書読み取り_経過と精度.pptx",
+     "経過と精度", "PowerPoint。会議で映す用に字を大きくした短い版"),
 ]
 
 
