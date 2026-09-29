@@ -107,6 +107,62 @@ def group_rows(boxes: List[dict]) -> List[List[dict]]:
     return rows
 
 
+# --- 読んだ言葉の使い回し -------------------------------------------------
+#
+# **チェック欄の後ろの言葉は印刷されたもの**なので、同じ様式なら書類ごとに
+# 変わらない。1通目で読んだものを使い回せば、2通目以降はただになる。
+#
+# 実測（1通42.7秒の内訳）:
+#   PP-OCR でのラベル読み  16.5秒（39%）
+#   NDLOCR でのページ読み  12.6秒（30%）
+#   文字欄の読み           12.3秒（29%）
+#   チェック欄の判定        0.1秒
+#
+# **ラベルの読みは出力の値を変えない。** 値は「管理画面で直した言葉 > 定義の
+# 言葉」で決まり、読みは食い違いの合図にしか使わない（`resolve` を参照）。
+# だから使い回して外したとしても、壊れるのは合図だけで値は壊れない。
+#
+# 1回の実行の中で、同じ様式の別の Word 版が混ざっていると、
+# 最初に読んだ方の言葉で合図を出すことになる。混ぜて処理するときは
+# `clear_cache()` するか、`--no-label-cache` で切ること。
+_CACHE: Dict[str, Dict[str, dict]] = {}
+_CACHE_ON = True
+
+
+def cache_enabled(on: bool) -> None:
+    """読んだ言葉の使い回しを切り替える。"""
+    global _CACHE_ON
+    _CACHE_ON = bool(on)
+
+
+def clear_cache() -> None:
+    _CACHE.clear()
+    _DRIFT.clear()
+
+
+def cached(key: str) -> Dict[str, dict]:
+    """その様式・ページで、これまでに読めた言葉。"""
+    return _CACHE.get(key, {}) if _CACHE_ON else {}
+
+
+_DRIFT: Dict[str, list] = {}
+
+
+def cached_drift(key: str) -> list:
+    return list(_DRIFT.get(key, [])) if _CACHE_ON else []
+
+
+def remember_drift(key: str, notes: list) -> None:
+    if _CACHE_ON:
+        _DRIFT[key] = list(notes)
+
+
+def remember(key: str, words: Dict[str, dict]) -> None:
+    """読めた言葉を覚える。**足していく**（枠は書類ごとに違うものに印が付く）。"""
+    if _CACHE_ON and words:
+        _CACHE.setdefault(key, {}).update(words)
+
+
 def read_labels_ndl(warped: np.ndarray, boxes: List[dict],
                     reader=None) -> Dict[str, str]:
     """NDLOCR が読んだ行から、枠ごとの言葉を取り出す。

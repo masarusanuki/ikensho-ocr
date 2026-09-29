@@ -322,6 +322,10 @@ def _resolve_labels(box_values: Dict[str, dict], schema: Schema,
     return out
 
 
+class _Cached(Exception):
+    """覚えていたので読み直さなかった、という合図。"""
+
+
 def _page_reader(warped: np.ndarray):
     """ページを文章として読む読み手。モデルが無い環境では None。"""
     try:
@@ -439,7 +443,23 @@ def extract_record(paths: List[str],
             # 出力に出るのは印の付いた枠の言葉だけのため。
             # 様式全体の言葉は管理画面から読み直せる。
             want = {(r.field, r.opt) for r in page_readings if r.checked}
+            # **同じ様式なら、印刷された言葉は書類ごとに変わらない。**
+            # 1通目で読んだものを使い回す（labels.py の説明を参照）。
+            # 印の付く枠は書類ごとに違うので、覚えた枠だけ省く
+            lkey = f"{rec.template_id}.p{page_index}"
+            known = labels_mod.cached(lkey)
+            fresh = {(f, o) for (f, o) in want if f"{f}.{o}" not in known}
+            if known and not fresh:
+                label_reads.update({k: v for k, v in known.items()
+                                    if (k.rsplit(".", 1)[0],
+                                        int(k.rsplit(".", 1)[1])) in want})
+                drift.extend(labels_mod.cached_drift(lkey))
+                continue_labels = False
+            else:
+                continue_labels = True
             try:
+                if not continue_labels:
+                    raise _Cached()
                 by_ppocr = labels_mod.read_labels(warped, tp.boxes, ocr_engine,
                                                   only=want)
                 # 2つめの読み。NDLOCR は行ごと（印＋言葉）をまとめて読むので、
@@ -449,12 +469,18 @@ def extract_record(paths: List[str],
                 # 様式の見張り（pagequest）で使い回す
                 reader = _page_reader(warped)
                 by_ndl = labels_mod.read_labels_ndl(warped, tp.boxes, reader=reader)
-                label_reads.update(labels_mod.combine(by_ppocr, by_ndl))
+                got = labels_mod.combine(by_ppocr, by_ndl)
+                label_reads.update(got)
+                labels_mod.remember(lkey, got)
                 if reader is not None:
                     # 質問文はそのままでも選択肢が変わることがある。
                     # 実物の行と定義を突き合わせて、食い違いを報告する
-                    drift.extend(pagequest.drift_notes(
-                        pagequest.check(reader, tp.boxes, schema), schema))
+                    notes = pagequest.drift_notes(
+                        pagequest.check(reader, tp.boxes, schema), schema)
+                    drift.extend(notes)
+                    labels_mod.remember_drift(lkey, notes)
+            except _Cached:
+                pass
             except Exception as exc:      # ラベルが読めなくても本体は続ける
                 rec.warnings.append(f"チェック欄の言葉の読み取りに失敗しました（{exc}）")
         # 書き込みだけを残した差分。欄ごとに作り直すと重いので1ページ1回にする

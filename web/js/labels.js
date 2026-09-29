@@ -8,6 +8,26 @@
  */
 (function (global) {
   'use strict';
+  // --- 読んだ言葉の使い回し ---------------------------------------------
+  //
+  // **チェック欄の後ろの言葉は印刷されたもの**なので、同じ様式なら書類ごとに
+  // 変わらない。1通目で読んだものを使い回すと、2通目以降はただになる。
+  // Python 版 labels.py と対にして直すこと。
+  //
+  // 使い回してよい根拠は、**ラベルの読みが出力の値を変えない**こと。
+  // 値は「管理画面で直した言葉 > 定義の言葉」で決まり、
+  // 読みは食い違いの合図にしか使わない（resolve を参照）。
+  const CACHE = {};
+  let CACHE_ON = true;
+
+  function cacheEnabled(on) { CACHE_ON = !!on; }
+  function clearCache() { for (const k of Object.keys(CACHE)) delete CACHE[k]; }
+  function cached(key) { return CACHE_ON ? (CACHE[key] || {}) : {}; }
+  function remember(key, words) {
+    if (!CACHE_ON || !words) return;
+    CACHE[key] = Object.assign(CACHE[key] || {}, words);
+  }
+
 
   const LABEL_MAX_WIDTH = 9.0;   // 枠の右にどこまでを「その枠の言葉」とみなすか
   const LABEL_GAP = 0.25;        // 枠のすぐ右の空き（枠幅比）
@@ -219,5 +239,6 @@
   }
 
   global.IkenshoLabels = { normalize, labelRect, groupRows, readLabels, similarity, resolve,
-                           applyWords, CHANGED_MAX_SIM, CHANGED_MIN_LEN };
+                           applyWords, CHANGED_MAX_SIM, CHANGED_MIN_LEN,
+                          cacheEnabled, clearCache, cached, remember };
 })(window);

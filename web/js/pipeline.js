@@ -423,9 +423,20 @@
                 b => b.field === r.field && b.opt === r.opt))
               .map(r => `${r.field}.${r.opt}`));
             if (!only.size) continue;
+            // **同じ様式なら、印刷された言葉は書類ごとに変わらない。**
+            // 1通目で読んだものを使い回す（labels.js の説明を参照）。
+            // 印の付く枠は書類ごとに違うので、覚えた枠だけ省く
+            const lkey = `${templateId}.p${idx}`;
+            const known = L.cached(lkey);
+            const fresh = [...only].filter(k => !(k in known));
+            if (!fresh.length) {
+              for (const k of only) if (k in known) labelReads[k] = known[k];
+              continue;
+            }
             try {
-              Object.assign(labelReads,
-                await L.readLabels(w.mat, w.tplPage.boxes, this.pp, only));
+              const got = await L.readLabels(w.mat, w.tplPage.boxes, this.pp, only);
+              Object.assign(labelReads, got);
+              L.remember(lkey, got);
             } catch (e) {
               warnings.push('チェック欄の言葉の読み取りに失敗しました（' + e.message + '）');
             }
