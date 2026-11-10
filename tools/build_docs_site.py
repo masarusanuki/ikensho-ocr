@@ -48,7 +48,14 @@ def inline(s):
     return re.sub(r"\[([^\]]+)\]\(([^)]+)\)", link, s)
 
 
+# 自動生成の範囲を示す目印（<!-- CHANGELOG_START --> など）。
+# 原稿の中では要るが、読む人には見せない
+HTML_COMMENT = re.compile(r"^\s*<!--.*-->\s*$")
+
+
 def render(md):
+    # 1行まるごとの HTML コメントは落とす。残すと目印がそのまま文字で出る
+    md = "\n".join(l for l in md.split("\n") if not HTML_COMMENT.match(l))
     out, headings = [], []
     in_code = False
     list_type = None
