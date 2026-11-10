@@ -128,6 +128,17 @@ def is_exact(fid, want, got):
     return norm_for(fid, want) == norm_for(fid, got)
 
 
+# 「おおむね読めている」とみなす文字の近さ。
+# **完全一致だけで測ると、実際の使い勝手より厳しく出る。**
+# 1文字違いの「心房細勣」も、確認画面で直すのは一瞬なのに 0 点になる。
+# 原本と照らす運用が前提なので、**直せる程度の崩れ**は別に数える。
+ROUGH_MIN = 0.80
+
+
+def is_rough(fid, want, got):
+    return ratio(fid, want, got) >= ROUGH_MIN
+
+
 def _fields_of(schema, fid):
     """項目idは1つとは限らない（正解データの1項目が様式の複数欄に分かれる）。"""
     ids = fid if isinstance(fid, (list, tuple)) else (fid,)
@@ -280,10 +291,11 @@ def main():
                 print(f"  {i}/{len(ids)}（{time.time() - t0:.0f}秒）", flush=True)
 
     # 集計
-    total = collections.defaultdict(lambda: [0.0, 0, 0])      # 文字率, 件数, 完全一致
+    # [文字率, 件数, 完全一致, おおむね一致]
+    total = collections.defaultdict(lambda: [0.0, 0, 0, 0])
     by_axis = collections.defaultdict(lambda: collections.defaultdict(
-        lambda: [0.0, 0, 0]))
-    per_field = collections.defaultdict(lambda: [0.0, 0, 0])
+        lambda: [0.0, 0, 0, 0]))
+    per_field = collections.defaultdict(lambda: [0.0, 0, 0, 0])
     misses = []
     errs = 0
     box_total = box_ok = box_miss = box_false = 0
@@ -303,12 +315,14 @@ def main():
             mine = joined_value(got, fid)
             r = ratio(fid, expect, mine)
             exact = int(is_exact(fid, expect, mine))
+            rough = int(is_rough(fid, expect, mine))
             kind = ("文字" if jname in TEXT_MAP else "チェック")
             key = "+".join(fid) if isinstance(fid, (list, tuple)) else fid
             for bucket in (total[kind], by_axis[kind][axis], per_field[key]):
                 bucket[0] += r
                 bucket[1] += 1
                 bucket[2] += exact
+                bucket[3] += rough
             if kind == "チェック":
                 pairs = _fields_of(schema_all, fid)
                 exp = expected_opts(pairs, expect) if pairs else None
@@ -338,6 +352,7 @@ def main():
         if not s[1]:
             continue
         print(f"  {kind:6s} 正解率 {100 * s[0] / s[1]:6.2f}%  "
+              f"おおむね一致 {100 * s[3] / s[1]:6.2f}%  "
               f"完全一致 {100 * s[2] / s[1]:6.2f}%  （{s[1]} 件）")
 
     print(f"\n■ {args.by} ごと")
@@ -352,10 +367,11 @@ def main():
         print(row)
 
     print("\n■ 欄ごと（悪い順・上位18）")
-    rows = sorted(((100 * v[0] / v[1], 100 * v[2] / v[1], k, v[1])
+    rows = sorted(((100 * v[0] / v[1], 100 * v[3] / v[1], 100 * v[2] / v[1], k, v[1])
                    for k, v in per_field.items() if v[1]), key=lambda x: x[0])
-    for acc, exact, fid, n in rows[:18]:
-        print(f"  {fid:26s} 正解率 {acc:6.2f}%  完全一致 {exact:6.2f}%  ({n}件)")
+    for acc, rough, exact, fid, n in rows[:18]:
+        print(f"  {fid:26s} 正解率 {acc:6.2f}%  おおむね {rough:6.2f}%  "
+              f"完全一致 {exact:6.2f}%  ({n}件)")
 
     if misses:
         print("\n■ 外した例")
