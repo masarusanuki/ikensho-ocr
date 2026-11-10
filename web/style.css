@@ -134,6 +134,10 @@ progress { width: 100%; height: 8px; }
 .imagepane .frame {
   position: relative; background: #333; border-radius: 10px;
   border: 1px solid var(--border); cursor: crosshair;
+  /* 該当箇所の枠は 9999px の影で周りを暗くする（下の .marker）。
+     ここで切っておかないと、**その暗幕が画面全体を覆って真っ暗になる**。
+     画像がまだ読めていないとき・画面を切り替えた直後に起きていた。 */
+  overflow: hidden;
 }
 .imagepane img { display: block; width: 100%; }
 /* 画像側にも右と同じ判定色を付ける。どこが要確認か一目で分かるようにする。 */
@@ -167,8 +171,11 @@ progress { width: 100%; height: 8px; }
 }
 .imagepane .marker {
   position: absolute; border: 2px solid #ff9f0a; border-radius: 3px;
+  /* 周りを暗くして該当箇所を目立たせる。.frame で切られる前提 */
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, .42); pointer-events: none; transition: .18s;
 }
+/* 画像が読めていないあいだは暗幕を出さない（真っ暗に見えるため） */
+.imagepane .frame:not(.ready) .marker { box-shadow: none; }
 /* 拡大表示。長い欄は縮めずに、横スクロールで全文を追えるようにする。
    スクロールバーを常に出し、掴んで動かせるようにしないと、
    横に続いていること自体に気づけない。 */

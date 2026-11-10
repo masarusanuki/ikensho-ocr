@@ -156,8 +156,16 @@
         ? `元画像（${n}ページ目）`
         : (dropped ? '元画像は破棄しました（読み取った内容は残っています）'
                    : `${n}ページ目は取り込まれていません`);
+      // 画像が読めるまで ready を外しておく。
+      // **付いていないあいだは該当箇所の暗幕を出さない**
+      // （読めていない画像の上に暗幕だけが残ると、画面が真っ暗に見える）
+      const frame = this.imgEl.parentElement;
+      if (frame) frame.classList.remove('ready');
+      this.imgEl.onload = () => { if (frame) frame.classList.add('ready'); };
+      this.imgEl.onerror = () => { if (frame) frame.classList.remove('ready'); };
       this.imgEl.src = src || '';
       this.imgEl.style.visibility = src ? 'visible' : 'hidden';
+      if (!src && frame) frame.classList.remove('ready');
       this.marker.hidden = true;
       this.renderHotspots();
       this.updateDropButton();
