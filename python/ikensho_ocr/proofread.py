@@ -83,6 +83,8 @@ WORD_FIXES: Dict[str, str] = {
 
 # 明らかにゴミな文字（OCR が罫線や汚れを拾ったもの）
 NOISE_CHARS = "|｜!！\"'`^~*#$%&@={}<>\\"
+# ただし**数字のすぐ後ろ**なら単位なので残す（`HbA1c 7.2%` の % を落とさない）
+KEEP_AFTER_DIGIT = "%"
 
 # 日本語として妥当と認める文字
 VALID_RE = re.compile(rf"[{JP}0-9０-９a-zA-Zａ-ｚＡ-Ｚ\s、。・（）()「」『』〔〕：:；;／/＋+－\-.,％%℃㎎㎏㎜㎝ー～〜]")
@@ -111,8 +113,12 @@ def _strip_noise(text: str) -> Tuple[str, List[Correction]]:
     """罫線や汚れ由来の記号を落とす。"""
     fixes = []
     out = []
-    for ch in text:
+    for i, ch in enumerate(text):
         if ch in NOISE_CHARS:
+            prev = text[i - 1] if i else ""
+            if ch in KEEP_AFTER_DIGIT and prev.isdigit():
+                out.append(ch)          # 単位なので残す
+                continue
             fixes.append(Correction(ch, "", "記号として意味をなさないため削除"))
             continue
         out.append(ch)
@@ -221,6 +227,44 @@ def _fix_katakana_runs(text: str) -> Tuple[str, List[Correction]]:
     return "".join(out), fixes
 
 
+# --- 単位の崩れ -----------------------------------------------------------
+#
+# **数字のすぐ後ろ**に来る単位は、崩れ方が決まっている。
+# `1000ml` が `1000m1`、`20mg` が `20rng` のように読まれる。
+# 数字を手がかりにすると、文脈なしで安全に直せる。
+#
+# 数字が無いところでは触らない（「m1」が型番や記号のこともあるため）。
+UNIT_FIXES = [
+    # (誤り, 正しい)。長いものから当てる
+    ("mmHq", "mmHg"), ("rnmHg", "mmHg"), ("mrnHg", "mmHg"), ("rnrnHg", "mmHg"),
+    ("mmHa", "mmHg"), ("rng", "mg"), ("rng", "mg"), ("rnl", "mL"), ("rnL", "mL"),
+    ("m1", "mL"), ("mI", "mL"), ("ml", "mL"), ("rnm", "mm"), ("crn", "cm"),
+    ("kq", "kg"), ("kgs", "kg"), ("dI", "dL"), ("dl", "dL"),
+    ("単佼", "単位"), ("単佐", "単位"),
+]
+# 数字の直後に来る単位の並び。ここに挙げた形だけを直す
+_UNIT_RE = re.compile(
+    r"(?<=[0-9０-９])\s*("
+    + "|".join(re.escape(w) for w, _ in sorted(UNIT_FIXES, key=lambda x: -len(x[0])))
+    + r")")
+_UNIT_MAP = {w: r for w, r in UNIT_FIXES}
+
+
+def fix_units(text: str) -> Tuple[str, List[Correction]]:
+    """数字の後ろに来る単位の崩れを直す。"""
+    fixes: List[Correction] = []
+
+    def _sub(m):
+        wrong = m.group(1)
+        right = _UNIT_MAP[wrong]
+        if wrong == right:
+            return m.group(0)
+        fixes.append(Correction(wrong, right, "数字の後ろの単位の読み崩れ"))
+        return m.group(0).replace(wrong, right)
+
+    return _UNIT_RE.sub(_sub, text or ""), fixes
+
+
 def japanese_score(text: str) -> float:
     """日本語として成立している度合い 0..1。
 
@@ -282,6 +326,8 @@ def proofread_text(text: str, multiline: bool = False) -> ProofResult:
     text, f = _apply_context_fixes(text)
     corrections += f
     text, f = _fix_katakana_runs(text)
+    corrections += f
+    text, f = fix_units(text)
     corrections += f
     text, f = _apply_word_fixes(text)
     corrections += f

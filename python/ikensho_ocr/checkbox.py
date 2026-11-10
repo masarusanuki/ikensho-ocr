@@ -401,6 +401,7 @@ def resolve_groups(readings: List[BoxReading], schema) -> Dict[str, dict]:
             r = rs[0]
             result[fid] = dict(value=r.checked, confidence=r.confidence,
                                detail=[dict(opt=r.opt, fill=r.fill, halo=r.halo, mark=r.mark,
+                                            method=r.method,
                                             ink=r.ink, score=r.score,
                                             checked=r.checked, circled=r.circled,
                                             struck=r.struck)])
@@ -420,6 +421,7 @@ def resolve_groups(readings: List[BoxReading], schema) -> Dict[str, dict]:
                 conf = min(top.confidence, round(min(1.0, 0.35 + margin * 0.65), 3))
             result[fid] = dict(value=value, confidence=conf,
                                detail=[dict(opt=r.opt, fill=r.fill, halo=r.halo, mark=r.mark,
+                                            method=r.method,
                                             ink=r.ink, score=r.score,
                                             checked=r.checked, circled=r.circled,
                                             struck=r.struck)
@@ -432,6 +434,7 @@ def resolve_groups(readings: List[BoxReading], schema) -> Dict[str, dict]:
         conf = round(min((r.confidence for r in rs), default=0.0), 3)
         result[fid] = dict(value=picked, confidence=conf,
                            detail=[dict(opt=r.opt, fill=r.fill, halo=r.halo, mark=r.mark,
+                                            method=r.method,
                                         ink=r.ink, score=r.score,
                                         checked=r.checked, circled=r.circled,
                                         struck=r.struck)

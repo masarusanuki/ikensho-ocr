@@ -129,6 +129,27 @@
     return rest.replace(DROPPABLE, '').length > 0;
   }
 
+  // --- 形の似た字を同じものとして見る -----------------------------------
+  // 手書きの OCR は**部首を落とす・入れ替える**（慢→曼、肺→柿、塞→業）。
+  // 形の似た字をひとまとめにしてから比べると、崩れた病名も辞書に当たる。
+  // 組は dict/ocr_confusions.json。Python 版 dictionaries.canonical と対。
+  let CANON = {};
+  const CANON_MIN_LEN = 6;
+
+  function setConfusions(raw) {
+    const parent = {};
+    const find = c => { while (parent[c] !== undefined && parent[c] !== c) c = parent[c]; return c; };
+    for (const [a, b] of [...(raw.pairs || []), ...(raw.kana_pairs || [])]) {
+      if (parent[a] === undefined) parent[a] = a;
+      if (parent[b] === undefined) parent[b] = b;
+      const ra = find(a), rb = find(b);
+      if (ra !== rb) parent[ra] = rb;
+    }
+    CANON = {};
+    for (const c of Object.keys(parent)) CANON[c] = find(c);
+  }
+  const canonical = s => [...(s || '')].map(c => CANON[c] || c).join('');
+
   function similarity(a, b) {
     const na = normalize(a), nb = normalize(b);
     if (!na || !nb) return 0;
@@ -139,7 +160,17 @@
     let dice = (ga.size + gb.size) ? (2 * inter) / (ga.size + gb.size) : 0;
     // 辞書語が読み取り結果に含まれている場合だけ加点する。逆は加点しない。
     if (na.includes(nb)) dice = Math.max(dice, 0.55 + 0.35 * nb.length / Math.max(na.length, 1));
-    return Math.max(dice, partialSimilarity(na, nb));
+    let best = Math.max(dice, partialSimilarity(na, nb));
+    // 形の似た字をそろえてから比べ直す（そろえて一致、または長い語で1字違い）
+    if (best < 0.95) {
+      const ca = canonical(na), cb = canonical(nb);
+      if (ca && ca === cb) best = Math.max(best, 0.90);
+      else if (Math.min(ca.length, cb.length) >= CANON_MIN_LEN &&
+               Math.abs(ca.length - cb.length) <= 1 && levenshtein(ca, cb) <= 1) {
+        best = Math.max(best, 0.85);
+      }
+    }
+    return Math.round(best * 10000) / 10000;
   }
 
   // OCR がよく取り違える字の訂正。前後の文字種を見て「こちらしかあり得ない」場合だけ直す。
@@ -190,6 +221,116 @@
    * その中に本物のカタカナが含まれていればまとめて直す。
    * 本物のカタカナが1つも無い並び（「二千八百」など）は触らない。
    */
+  // --- 単位の崩れ ---------------------------------------------------------
+  //
+  // **数字のすぐ後ろ**に来る単位は、崩れ方が決まっている。
+  // `1000ml` が `1000m1`、`20mg` が `20rng` のように読まれる。
+  // 数字を手がかりにすると、文脈なしで安全に直せる。
+  // 数字が無いところでは触らない（「m1」が型番のこともあるため）。
+  // Python 版 proofread.UNIT_FIXES と対にして直すこと。
+  const UNIT_FIXES = {
+    'mmHq':'mmHg','rnmHg':'mmHg','mrnHg':'mmHg','rnrnHg':'mmHg','mmHa':'mmHg',
+    'rng':'mg','rnl':'mL','rnL':'mL','m1':'mL','mI':'mL','ml':'mL',
+    'rnm':'mm','crn':'cm','kq':'kg','kgs':'kg','dI':'dL','dl':'dL',
+    '単佼':'単位','単佐':'単位',
+  };
+  const UNIT_RE = new RegExp(
+    '(?<=[0-9０-９])\\s*(' +
+    Object.keys(UNIT_FIXES).sort((a, b) => b.length - a.length)
+      .map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
+
+  // --- 住所の先頭の都道府県をそろえる ------------------------------------
+  //
+  // 住所欄の先頭には必ず都道府県が入る。読み崩れても47個のどれかに寄せられる。
+  // **都道府県の名前だけで決めてはいけない。**「天城県」は茨城県とも宮城県とも
+  // 1文字違いで決まらない。後ろに続く市区町村から逆に決めるとほぼ一意になる。
+  // Python 版 dictionaries.snap_prefecture と対にして直すこと。
+  const PREF_HEAD = /^\s*(.{2,4}?[都道府県])/;
+  const CITY_HEAD = /^(.{1,8}?[市区町村])/;
+  const PREF_MIN = 0.50, PREF_MARGIN = 0.08;
+  // 地名の異体字。「龍ケ崎市」は「竜ケ崎市」「龍ヶ崎市」とも書かれる
+  const PLACE_VARIANTS = {
+    '竜':'龍','ヶ':'ケ','ガ':'ケ','が':'ケ','之':'ノ','櫻':'桜','澤':'沢',
+    '瀧':'滝','藝':'芸','嶋':'島','嶌':'島','濱':'浜','邊':'辺','邉':'辺',
+    '齋':'斎','齊':'斉','淺':'浅','眞':'真','德':'徳','祿':'禄','廣':'広',
+    '區':'区','縣':'県',
+  };
+  const canonPlace = s => [...(s || '')].map(c => PLACE_VARIANTS[c] || c).join('');
+
+  /** 住所の先頭の都道府県を一覧のどれかに寄せる。[直した住所, 説明] を返す。 */
+  function snapPrefecture(text, dicts) {
+    const t = (text || '').trim();
+    if (!t || !dicts) return [text, null];
+    const prefs = dicts.lexicons && dicts.lexicons.prefectures;
+    if (!prefs) return [text, null];
+    const names = prefs.entries.map(e => e.name);
+    const m = PREF_HEAD.exec(t);
+    if (!m) return [text, null];
+    const head = m[1], rest = t.slice(m[0].length);
+    if (names.includes(head)) return [text, null];
+
+    // (1) 後ろの市区町村から決める。**これがいちばん確か**
+    const towns = dicts.lexicons && dicts.lexicons.municipalities;
+    if (towns) {
+      const cm = CITY_HEAD.exec(rest);
+      if (cm) {
+        const city = canonPlace(cm[1]);
+        const hit = new Set(towns.entries
+          .filter(e => canonPlace(e.name) === city)
+          .map(e => e.pref).filter(Boolean));
+        if (hit.size === 1) {
+          const pref = [...hit][0];
+          if (pref !== head) {
+            return [pref + rest, `市区町村「${cm[1]}」から都道府県を直しました`];
+          }
+          return [text, null];
+        }
+      }
+    }
+    // (2) 名前の近さで寄せる。1位と2位が競ったら触らない
+    const scored = names.map(n => [similarity(head, n), n]).sort((a, b) => b[0] - a[0]);
+    if (!scored.length || scored[0][0] < PREF_MIN) return [text, null];
+    if (scored.length > 1 && scored[0][0] - scored[1][0] < PREF_MARGIN) return [text, null];
+    return [scored[0][1] + rest, `都道府県を一覧の「${scored[0][1]}」に寄せました`];
+  }
+
+  // --- 診断名を ICD10 の病名に寄せる --------------------------------------
+  // 読み崩れた診断名を ICD10 の分類名に置き換える。ただし**書かれていた修飾は
+  // 落とさない**（「右」「術後」「疑い」が消えると診療の意味が変わる）。
+  // Python 版 dictionaries.apply_icd_name と対にして直すこと。
+  const QUALIFY_PRE = ['右', '左', '両', '同'];
+  const QUALIFY_POST = ['術後', '後遺症', 'の疑い', '疑い', '増悪', '再発', 'の既往', '既往'];
+
+  // ICD の名前が読みよりこの割合より短いなら、**大まかな名前**とみなして置き換えない
+  // （「腰椎圧迫骨折」→「圧迫骨折」で部位が、「間質性肺炎」→「肺炎」で種類が消える）
+  const ICD_MIN_COVER = 0.75;
+
+  function applyIcdName(read, icdName) {
+    read = (read || '').trim();
+    const name = (icdName || '').trim();
+    if (!name) return read;
+    const pre = QUALIFY_PRE.find(q => read.startsWith(q)) || '';
+    const post = QUALIFY_POST.find(q => read.endsWith(q)) || '';
+    const core = read.slice(pre.length, post ? read.length - post.length : read.length);
+    if (core && name.length < core.length * ICD_MIN_COVER) return read;
+    let out = name;
+    if (pre && !out.startsWith(pre)) out = pre + out;
+    if (post && !out.endsWith(post)) out = out + post;
+    return out;
+  }
+
+  function fixUnits(text) {
+    const fixes = [];
+    const out = (text || '').replace(UNIT_RE, m => {
+      const wrong = m.trim();
+      const right = UNIT_FIXES[wrong];
+      if (!right || wrong === right) return m;
+      fixes.push({ before: wrong, after: right });
+      return m.replace(wrong, right);
+    });
+    return { text: out, fixes };
+  }
+
   function fixKatakanaRuns(text) {
     const fixes = [];
     let out = '', i = 0;
@@ -225,7 +366,11 @@
     const corrections = [];
     let out = '';
     for (const ch of text) {
-      if (NOISE.includes(ch)) { corrections.push([ch, '']); continue; }
+      if (NOISE.includes(ch)) {
+        // **数字のすぐ後ろ**なら単位なので残す（`HbA1c 7.2%` の % を落とさない）
+        if (ch === '%' && /[0-9]/.test(out.slice(-1))) { out += ch; continue; }
+        corrections.push([ch, '']); continue;
+      }
       out += ch;
     }
     out = out.replace(/[ 　]{2,}/g, ' ').replace(/^[\s.,、。・:：;；\-ー_]+/, '').trim();
@@ -235,6 +380,9 @@
     const runs = fixKatakanaRuns(out);
     out = runs.text;
     for (const f of runs.fixes) corrections.push([f.before, f.after]);
+    const units = fixUnits(out);
+    out = units.text;
+    for (const f of units.fixes) corrections.push([f.before, f.after]);
     // 機械で作ったぶん → 手書きのぶん の順に当てる（手書きを後に当てて優先させる）
     for (const table of [GENERATED_FIXES, WORD_FIXES]) {
       for (const [wrong, right] of Object.entries(table)) {
@@ -276,6 +424,11 @@
       const R = global.IkenshoResolveUrl || (u => u);
       const names = ['departments', 'diseases', 'body_sites', 'infections',
                      'clinic_suffix', 'prefectures', 'municipalities', 'boilerplate'];
+      // 形の似た字の組（照合で使う）
+      try {
+        const oc = await fetch(R(`${baseUrl}/ocr_confusions.json`)).then(r => r.json());
+        setConfusions(oc);
+      } catch (e) { /* 無くても動く */ }
       // 誤字表は形が違う（entries が語の対）ので、別に読む
       try {
         const wf = await fetch(R(`${baseUrl}/word_fixes.json`)).then(r => r.json());
@@ -457,6 +610,7 @@
   }
 
   global.IkenshoDicts = { Dictionaries, similarity, normalize, cleanOcr,
+                          snapPrefecture, applyIcdName, setConfusions, canonical,
                           setGeneratedFixes,
                           normalizeVariants, levenshtein, proofread, japaneseScore,
                           isShortening, fixDecimalPoint, stripCorporate };

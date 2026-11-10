@@ -9,7 +9,8 @@ import numpy as np
 
 from . import (align, anonymize, checkbox, dates as dates_mod, imaging,
                hospitals, labels as labels_mod, llm as llm_mod, ocr as ocr_mod,
-               pagequest, proofread, text_check, textbox)
+               pagequest, proofread, text_check, textbox, trace)
+from . import dictionaries as dicts_mod
 from .dictionaries import Dictionaries, DEFAULT_DICTIONARIES
 from .schema import Schema, load_schema
 from .templates import Template, load_templates
@@ -322,6 +323,29 @@ def _resolve_labels(box_values: Dict[str, dict], schema: Schema,
     return out
 
 
+# **文章の欄は NDLOCR で読む。** 94欄で読み比べた実測:
+#
+#   PP-OCR  37.70%
+#   NDLOCR  52.33%   ← PP が勝った欄は1件も無かった
+#
+# PP-OCR は欄の枠が狭いと、印刷ラベルまで巻き込んで読む
+# （「(ふりかなカトウサチコ請者加藤幸子」のようになる）。
+# NDLOCR はページ全体で行を見つけてから読むので、ここに強い。
+#
+# 一方、**数字だけの欄・かなの欄は PP-OCR のまま**にする。
+# NDLOCR は行を見つける作りなので、1〜2文字の小枠では1行も見つけられない。
+# かな欄（ふりがな）は**読み比べていない**ので、今のまま PP-OCR にしておく
+NDL_FIELDS_EXCLUDE_CHARSET = {"digits", "decimal", "phone", "postal",
+                              "date_digits", "kana"}
+
+
+def _wants_ndl(f) -> bool:
+    """この欄を NDLOCR で読むか。"""
+    if f.type not in ("text", "textarea") or f.is_date:
+        return False
+    return f.charset not in NDL_FIELDS_EXCLUDE_CHARSET
+
+
 class _Cached(Exception):
     """覚えていたので読み直さなかった、という合図。"""
 
@@ -436,6 +460,9 @@ def extract_record(paths: List[str],
         if tp is None:
             continue
         blank = tp.blank_image(tpl.base_dir)
+        # ページ全体を文章として読む手（NDLOCR）。
+        # 文章の欄の読みと、チェック欄の言葉の確かめの両方で使い回す
+        page_reader = _page_reader(warped) if ocr_engine.name != "none" else None
         page_readings = checkbox.read_boxes(warped, tp.boxes, blank)
         readings.extend(page_readings)
         if read_labels and ocr_engine.name != "none":
@@ -467,7 +494,7 @@ def extract_record(paths: List[str],
                 # （実測）ので、そこを食い違いの合図に使う
                 # ページを1回だけ文章として読み、ラベルの振り分けと
                 # 様式の見張り（pagequest）で使い回す
-                reader = _page_reader(warped)
+                reader = page_reader
                 by_ndl = labels_mod.read_labels_ndl(warped, tp.boxes, reader=reader)
                 got = labels_mod.combine(by_ppocr, by_ndl)
                 label_reads.update(got)
@@ -492,6 +519,12 @@ def extract_record(paths: List[str],
                 # 各枠に1〜2桁の数字しか入らないので、そのまま読むより格段に正確になる。
                 if f.is_date:
                     entry = _read_date_slots(warped, t)
+                    trace.add(entry, trace.CROP,
+                              f"{rec.template_id} の {tp.index}ページ目"
+                              "・年/月/日の小枠に分けた")
+                    trace.add(entry, trace.ENGINE,
+                              f"{ocr_engine.name}（数字だけを読む）",
+                              before="（画像）", after=entry.get("raw") or "")
                     _mark_provisional(entry, t)
                     text_results[f.id] = entry
                     continue
@@ -499,6 +532,14 @@ def extract_record(paths: List[str],
                     entry = _read_circle(
                         warped, t["rect"], t.get("options") or f.options or [],
                         always_pick=bool(t.get("always_pick") or f.always_pick))
+                    opts = t.get("options") or f.options or []
+                    trace.add(entry, trace.CROP,
+                              f"{rec.template_id} の {tp.index}ページ目")
+                    trace.add(entry, trace.MARK,
+                              f"丸で囲まれた区画を選ぶ（{'・'.join(map(str, opts))}）"
+                              + ("・必ずどれかを採る"
+                                 if (t.get("always_pick") or f.always_pick) else ""),
+                              before="（画像）", after=str(entry.get("value") or ""))
                     _mark_provisional(entry, t)
                     text_results[f.id] = entry
                     continue
@@ -506,16 +547,26 @@ def extract_record(paths: List[str],
                 # 印刷内容にぶつからない範囲で左へ広げてから読む
                 rect = textbox.widen_left(blank, t["rect"])
                 if not ocr_mod.has_ink(warped, rect):
-                    text_results[f.id] = dict(value="", confidence=0.95, raw="", empty=True,
-                                              candidates=[])
+                    blank_entry = dict(value="", confidence=0.95, raw="", empty=True,
+                                       candidates=[])
+                    trace.add(blank_entry, trace.CROP,
+                              f"{rec.template_id} の {tp.index}ページ目")
+                    trace.add(blank_entry, trace.MARK,
+                              "枠にインクが無いので読まなかった")
+                    text_results[f.id] = blank_entry
                     continue
                 # 白紙様式との差分で「書き込みが無い」と分かる欄は読まない。
                 # 読ませると罫線やカッコから文字を作ってしまう（実測で拾い読みが出た）
                 shape = text_check.written_shape(warped, blank, rect, mark)
                 if shape is not None and shape["density"] < text_check.EMPTY_DENSITY:
-                    text_results[f.id] = dict(
+                    blank_entry = dict(
                         value="", confidence=0.90, raw="", empty=True, candidates=[],
                         note="この欄に書き込みが見当たりません（印刷の罫線だけです）")
+                    trace.add(blank_entry, trace.CROP,
+                              f"{rec.template_id} の {tp.index}ページ目")
+                    trace.add(blank_entry, trace.MARK,
+                              "白紙様式との差分で、書き込みが無いと判断した")
+                    text_results[f.id] = blank_entry
                     continue
                 # 罫線・カッコ・単位を含めたまま読むと精度が落ちるので、
                 # 書き込みのある範囲に詰めてから認識に回す（検算には元の矩形を使う）。
@@ -553,13 +604,40 @@ def extract_record(paths: List[str],
                     entry = dict(value=corrected, confidence=round(conf, 3),
                                  raw=raw_text, candidates=cands, empty=False,
                                  engine=used)
+                    trace.add(entry, trace.CROP,
+                              f"{rec.template_id} の {tp.index}ページ目")
+                    trace.add(entry, trace.ENGINE, f"{used}（複数を比べて採用）",
+                              before="（画像）", after=raw_text)
                 else:
-                    res = ocr_engine.read(roi, multiline=multiline, charset=charset)
+                    res = None
+                    if page_reader is not None and _wants_ndl(f):
+                        # **文章の欄はページ全体の行から取る。**
+                        # 欄だけを切り出して読むと、印刷ラベルを巻き込む
+                        nd = page_reader.text_in(t["rect"], multiline=multiline,
+                                                 charset=charset, gray=warped)
+                        if nd.text.strip():
+                            res = nd
+                    if res is None:
+                        res = ocr_engine.read(roi, multiline=multiline,
+                                              charset=charset)
                     pr = _prepare(res.text)
                     corrected, conf, cands = dicts.correct(f, pr.text, res.confidence)
                     entry = dict(value=corrected, confidence=round(conf, 3),
                                  raw=res.text, candidates=cands, empty=False,
                                  engine=res.engine)
+                    trace.add(entry, trace.CROP,
+                              f"{rec.template_id} の {tp.index}ページ目")
+                    trace.add(entry, trace.ENGINE, res.engine,
+                              before="（画像）", after=res.text)
+                if pr.corrections:
+                    trace.add(entry, trace.RULE,
+                              "・".join(sorted({c.reason for c in pr.corrections}))[:60],
+                              before=entry.get("raw") or "", after=pr.text)
+                if entry.get("value") != pr.text:
+                    lex = dicts.for_field(f.id)
+                    trace.add(entry, trace.DICT,
+                              f"{lex.label}（{len(lex.entries)}語）" if lex else "辞書",
+                              before=pr.text, after=entry.get("value") or "")
                 # 医療機関名の欄に法人名が書かれていたら落とす（別物なので）
                 if f.id == "clinic_name" and entry.get("value"):
                     fixed, note = proofread.strip_corporate(entry["value"])
@@ -568,17 +646,49 @@ def extract_record(paths: List[str],
                         entry.setdefault("corrections", []).append(
                             dict(before=note.before, after=note.after,
                                  reason=note.reason))
-                # 診断名は ICD のいちばん近い場所を添える。
-                # 書かれた名前は**置き換えない**（「右」「術後」が消えるため）。
-                # コードだけを付けるので、詳しい病名のまま分類に使える。
+                # 診断名は ICD のいちばん近い分類を当て、**その病名を採る**。
+                # ただし「右」「術後」「疑い」のような修飾は落とさない
+                # （どちらの足か、術後かが消えると診療の意味が変わる）。
+                # 元の読みは候補に残るので、確認画面から1押しで戻せる。
                 icd = dicts.nearest_icd(f, entry.get("value") or "")
                 if icd:
                     entry["icd10"] = icd["code"]
                     entry["icd_name"] = icd["name"]
                     entry["tokutei"] = icd["tokutei"]
                     if not icd["exact"]:
-                        _add_note(entry,
-                                  f"ICDは近い分類を当てました（{icd['name']} {icd['code']}）")
+                        before = entry.get("value") or ""
+                        after = dicts_mod.apply_icd_name(before, icd["name"])
+                        if after and after != before:
+                            entry.setdefault("candidates", []).insert(
+                                0, dict(value=before, score=None, source="raw",
+                                        note="ICDに寄せる前の読み"))
+                            entry["value"] = after
+                            trace.add(entry, trace.ICD,
+                                      f"{icd['name']} {icd['code']}"
+                                      f"（近さ {icd['score']}）",
+                                      before=before, after=after)
+                            _add_note(entry,
+                                      f"診断名をICDの分類名に寄せました"
+                                      f"（{before} → {after}／{icd['code']}）")
+                        else:
+                            _add_note(entry,
+                                      f"ICDは近い分類を当てました"
+                                      f"（{icd['name']} {icd['code']}）")
+                # 住所の先頭には必ず都道府県が入る。読み崩れても一覧に寄せる。
+                # **後ろの市区町村から逆に決める**のが確か
+                # （「天城県」は茨城県とも宮城県とも1文字違いで決まらない）
+                if f.pii == "mask" and "address" in f.id and entry.get("value"):
+                    fixed, note = dicts_mod.snap_prefecture(entry["value"], dicts)
+                    if note:
+                        entry.setdefault("candidates", []).insert(
+                            0, dict(value=entry["value"], score=None, source="raw",
+                                    note="都道府県を直す前の読み"))
+                        entry.setdefault("corrections", []).append(
+                            dict(before=entry["value"], after=fixed, reason=note))
+                        trace.add(entry, trace.PLACE, note,
+                                  before=entry["value"], after=fixed)
+                        entry["value"] = fixed
+                        _add_note(entry, note)
                 # 身長・体重は小数1桁。小さな小数点は読み落とされやすいので、
                 # 範囲から外れていて小数点を入れると収まる場合だけ戻す
                 if entry.get("value"):
@@ -637,6 +747,9 @@ def extract_record(paths: List[str],
                         entry.setdefault("candidates", []).insert(
                             0, dict(value=entry["value"], score=None, source="raw",
                                     note="LLM補正前の読み取り"))
+                        trace.add(entry, trace.LLM,
+                                  getattr(assist, "model_path", "").split("/")[-1],
+                                  before=entry["value"], after=lp.text)
                         entry["value"] = lp.text
                         entry["llm_applied"] = True
                         _add_note(entry, lp.note)
@@ -723,6 +836,13 @@ def extract_record(paths: List[str],
         entry: Dict[str, Any]
         if f.id in box_values:
             entry = dict(box_values[f.id])
+            # チェック欄は OCR を通らない。白紙様式との差分で印を見ている
+            n = len(entry.get("detail") or [])
+            how = "白紙様式との差分" if any(
+                d.get("method") == "diff" for d in (entry.get("detail") or [])
+            ) else "枠内のインク率"
+            trace.add(entry, trace.CROP, f"{rec.template_id} のテンプレート座標")
+            trace.add(entry, trace.MARK, f"{how}（枠 {n} 個）")
         elif f.id in text_results:
             entry = dict(text_results[f.id])
         else:

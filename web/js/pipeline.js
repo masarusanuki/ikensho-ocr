@@ -85,6 +85,8 @@
       this.templates = {};
       this.refs = {};        // `${tid}:${page}` -> cv.Mat（様式判定用・縮小版）
       this.blanks = {};      // `${tid}:${page}` -> cv.Mat（白紙様式・原寸）
+      this.blankSrc = {};    // 同じ鍵 -> 置き場所（使う段になってから読む）
+      this.blankSize = {};
       this.dicts = null;
       this.ocrWorker = null;
       this.ocrReady = false;
@@ -138,15 +140,33 @@
         c.getContext('2d').drawImage(img, 0, 0);
         this.refs[key] = E.canvasToGrayMat(c);
 
-        // 白紙様式（差分によるマーク抽出に使う。無くても動作する）
-        try {
-          const bimg = await loadImage(`${this.base}/templates/blanks/${p.blank || p.ref}`);
-          const bc = document.createElement('canvas');
-          bc.width = p.width; bc.height = p.height;
-          bc.getContext('2d').drawImage(bimg, 0, 0, p.width, p.height);
-          this.blanks[key] = E.canvasToGrayMat(bc);
-        } catch (e) { /* 白紙が無い様式は枠内インク率のみで判定する */ }
+        // 白紙様式は**ここでは読まない**。
+        // 照合に要るのは参照画像だけで、白紙は決まった様式のぶんしか使わない。
+        // 3様式ぶんを起動時に読むと 2.9MB を無駄に読むことになる
+        this.blankSrc[key] = `${this.base}/templates/blanks/${p.blank || p.ref}`;
+        this.blankSize[key] = { w: p.width, h: p.height };
       }
+    }
+
+    /**
+     * 白紙様式を、使う段になってから読む（差分によるマーク抽出に使う）。
+     * 一度読んだら覚えておく。無くても動作する。
+     */
+    async loadBlank(key) {
+      if (this.blanks[key] !== undefined) return this.blanks[key];
+      const src = this.blankSrc[key];
+      if (!src) { this.blanks[key] = null; return null; }
+      try {
+        const img = await loadImage(src);
+        const size = this.blankSize[key];
+        const c = document.createElement('canvas');
+        c.width = size.w; c.height = size.h;
+        c.getContext('2d').drawImage(img, 0, 0, size.w, size.h);
+        this.blanks[key] = E.canvasToGrayMat(c);
+      } catch (e) {
+        this.blanks[key] = null;   // 白紙が無い様式は枠内インク率のみで判定する
+      }
+      return this.blanks[key];
     }
 
     /**
@@ -401,11 +421,12 @@
       if (missing.length) warnings.push('未取得のページ: ' + missing.map(i => `${i}ページ目`).join('、'));
 
       // --- 3) チェックボックス判定
+      // 白紙様式は、使う様式が決まったここで初めて読む（起動を軽くするため）
       let readings = [];
       const textResults = {};
       for (const [idx, w] of Object.entries(warped)) {
-        readings = readings.concat(
-          E.readBoxes(w.mat, w.tplPage.boxes, this.blanks[`${templateId}:${idx}`]));
+        const blank = await this.loadBlank(`${templateId}:${idx}`);
+        readings = readings.concat(E.readBoxes(w.mat, w.tplPage.boxes, blank));
       }
       const boxValues = E.resolveGroups(readings, this.schema);
 
@@ -726,8 +747,33 @@
         entry.icd_name = icd.name;
         entry.tokutei = icd.tokutei;
         if (!icd.exact) {
-          entry.note = [entry.note,
-            `ICDは近い分類を当てました（${icd.name} ${icd.code}）`].filter(Boolean).join('／');
+          // ICD の分類名を**採る**（Python 版と同じ）。修飾は残す
+          const before = entry.value || '';
+          const after = global.IkenshoDicts.applyIcdName(before, icd.name);
+          if (after && after !== before) {
+            entry.candidates = [{ value: before, score: null, source: 'raw',
+                                  note: 'ICDに寄せる前の読み' }].concat(entry.candidates || []);
+            entry.value = after;
+            entry.note = [entry.note,
+              `診断名をICDの分類名に寄せました（${before} → ${after}／${icd.code}）`]
+              .filter(Boolean).join('／');
+          } else {
+            entry.note = [entry.note,
+              `ICDは近い分類を当てました（${icd.name} ${icd.code}）`].filter(Boolean).join('／');
+          }
+        }
+      }
+      // 住所の先頭には必ず都道府県が入る。読み崩れても一覧に寄せる。
+      // **後ろの市区町村から逆に決める**のが確か
+      // （「次城県」は茨城県とも宮城県とも1文字違いで決まらない）
+      if (f.pii === 'mask' && f.id.indexOf('address') >= 0 && entry.value) {
+        const [fixedAddr, note] = global.IkenshoDicts.snapPrefecture(
+          entry.value, this.dicts);
+        if (note) {
+          entry.corrections = (entry.corrections || []).concat(
+            [{ before: entry.value, after: fixedAddr, reason: note }]);
+          entry.note = [entry.note, note].filter(Boolean).join('／');
+          entry.value = fixedAddr;
         }
       }
       // 身長・体重は小数1桁。小さな小数点は読み落とされやすいので、

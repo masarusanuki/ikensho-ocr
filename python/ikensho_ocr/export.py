@@ -6,7 +6,7 @@ import io
 import json
 from typing import Any, Dict, List
 
-from . import answers as answers_mod, derive
+from . import answers as answers_mod, derive, trace as trace_mod
 from .schema import Schema
 
 
@@ -44,7 +44,10 @@ def record_to_json(rec, schema: Schema) -> Dict[str, Any]:
                           note=e.get("note") or "",
                           corrections=e.get("corrections") or [],
                           expected_chars=e.get("expected_chars"),
-                          llm_applied=bool(e.get("llm_applied")))
+                          llm_applied=bool(e.get("llm_applied")),
+                          # どの仕組みで読んだか（trace.py を参照）
+                          trace=e.get("trace") or [],
+                          read_by=trace_mod.summary(e))
     return dict(
         schema_version=schema.version,
         form_name=schema.form_name,
@@ -220,6 +223,12 @@ def _form_item(entry: Dict[str, Any], f, fields: Dict[str, Any],
         if note.get("changed"):
             item.setdefault("言葉の食い違い", []).append(
                 {"定義": note.get("expected"), "読めた言葉": note.get("read")})
+    if entry.get("trace"):
+        item["読み取りの経路"] = [
+            dict(段=r.get("step"), 使ったもの=r.get("detail", ""),
+                 前=r.get("before", ""), 後=r.get("after", ""))
+            for r in entry["trace"]]
+        item["読み取り方"] = trace_mod.summary(entry)
     item["項目ID"] = f.id
     return item
 
@@ -439,6 +448,25 @@ def markdown_text(rec, schema: Schema) -> str:
         add("")
         for w in rec.warnings:
             add(f"- {_md_cell(w)}")
+        add("")
+
+    # **どの欄を、どの仕組みで読んだか。** 値だけでは、OCRが読んだのか
+    # 辞書が直したのかが分からず、直しようがない
+    ways = {}
+    for f in schema:
+        e = rec.fields.get(f.id) or {}
+        if e.get("trace"):
+            ways.setdefault(trace_mod.summary(e), []).append(f.label)
+    if ways:
+        add("## どの仕組みで読んだか")
+        add("")
+        add("| 読み取りの経路 | 欄 |")
+        add("|---|---|")
+        for way, labels in sorted(ways.items(), key=lambda kv: -len(kv[1])):
+            shown = "、".join(labels[:6])
+            if len(labels) > 6:
+                shown += f" ほか{len(labels) - 6}件"
+            add(f"| {_md_cell(way)} | {_md_cell(shown)} |")
         add("")
 
     add("## 元ファイル")
