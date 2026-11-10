@@ -25,3 +25,22 @@ Require valid-user
     Header set X-Content-Type-Options "nosniff"
     Header set Referrer-Policy "no-referrer"
 </IfModule>
+
+# **部品は毎回読み直さない。**
+# opencv.js だけで 9.9MB あり、no-store のままだと開くたびに読み直して重い。
+# 中身は公開物で患者情報を含まないので、端末に残して構わない。
+# （読み取り結果は端末内の localStorage にしか無く、ここの対象ではない）
+<IfModule mod_headers.c>
+    <FilesMatch "\.(js|mjs|wasm|css|png|jpg|gz|traineddata|onnx)$">
+        Header set Cache-Control "private, max-age=604800"
+    </FilesMatch>
+</IfModule>
+
+# **転送を圧縮する。** opencv.js は 9.9MB → 3.2MB になる。
+# 画像・wasm・onnx は既に圧縮済みなので対象から外す
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/plain text/javascript
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE application/wasm
+    SetEnvIfNoCase Request_URI "\.(png|jpe?g|gif|gz|onnx|traineddata)$" no-gzip
+</IfModule>
