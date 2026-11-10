@@ -2405,10 +2405,16 @@ GitHub に上がっているコミットの一覧です。
 **この表は `tools/build_changelog.py` が git の履歴から作ります。手で書き換えないでください。**
 GitHub に上がっているものだけを載せています。
 
-全 94 件。新しいものが上です。
+全 100 件。新しいものが上です。
 
 | 日付 | 変えたこと | 触ったところ | |
 |---|---|---|---|
+| 2026-11-10 | 開発メモに changelog を入れた | 道具 | [7814ccb](https://github.com/masarusanuki/ikensho-ocr/commit/7814ccb92fd2b50842df02a4989383fe2992a9a9) |
+| 2026-11-10 | 読み取りの改善: 単位・住所・診断名・文章の欄・読み取りの経路 | 読み取り・ブラウザ版・辞書 | [95c707a](https://github.com/masarusanuki/ikensho-ocr/commit/95c707a08fc4b5192978608de1d6e8c9e9adc519) |
+| 2026-11-10 | 認定調査票（基本調査）の項目定義を足した | 道具 | [c7b36d7](https://github.com/masarusanuki/ikensho-ocr/commit/c7b36d7a439d907f0ff265919420fe50ab718c0a) |
+| 2026-11-10 | 採点に「おおむね一致」を足した | 道具 | [d4bdda4](https://github.com/masarusanuki/ikensho-ocr/commit/d4bdda45bf471b5d9dd4866dfa6996c4432d636c) |
+| 2026-11-10 | 配信を圧縮し、部品をキャッシュするようにした（転送 15.6MB → 1.9MB） | 配布 | [836731f](https://github.com/masarusanuki/ikensho-ocr/commit/836731f5592781711e297ca4d4d62d21d0fcea95) |
+| 2026-11-10 | 確認画面が、画面を切り替えた後に真っ暗になっていた | ブラウザ版 | [e8398fb](https://github.com/masarusanuki/ikensho-ocr/commit/e8398fb22944ea81e43b8954eea1cee90d7cd9eb) |
 | 2026-09-29 | 処理を速くした（1通 42.7秒 → 18.7秒） | 読み取り・ブラウザ版 | [9b1a664](https://github.com/masarusanuki/ikensho-ocr/commit/9b1a66434b71ff1052b4ad7d118dd05be7625e3b) |
 | 2026-09-28 | 懸念事項を docs/ に置き、公開先から読めるようにした | 道具・説明 | [81f8285](https://github.com/masarusanuki/ikensho-ocr/commit/81f828502ff5d5a60db9fc390b738c610495c626) |
 | 2026-09-28 | 開発メモに、ガバメントクラウドと自治体システム標準化の節を足した | — | [b283b84](https://github.com/masarusanuki/ikensho-ocr/commit/b283b84bc4f6a8cc24caf486776b9ac12b831a1a) |
