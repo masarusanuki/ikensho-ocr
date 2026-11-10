@@ -2016,6 +2016,92 @@ rapidocr の角度分類（0°/180°の判定）は、位置合わせ済みの�
 
 ---
 
+### 7.10.1 単位・住所・診断名を規則でそろえる
+
+**単位は数字のすぐ後ろだけ直す。** `1000m1` → `1000mL`、`5rng` → `5mg`、
+`62kq` → `62kg`。数字が前に無い `m1` は型番のこともあるので触らない。
+あわせて、`HbA1c 7.2%` の `%` が記号として捨てられていた不具合を直した
+（数字の直後なら残す）。
+
+LLM の校正では、この種類は**直せない**。用量の捏造を防ぐ関門
+（数字の並びが完全一致・元に無い英字を出さない）が、ちょうど塞ぐため。
+規則で直すのが正解。
+
+**住所の都道府県は、後ろの市区町村から逆に決める。**
+「天城県」は茨城県とも宮城県とも1文字違いで決まらないが、
+後ろが「土浦市」なら茨城県に決まる（1,914件中、複数県にある名前は25件・1.3%）。
+「池田町」のように複数県にある名前のときは**触らない**。
+地名の異体字（竜/龍・ヶ/ケ・澤/沢など）はそろえてから突き合わせる。
+
+**診断名は ICD10 の分類名を採る。ただし詳しさを失わない。**
+
+- 「右」「左」「術後」「疑い」などの修飾は付け直す
+- **ICD の名前の方が大まかなときは置き換えない**（`ICD_MIN_COVER = 0.75`）。
+  そうしないと「腰椎圧迫骨折」→「圧迫骨折」で部位が、
+  「間質性肺炎」→「肺炎」で病気の種類が消える（実測で起きた）
+
+**形の似た字をそろえてから辞書と比べる。** 手書きの OCR は部首を落とす・
+入れ替える（慢→曼、肺→柿、塞→業）。「曼性閉業性柿疾氏」はそのままでは
+慢性閉塞性肺疾患に半分しか似ていないが、そろえると1字違いになる。
+組は `dict/ocr_confusions.json`（誤字表を作るのと同じもの）。
+
+| 診断名 157欄 | 文字正解率 | 良化 | 悪化 |
+|---|---|---|---|
+| ICD に寄せる前 | 61.7% | — | — |
+| 寄せた後 | **65.0%** | 18件 | 1件（「癌性」→「がん性」の表記違いのみ） |
+
+### 7.11 どの欄を、どの仕組みで読んでいるか
+
+**値だけ見ても、OCRが読んだのか辞書が直したのかが分からない。** 直しようがないので、
+欄ごとに「経路」を残すようにした（`python/ikensho_ocr/trace.py`）。
+
+    ■ (1) 診断名1　→　'心房細動'
+      1. 枠の切り出し　seigo2_v1 の 1ページ目
+      2. 文字の認識　ndlocr　「（画像）」→「心房細勣」
+      3. 規則で訂正　医療・介護文書でよくある誤字
+      4. 辞書で照合　傷病名（181語）
+      5. ICDに寄せる　心房細動 I48（近さ 0.75）
+
+段の名前は固定にしてある（`trace.ORDER`）。出力では次の場所に出る。
+
+| 出力 | どこに出るか |
+|---|---|
+| 平らなJSON | `meta.<欄>.trace`（全段）と `meta.<欄>.read_by`（要約） |
+| 様式の形のJSON | 項目の「読み取りの経路」と「読み取り方」 |
+| Markdown | 「どの仕組みで読んだか」の表（経路ごとに欄をまとめる） |
+
+#### 欄の種類ごとの読み方
+
+| 欄 | 読み方 |
+|---|---|
+| チェック欄186個 | **白紙様式との差分**。OCRは通らない |
+| 丸囲み（性別・元号） | 欄を等分し、丸印が最も強い区画を選ぶ。性別は必ずどちらかを採る |
+| 日付 | 年/月/日の小枠に分け、**数字だけ**を読む |
+| 数字・電話・郵便番号 | PP-OCR（japan_v4）。小枠なので行を見つける方式は使わない |
+| **文章・氏名・医療機関名・診断名** | **NDLOCR**（下記） |
+| ふりがな | PP-OCR。読み比べていないので今のまま |
+
+#### 文章の欄を NDLOCR に替えた（37.70% → 52.33%）
+
+94欄で読み比べた。**PP-OCR が勝った欄は1件も無かった。**
+
+| | 文字正解率（94欄） |
+|---|---|
+| PP-OCR | 37.70% |
+| NDLOCR | **52.33%** |
+
+PP-OCR は欄の枠が狭いと、**印刷ラベルまで巻き込んで読む**。
+
+    正解  加藤 幸子
+    PP    (ふりかなカトウサチコ請者加藤幸子
+    NDL   加藤幸子
+
+NDLOCR はページ全体で行を見つけてから読むので、ここに強い。
+一方、**1〜2文字の小枠では1行も見つけられない**ので、
+数字・電話・郵便番号・日付は PP-OCR のままにしてある。
+
+---
+
 ## 8. つまずいた点（再発防止）
 
 - `cv2.createThinPlateSplineShapeTransformer` は opencv-python-headless 5.0 に無い → 自前実装した
@@ -2306,6 +2392,119 @@ README に書いてある「患者情報は端末から出ません」が成り�
 
 なお LLM は1つの実体を共有するので、**同時に呼ぶとプロセスごと落ちる**
 （8.4）。錠を掛けたが、同種のものを足すときは忘れないこと。
+
+---
+
+## 8.6 変更の履歴（changelog）
+
+GitHub に上がっているコミットの一覧です。
+`python3 tools/build_changelog.py` で作り直せます（手で書き換えないこと）。
+
+<!-- CHANGELOG_START -->
+
+**この表は `tools/build_changelog.py` が git の履歴から作ります。手で書き換えないでください。**
+GitHub に上がっているものだけを載せています。
+
+全 94 件。新しいものが上です。
+
+| 日付 | 変えたこと | 触ったところ | |
+|---|---|---|---|
+| 2026-09-29 | 処理を速くした（1通 42.7秒 → 18.7秒） | 読み取り・ブラウザ版 | [9b1a664](https://github.com/masarusanuki/ikensho-ocr/commit/9b1a66434b71ff1052b4ad7d118dd05be7625e3b) |
+| 2026-09-28 | 懸念事項を docs/ に置き、公開先から読めるようにした | 道具・説明 | [81f8285](https://github.com/masarusanuki/ikensho-ocr/commit/81f828502ff5d5a60db9fc390b738c610495c626) |
+| 2026-09-28 | 開発メモに、ガバメントクラウドと自治体システム標準化の節を足した | — | [b283b84](https://github.com/masarusanuki/ikensho-ocr/commit/b283b84bc4f6a8cc24caf486776b9ac12b831a1a) |
+| 2026-09-24 | タグを打ってもリリースに添付できなかった（403） | ビルド | [a250c9d](https://github.com/masarusanuki/ikensho-ocr/commit/a250c9df138e3da66d1d85f7a744e490e5d3b1cd) |
+| 2026-09-24 | Windows での使い方を README に書いた（exeとPythonの両方） | — | [d513d76](https://github.com/masarusanuki/ikensho-ocr/commit/d513d765bb56f9a963e5c7168bfeb7b7d1fa6fbc) |
+| 2026-09-24 | Windows の exe ビルドが通らなかった5点を直した | 読み取り・配布 | [f12ac38](https://github.com/masarusanuki/ikensho-ocr/commit/f12ac380f9a1925cf60e411bf73cf7799164dfe7) |
+| 2026-09-24 | フォルダを指定して読めるようにし、exe に日本語OCRを同梱する | 読み取り・ブラウザ版・配布 | [494f8ed](https://github.com/masarusanuki/ikensho-ocr/commit/494f8ed856f7de3e3ca771f998f01956be22f376) |
+| 2026-09-24 | スライドと作業ログに、辞書の結果を反映した | 道具 | [b52caf4](https://github.com/masarusanuki/ikensho-ocr/commit/b52caf4c63af300b52cf3b5ce3fee1e2a0531652) |
+| 2026-09-24 | 誤字表を1,545語に増やし、市区町村の辞書を足した | 読み取り・ブラウザ版・道具・辞書・説明 | [68b103d](https://github.com/masarusanuki/ikensho-ocr/commit/68b103d90b84a1c4e2d48be7c69d36a1e226e5e8) |
+| 2026-09-23 | 作業ログを更新 | — | [191139f](https://github.com/masarusanuki/ikensho-ocr/commit/191139fe5ac3fa2b185404a9da327546c4d72959) |
+| 2026-09-23 | 文字起こしの崩れを規則で直す。LLM校正は測った結果、既定では使わない | 読み取り・ブラウザ版・道具 | [ee477dd](https://github.com/masarusanuki/ikensho-ocr/commit/ee477dd33bdef25b45b8275e3d983b21645ab490) |
+| 2026-09-23 | 作業ログを更新 | — | [e955608](https://github.com/masarusanuki/ikensho-ocr/commit/e9556082c8ce5774e55cff72331eb14ef5b6d2a3) |
+| 2026-09-23 | 出力の答えの読み方を1か所にまとめ、Markdown でも出せるようにした | 読み取り・ブラウザ版・道具・項目定義・説明 | [7afa9a0](https://github.com/masarusanuki/ikensho-ocr/commit/7afa9a0527fafc139f68e8668756a8cf89819f2c) |
+| 2026-09-23 | 作業ログを更新 | — | [de18a68](https://github.com/masarusanuki/ikensho-ocr/commit/de18a68099d782901dd2a52ac5fb54644e6a9d4c) |
+| 2026-09-23 | 64通で測り直した。崩れているのは「汚い」に集中していた | 道具 | [e7cad8f](https://github.com/masarusanuki/ikensho-ocr/commit/e7cad8f23c9d589c7ea7b96e8c4b5acb72fbd7db) |
+| 2026-09-23 | 開発者向けに seigo2 での測り方を足した | 説明 | [4b09b8b](https://github.com/masarusanuki/ikensho-ocr/commit/4b09b8b282e8314ca251747a008740c9cd822019) |
+| 2026-09-23 | pagequest の説明文の数字を、後から測り直した値に合わせた | 読み取り | [a762caa](https://github.com/masarusanuki/ikensho-ocr/commit/a762caaf801e6fb38c907af7d63d782ef8104b4f) |
+| 2026-09-23 | 測る側の取り違えを直し、枠単位でも数えるようにした | 道具 | [0a12ad3](https://github.com/masarusanuki/ikensho-ocr/commit/0a12ad372130f0500618a9fe8f73c9d3008abdeb) |
+| 2026-09-23 | 検証用サンプル2の様式を足し、様式の変化を見張るようにした | 読み取り・ブラウザ版・道具・様式 | [9abaa0e](https://github.com/masarusanuki/ikensho-ocr/commit/9abaa0e1abcea090f97c372c1e9322f3c7f398e2) |
+| 2026-09-22 | チェック欄の照合は実測で空振りだったので入れない | 読み取り・道具 | [c982405](https://github.com/masarusanuki/ikensho-ocr/commit/c9824054d6a8b7ff271025ee1b11b763d8bde9ba) |
+| 2026-09-20 | NDLOCR-Lite を組み込んで比べた（既定は変えていない） | 読み取り・道具 | [620b749](https://github.com/masarusanuki/ikensho-ocr/commit/620b7499153e30d84070cc2fd7bb981e30022266) |
+| 2026-09-12 | 作業ログを更新 | — | [744c821](https://github.com/masarusanuki/ikensho-ocr/commit/744c8218b9429ed2fd1222e436581ea3e56d9a39) |
+| 2026-09-12 | スライドと開発メモを更新し、懸念事項をまとめた | 道具 | [52b0010](https://github.com/masarusanuki/ikensho-ocr/commit/52b001003d48bcb4c1ad3a299ea2562af94e9143) |
+| 2026-09-11 | 利用者目線の動作確認で見つかった9件を直し、説明書を書いた | 読み取り・説明 | [5708892](https://github.com/masarusanuki/ikensho-ocr/commit/5708892d7c93e74ac59d374c2546f54010e8e05c) |
+| 2026-09-11 | レビューで見つかった8件を直した | 読み取り・ブラウザ版 | [5c25a4a](https://github.com/masarusanuki/ikensho-ocr/commit/5c25a4a2cfed4d5b78988acd13033954259058be) |
+| 2026-09-11 | 源内（デジタル庁の生成AI基盤）のAIアプリとして応答する受け口を足した | 読み取り | [5b6e5bd](https://github.com/masarusanuki/ikensho-ocr/commit/5b6e5bdff9129d6ca0852fe864acd0ce12b3a513) |
+| 2026-09-11 | 位置合わせの埋め方から Lanczos を外した（実測で差が無かった） | 読み取り・ブラウザ版 | [35df702](https://github.com/masarusanuki/ikensho-ocr/commit/35df702e5c4e5b6a4ed68b1255aaa2c4fb9a1ecf) |
+| 2026-09-11 | 医療機関名の欄から法人名を落とす／Lanczosの境目を実測で決めた | 読み取り・ブラウザ版 | [99e97a4](https://github.com/masarusanuki/ikensho-ocr/commit/99e97a4ec4a2657aa28d19ef045ddd5e92986de4) |
+| 2026-09-11 | 検出が落ちた欄を全体1行で読み直す／輪郭立ては実測で悪化したので切った | 読み取り・ブラウザ版 | [5864b4b](https://github.com/masarusanuki/ikensho-ocr/commit/5864b4b7f43949b4468e805dd3ecc38ac0af2782) |
+| 2026-09-11 | 開発メモに ICD と低解像度対応、前処理の比較結果を追記 | 説明 | [4fcdac2](https://github.com/masarusanuki/ikensho-ocr/commit/4fcdac253c323e8950a1bbe7ba1ca2fe7d0e38e0) |
+| 2026-09-11 | 解像度の低い入力に備えて、切り抜きの引き伸ばし方を変えた | 読み取り・ブラウザ版・道具 | [39ea49f](https://github.com/masarusanuki/ikensho-ocr/commit/39ea49f8576a97d01a88a488768ecdccda6f0626) |
+| 2026-09-11 | 診断名はICDの近い場所から選び、コードを出力に載せる | 読み取り・ブラウザ版 | [545a311](https://github.com/masarusanuki/ikensho-ocr/commit/545a3111bce93f3690277aea9bec10a0d5533e92) |
+| 2026-09-11 | 身長・体重の読み落とされた小数点を戻す | 読み取り・ブラウザ版 | [d3e6891](https://github.com/masarusanuki/ikensho-ocr/commit/d3e6891f2db8f6f33c0de590ebe314a063172215) |
+| 2026-09-11 | 開発メモに文字欄と日付の実測を追記 | 説明 | [8f0efae](https://github.com/masarusanuki/ikensho-ocr/commit/8f0efae9612bc35a42ec5204370fb024b1748411) |
+| 2026-09-11 | 日付の読み取りを測って調整できるようにした | 読み取り・道具 | [796de10](https://github.com/masarusanuki/ikensho-ocr/commit/796de10567e53aead1ff11ecb0c186bb1d30a714) |
+| 2026-09-11 | ふりがな欄が必ず空になっていた／元年が読めなかった | 読み取り・ブラウザ版 | [2375beb](https://github.com/masarusanuki/ikensho-ocr/commit/2375bebbe492126419ca4f259546c53879e5d567) |
+| 2026-09-11 | 公開したページからもVLMを選べるようにした | ブラウザ版 | [22293d5](https://github.com/masarusanuki/ikensho-ocr/commit/22293d54ef31f8a3faa890f74511038597fef87f) |
+| 2026-09-11 | 文字欄の差分だけ白紙の膨張を戻した（精度が落ちていた件） | 読み取り・ブラウザ版・道具 | [586d9a7](https://github.com/masarusanuki/ikensho-ocr/commit/586d9a76ef6f7172a44a2a68e9e97ec4236f666d) |
+| 2026-09-11 | 配置をスクリプトにした（パスワードを消してしまった件） | 道具・説明 | [991f135](https://github.com/masarusanuki/ikensho-ocr/commit/991f135e0be32faf981a7ef7a645e6a40cfcba54) |
+| 2026-09-11 | 開発メモの3回目のレビューに2件追記 | — | [69721a2](https://github.com/masarusanuki/ikensho-ocr/commit/69721a2d6da477d043ef2bbb552f921d9dcf6e63) |
+| 2026-09-11 | 単一HTML版に labels.js が入っていなかった | 道具 | [01c48d1](https://github.com/masarusanuki/ikensho-ocr/commit/01c48d1a6bee596b9e665f8d655a83890cd24c0a) |
+| 2026-09-11 | VLMで日付欄を読み直したとき、年・月・日と西暦も作り直す | ブラウザ版 | [13100ef](https://github.com/masarusanuki/ikensho-ocr/commit/13100efc4bdc7e84bc353c248292f461e72289e6) |
+| 2026-09-11 | 確認画面に「この欄をVLMで読み直す」を足した | ブラウザ版・説明 | [6c44f6b](https://github.com/masarusanuki/ikensho-ocr/commit/6c44f6be22db488e237bcd7087d3f2fd11d9574f) |
+| 2026-09-11 | 開発メモに3回目のレビューと残りの課題を追記 | — | [d8f057b](https://github.com/masarusanuki/ikensho-ocr/commit/d8f057b9b03aa725fce305bcc6bacfce0b69ed46) |
+| 2026-09-11 | ラベル正規化でハイフンが巨大な文字範囲になっていた | 読み取り | [152ee44](https://github.com/masarusanuki/ikensho-ocr/commit/152ee444befcb63f72609c1f5e532ca367a151b4) |
+| 2026-09-11 | VLMの出力抑止に錠をかけ、ラベル読みの無駄な変数を消した | 読み取り | [eae44f5](https://github.com/masarusanuki/ikensho-ocr/commit/eae44f5b62995c2b8aae943fdb67a9f637cc35c2) |
+| 2026-09-11 | 技術者向けドキュメントを今の実装に合わせた | 説明 | [1216387](https://github.com/masarusanuki/ikensho-ocr/commit/121638700785e94ba36523085510a8feeae447f9) |
+| 2026-09-11 | 作業ログを更新 | — | [dfc048b](https://github.com/masarusanuki/ikensho-ocr/commit/dfc048bffb301ab2f43689e112abfbb12184f1e9) |
+| 2026-09-11 | VLMで読む方式を足し、ボタンで切り替えられるようにした | 読み取り・ブラウザ版・道具 | [9cbfbe3](https://github.com/masarusanuki/ikensho-ocr/commit/9cbfbe3042c5cb64b903fc4e43cffdc23225afaf) |
+| 2026-09-11 | 様式の並びそのままのJSONを出せるようにした | 読み取り・ブラウザ版 | [edda6e9](https://github.com/masarusanuki/ikensho-ocr/commit/edda6e91d7a1d1fc7a4846fbde8be9ec3c4d2ab7) |
+| 2026-09-11 | チェック欄の後ろの言葉をOCRで確かめ、直せるようにした | 読み取り・ブラウザ版 | [acf9698](https://github.com/masarusanuki/ikensho-ocr/commit/acf96987784f16ac49770c39143dff5f3cfd897e) |
+| 2026-09-11 | 正解データ100通でチェック欄の判定を作り直した（95.47%→99.08%） | 読み取り・ブラウザ版・道具・説明 | [8121bed](https://github.com/masarusanuki/ikensho-ocr/commit/8121bedd1bf536663c3d0b1dfd4cc5437841f2d5) |
+| 2026-09-08 | 作業ログを更新 | — | [69b010b](https://github.com/masarusanuki/ikensho-ocr/commit/69b010b8fd4efa520719834885782ab98e355e4e) |
+| 2026-09-08 | 単一HTML版に onnxruntime とOCRモデルを入れないようにした | 道具 | [7a1bbf2](https://github.com/masarusanuki/ikensho-ocr/commit/7a1bbf21e23830eeb55c93a79b429a99deebadc2) |
+| 2026-09-08 | 管理画面で、ブラウザ側がこれから使うOCRモデルも表示する | ブラウザ版 | [ec11a3c](https://github.com/masarusanuki/ikensho-ocr/commit/ec11a3ca5ff195403ab9892676fa00809a8671f1) |
+| 2026-09-08 | 作業ログを更新 | — | [2ca4f92](https://github.com/masarusanuki/ikensho-ocr/commit/2ca4f924104f25a21343e78d17c8dd611a5e3ea7) |
+| 2026-09-08 | 文字を読むモデルを日本語専用に替え、精度を実測できるようにした | 読み取り・ブラウザ版・道具・説明 | [d9ec708](https://github.com/masarusanuki/ikensho-ocr/commit/d9ec7081896966b67d68f391fbbe57d4cf41f575) |
+| 2026-09-06 | 作業ログを更新 | — | [1dba80d](https://github.com/masarusanuki/ikensho-ocr/commit/1dba80d511a46d3a32c0fb16b37ae6c9530d7028) |
+| 2026-09-06 | 元画像を破棄できるようにし、管理と開発メモのメニューを分けた | ブラウザ版 | [efbc19a](https://github.com/masarusanuki/ikensho-ocr/commit/efbc19a0c43cd6838db8e501c744882b57fc768e) |
+| 2026-09-06 | 作業ログを更新 | — | [1347868](https://github.com/masarusanuki/ikensho-ocr/commit/13478688f7ad27b148e49a55c4366b8e4fbc44b1) |
+| 2026-09-06 | 集計の区分を押すと、その区分の項目だけを表示できるようにした | ブラウザ版 | [91e54c1](https://github.com/masarusanuki/ikensho-ocr/commit/91e54c133fafb875321817d697a19067ff3e0b53) |
+| 2026-09-06 | 作業ログを更新 | — | [555f537](https://github.com/masarusanuki/ikensho-ocr/commit/555f53730fa6f1743f8fe6d3db9e76037bf75e6e) |
+| 2026-09-06 | 管理画面から医療機関一覧を「最新版に更新」できるようにした | 読み取り・ブラウザ版・道具・辞書・説明 | [d485b45](https://github.com/masarusanuki/ikensho-ocr/commit/d485b45466930854e966ec934ee0e9d223b85f38) |
+| 2026-09-06 | 作業ログを更新 | — | [d28778a](https://github.com/masarusanuki/ikensho-ocr/commit/d28778ab94b621f26f364e0c6b7f963feb05509f) |
+| 2026-09-06 | 医療機関一覧を47都道府県ぶん取得できるようにし、概要スライドを追加 | 道具・辞書・説明 | [96c6184](https://github.com/masarusanuki/ikensho-ocr/commit/96c6184c07b82afe8beaee9acd73c36aebe9607b) |
+| 2026-09-06 | 作業ログを更新 | — | [a0229f9](https://github.com/masarusanuki/ikensho-ocr/commit/a0229f90cb37ae7c61ac8d0ecf343dba52e8ff6b) |
+| 2026-09-06 | 医療機関名を一覧と突き合わせ、記述の1文字は空にする | 読み取り・ブラウザ版 | [9bc8de8](https://github.com/masarusanuki/ikensho-ocr/commit/9bc8de8a1829ffbd1955018a9f444bb11ff6296e) |
+| 2026-09-06 | 2回目のレビューで見つかった不具合を修正 | 読み取り・ブラウザ版 | [6aba17f](https://github.com/masarusanuki/ikensho-ocr/commit/6aba17f904a00509b4b4e8dd3ed20d3b5cd6b529) |
+| 2026-09-06 | 作業ログを更新 | — | [4d43fae](https://github.com/masarusanuki/ikensho-ocr/commit/4d43fae3a8d3d20cc293619dc7fee42a4c9e6599) |
+| 2026-09-06 | 該当箇所の拡大表示を掴んで横に動かせるようにした | ブラウザ版 | [223c3be](https://github.com/masarusanuki/ikensho-ocr/commit/223c3bebd4ae47ac37f96f27416ff70dd5d0fb81) |
+| 2026-09-06 | 作業ログを更新 | — | [78e8339](https://github.com/masarusanuki/ikensho-ocr/commit/78e8339c35157805c099469f3668e3fd44d125d1) |
+| 2026-09-06 | 記述欄の左端を広げ、読めた文字数を書き込み量と突き合わせる | 読み取り・ブラウザ版・説明 | [a88cb78](https://github.com/masarusanuki/ikensho-ocr/commit/a88cb784c5f883d59f08c1420b5aa171867dedab) |
+| 2026-09-06 | 作業ログを最新のコミットに合わせた | — | [259d69f](https://github.com/masarusanuki/ikensho-ocr/commit/259d69f3d6b4cc56d3a569e4f6d9cb5cdae56894) |
+| 2026-09-06 | 操作ログと利用者トークンを追加し、作業ログを残すようにした | ブラウザ版・道具・説明 | [17e349a](https://github.com/masarusanuki/ikensho-ocr/commit/17e349a0b8d11813d8c2c92eff9815dbee27c746) |
+| 2026-09-06 | 関連する項目をまとめて表示し、医療機関名を一覧から選べるようにした | 読み取り・ブラウザ版・道具・項目定義 | [7e2735e](https://github.com/masarusanuki/ikensho-ocr/commit/7e2735e985ed6c0c49b16651d7a17769a15ad570) |
+| 2026-09-06 | 拡大表示の横スクロール、音声入力、栄養留意点の位置修正 | ブラウザ版・道具・様式 | [a8876f1](https://github.com/masarusanuki/ikensho-ocr/commit/a8876f1f04ab55e157d5fec69fb8a9e8579e4eec) |
+| 2026-09-06 | 確認画面を原本に近づけ、確定・削除の操作を追加 | 読み取り・ブラウザ版 | [d62d1ce](https://github.com/masarusanuki/ikensho-ocr/commit/d62d1ce5fc0142947d634b98cb49e83aa3777693) |
+| 2026-09-06 | レビューで見つかった重大な不具合を修正し、確定の状態を追加 | 読み取り・ブラウザ版 | [4004cd6](https://github.com/masarusanuki/ikensho-ocr/commit/4004cd6ed3cc4c490f4a3ca721e59d7bf1126cd6) |
+| 2026-09-06 | 電話番号と郵便番号の書式を整える | 読み取り・ブラウザ版 | [b76d2b1](https://github.com/masarusanuki/ikensho-ocr/commit/b76d2b1cdbcf43a3eeaed204ac924401409660ec) |
+| 2026-09-06 | 日付欄を様式に依存せず読み、確認画面と検証手段を整備 | 読み取り・ブラウザ版・道具・様式・辞書・項目定義 | [94c0d6e](https://github.com/masarusanuki/ikensho-ocr/commit/94c0d6eb58ed3058d0310297c45b40f394dbae32) |
+| 2026-09-06 | 日付欄は数字だけを読み、西暦に直した値を別に保存する | 読み取り・ブラウザ版・道具・様式・項目定義 | [f46cbe5](https://github.com/masarusanuki/ikensho-ocr/commit/f46cbe5d91cf2b4f13d2ea78077785787172a0d5) |
+| 2026-09-06 | 日付欄を数字入力にし、LLMモデルの選択・ダウンロードとモデル比較を追加 | 読み取り・ブラウザ版・道具・様式・項目定義・説明 | [290d765](https://github.com/masarusanuki/ikensho-ocr/commit/290d7652c03b6c50d80bf01e48134f1a86444f4b) |
+| 2026-09-06 | LLMを既定で有効化し、Docker配布とドキュメントページを整備 | 読み取り・ブラウザ版・道具・説明・配布・ビルド | [32901b2](https://github.com/masarusanuki/ikensho-ocr/commit/32901b24c8e79aaa6a391d2a4c650e9d93c2536b) |
+| 2026-09-06 | 思考モードなしのQwenに変更し、OCR後の日本語チェックを追加 | 読み取り・ブラウザ版・道具 | [e7306c1](https://github.com/masarusanuki/ikensho-ocr/commit/e7306c1d0aa7f888feb791cc99313304a9a9aa21) |
+| 2026-09-06 | テキスト欄の読み取り位置を修正し、確認画面を改善 | 読み取り・ブラウザ版・道具・様式 | [3a74bdc](https://github.com/masarusanuki/ikensho-ocr/commit/3a74bdc471eddd47c6ec6c73c3360d9a236be123) |
+| 2026-09-06 | OCR精度の改善と、OS別の配布手段を整備 | 読み取り・ブラウザ版・道具・説明・配布・ビルド | [8423224](https://github.com/masarusanuki/ikensho-ocr/commit/8423224101bde90f43dbd764de1e4ca8940b1812) |
+| 2026-09-06 | 様式間のテキスト欄転写を、行ごとの局所写像に置き換え | 読み取り・ブラウザ版・道具・様式 | [4b190ad](https://github.com/masarusanuki/ikensho-ocr/commit/4b190add24620b32e82f4727a9359edf7182df7e) |
+| 2026-09-06 | 匿名化加工済みデータ（研究用）に対応 | 読み取り・ブラウザ版・道具・様式・項目定義 | [da86f9f](https://github.com/masarusanuki/ikensho-ocr/commit/da86f9fbd84dd858590961845a007fcebde1770b) |
+| 2026-09-06 | 同梱ライブラリのライセンス表記と取得スクリプトを追加 | ブラウザ版・道具 | [cd1f1bf](https://github.com/masarusanuki/ikensho-ocr/commit/cd1f1bf22ed6f64e68d43ba2b66214a6441fcfd9) |
+| 2026-09-06 | 検証結果を記載し、記入済み様式が写るスクリーンショットを公開対象から外す | 説明 | [a06f1a4](https://github.com/masarusanuki/ikensho-ocr/commit/a06f1a49e12c16726fa96b1af804dbae26b2a765) |
+| 2026-09-06 | ビルド成果物をリポジトリから除外し、スクリーンショットを軽量化 | 説明 | [851801c](https://github.com/masarusanuki/ikensho-ocr/commit/851801c7445791b88f6821fbbafa9ea3ae0fb4e4) |
+| 2026-09-06 | ブラウザ版・Python版・管理画面・医療辞書を追加 | 読み取り・ブラウザ版・道具・様式・項目定義・説明 | [2a071cf](https://github.com/masarusanuki/ikensho-ocr/commit/2a071cf3d4b4c497311fb70fac14af82324560e1) |
+| 2026-09-06 | 読み取りエンジンと医療辞書を追加 | 読み取り・道具・様式・辞書 | [95ae3ca](https://github.com/masarusanuki/ikensho-ocr/commit/95ae3ca19b505b6c6127705b4ceb6fae4211964c) |
+| 2026-09-06 | 様式定義とテンプレート生成基盤を追加 | 道具・様式・項目定義 | [39db891](https://github.com/masarusanuki/ikensho-ocr/commit/39db891be0d92144b803e71ba967d29a7ef1cd1c) |
+
+<!-- CHANGELOG_END -->
 
 ---
 
